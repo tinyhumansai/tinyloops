@@ -272,8 +272,8 @@ are named below.
    compile yields `Value::Null` silently, so "it produced a route" is itself the
    assertion; and `rung_order_is_blocked_solved_reported_diversify_retry`, one
    state satisfying two rungs at once, asserted to take the higher.
-2. Implement `render_ladder(t: Thresholds) -> String`, an `if/elif` chain over
-   the merged state emitting the same strings as `Route::as_str`. No literal is
+2. Implement `render_ladder(t: Thresholds) -> String`, an `if/elif` chain over the
+   merged state emitting the same strings as `Route::as_str`. No literal is
    typed; every one is interpolated from `t`.
 
 ## Task C3: the builder, validated and deterministic
@@ -331,10 +331,9 @@ are named below.
    `adding_an_arm_changes_the_signature`; and
    `resuming_against_a_mismatched_signature_is_a_named_error_and_runs_no_node`,
    asserting `Error::GraphSignatureMismatch { recorded, current }` and that the
-   mock capabilities logged zero calls.
-2. Implement `GraphSignature`, a SHA-256 over canonical JSON of node ids, kinds,
-   ports, edges, and every rendered threshold, plus
-   `verify_resume(recorded: &GraphSignature, graph: &WorkflowGraph)`.
+   mock capabilities logged zero calls. Implement `GraphSignature`, a SHA-256
+   over canonical JSON of node ids, kinds, ports, edges, and every rendered
+   threshold, plus `verify_resume(&GraphSignature, &WorkflowGraph)`.
 
 ## Task C6: the exhaustive jq-versus-Rust parity sweep
 
