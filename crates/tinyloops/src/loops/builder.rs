@@ -521,26 +521,29 @@ impl LoopBuilder {
             kind: NodeKind::Switch,
             type_version: 1,
             name: "route the pass".to_string(),
-            config: json!({ "expression": self.routing_expression() }),
+            config: json!({ "expression": routing_expression() }),
             ports,
             position: None,
         }
     }
+}
 
-    /// The jq the routing switch branches on.
-    ///
-    /// [`ladder`] rendered verbatim, with one reshaping pipe in front of it.
-    /// The ladder reads its accumulator as `.state // .item`, and at a switch
-    /// there is no `state` key and `item` is the barrier's output envelope, so
-    /// the pipe presents the folded state where the ladder already looks for
-    /// it. Composing rather than re-rendering is the point: not one threshold
-    /// is typed here, and the program the graph runs is the program
-    /// `src/policy/` generates.
-    fn routing_expression(&self) -> String {
-        let rendered = ladder();
-        let body = rendered.strip_prefix('=').unwrap_or(&rendered);
-        format!("={{ item: .item.json }} | ({body})")
-    }
+/// The jq the routing switch branches on.
+///
+/// [`ladder`] rendered verbatim, with one reshaping pipe in front of it. The
+/// ladder reads its accumulator as `.state // .item`, and at a switch there is
+/// no `state` key and `item` is the barrier's output envelope, so the pipe
+/// presents the folded state where the ladder already looks for it. Composing
+/// rather than re-rendering is the point: not one threshold is typed here, and
+/// the program the graph runs is the program `src/policy/` generates.
+///
+/// A free function rather than a method because it no longer reads anything off
+/// the builder — the ladder is a constant now, the same program for every
+/// profile.
+fn routing_expression() -> String {
+    let rendered = ladder();
+    let body = rendered.strip_prefix('=').unwrap_or(&rendered);
+    format!("={{ item: .item.json }} | ({body})")
 }
 
 /// The head's fold expression: the state `pass` returned, or the seed.
