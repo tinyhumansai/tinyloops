@@ -130,7 +130,9 @@ pub(super) fn payload_address(node: &str) -> String {
 ///
 /// Used by the invariant tests: "no arm reads the accumulator" is a statement
 /// about the emitted JSON, so it is asserted against the emitted JSON rather
-/// than against the code that wrote it.
+/// than against the code that wrote it. Nothing in the builder needs it, so it
+/// is compiled only for those tests.
+#[cfg(test)]
 pub(super) fn mentions(config: &Value, address: &str) -> bool {
     match config {
         Value::String(text) => text.contains(address),

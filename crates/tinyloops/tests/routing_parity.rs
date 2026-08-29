@@ -179,11 +179,11 @@ fn presets() -> Vec<(&'static str, Thresholds)> {
         (
             "patient",
             Thresholds {
-                max_attempts: 10,
-                stuck: 3,
-                blocked: 3,
-                computational: 3,
-                unverified: 3,
+                max_attempts: 6,
+                stuck: 2,
+                blocked: 2,
+                computational: 2,
+                unverified: 2,
                 max_restarts: 3,
                 plan_interval: 5,
             },
