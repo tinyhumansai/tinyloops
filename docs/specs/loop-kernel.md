@@ -228,9 +228,12 @@ but not to the fold runs, costs its budget, and changes nothing.
 
 ### 7. Thresholds are addressed, not written twice, and parity is proved
 
-No threshold is typed into graph JSON, and none is rendered into it either. The
-graph's routing ladder and the Rust routing function read every threshold from
-the same address in the run's accumulator, `.profile.thresholds.<field>`. A
+No threshold is typed into a routing program, and none is rendered into one
+either. The graph's routing ladder and the Rust routing function read every
+threshold from the same address in the run's accumulator,
+`.profile.thresholds.<field>`. (The graph does carry the run's *starting*
+profile, in the seed accumulator, beside the goal — a different preset is a
+different run.) A
 parity harness replays the emitted jq and the Rust routing function over **every**
 combination of the counters across a range that reaches past every threshold,
 and asserts they agree on all of them.

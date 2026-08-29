@@ -1,6 +1,6 @@
 # Plan: the loop profile
 
-- **Status:** Not started
+- **Status:** Implemented
 - **Specification:** [`../specs/adaptation.md`](../specs/adaptation.md),
   with the addressing decision in
   [ADR 0006](../adr/0006-thresholds-addressed-from-run-state.md) and the
