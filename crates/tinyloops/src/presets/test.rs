@@ -1304,7 +1304,9 @@ fn an_amendment_does_not_change_the_route_of_the_pass_that_proposed_it() {
     assert_eq!(crate::policy::route(&carrying), Route::Diversify);
 
     // Folded at `pass`, and the next route is the one the new thresholds give.
-    let advanced = Advance::new(Preset::Balanced.bounds())
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let advanced = Advance::new(Preset::Balanced.bounds(), &arms)
+        .expect("judge is declared and does not conclude")
         .run(
             carrying,
             crate::step::StepContext::advancing(0, &Thresholds::default()),
