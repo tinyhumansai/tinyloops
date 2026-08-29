@@ -428,13 +428,14 @@ impl Delegate for ScriptedDelegate {
             .ok_or_else(|| refuse(role, "the script declares no outcomes for this role"))?;
 
         let mut state = self.lock();
-        let taken = state.keys().filter(|id| id.starts_with(role)).count();
+        let prefix = format!("{role}#");
+        let taken = state.keys().filter(|id| id.starts_with(&prefix)).count();
         let scripted = outcomes
             .get(taken)
             .ok_or_else(|| refuse(role, "the script declares no further outcomes"))?
             .clone();
 
-        let ticket = Ticket::new(format!("{role}#{taken}"));
+        let ticket = Ticket::new(format!("{prefix}{taken}"));
         state.insert(
             ticket.id().to_owned(),
             Delegation {
