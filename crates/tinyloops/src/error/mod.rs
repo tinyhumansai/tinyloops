@@ -422,6 +422,56 @@ pub enum Error {
         /// The engine's validation message.
         reason: String,
     },
+
+    /// A task was added under an id the board already holds.
+    ///
+    /// Task ids are the only stable handle a count has across passes. Re-using
+    /// one for a different task makes "task 3 is still open" mean a different
+    /// thing on either side of a re-plan, and nothing in the run would report
+    /// the change. Restating a task keeps its id; a new task gets a new one.
+    #[error("a task with id {id} is already on the board")]
+    DuplicateTask {
+        /// The contested id.
+        id: String,
+    },
+
+    /// A restatement, a status change, or a read named an id the board lacks.
+    #[error("no task with id {id} is on the board")]
+    UnknownTask {
+        /// The id nothing answers to.
+        id: String,
+    },
+
+    /// The orchestrator was constructed holding a tool that executes something.
+    ///
+    /// A driver that *can* run the experiment runs it instead of commissioning
+    /// it, and the pass then reports on a tool call rather than on the goal.
+    /// The control is the absent capability, not an instruction to abstain: a
+    /// prompt instruction is followed until execution is the locally cheaper
+    /// path. The offending group is named so the fix is obvious.
+    #[error("the orchestrator may not hold the {group} tool group")]
+    ExecutionToolInOrchestrator {
+        /// The group that must not be in the grant.
+        group: &'static str,
+    },
+
+    /// A spawn named a specialist outside the orchestrator's declared set.
+    ///
+    /// There is deliberately no fallback to the host's registry. A registry
+    /// grows; a role's delegate list is a decision, and a specialist reachable
+    /// by accident is one nobody chose.
+    #[error("no delegate named {name} is declared")]
+    UndeclaredDelegate {
+        /// The name the spawn asked for.
+        name: String,
+    },
+
+    /// An orchestrator was constructed with no delegates at all.
+    ///
+    /// It holds no execution tools by construction, so a set with nothing in it
+    /// leaves a role that can neither act nor commission action.
+    #[error("an orchestrator must declare at least one delegate")]
+    EmptyDelegateSet,
 }
 
 /// The crate's standard result type.
