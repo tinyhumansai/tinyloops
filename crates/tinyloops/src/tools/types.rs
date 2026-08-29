@@ -361,7 +361,13 @@ pub struct ToolReceipt {
 
 impl ToolReceipt {
     /// Mints a receipt for the tool that just ran.
-    pub(crate) fn new(tool: &str) -> Self {
+    ///
+    /// Visible to `tools` alone rather than to the crate, so
+    /// `Evidence::collected` cannot be satisfied by a module that did not run
+    /// anything. A transcript you were given is a claim; a transcript you
+    /// collected is evidence, and `pub(crate)` would have left every other
+    /// module able to mint the difference away.
+    pub(super) fn new(tool: &str) -> Self {
         Self {
             tool: tool.to_owned(),
         }
