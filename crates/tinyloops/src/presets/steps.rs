@@ -80,9 +80,20 @@ impl Step for Gather {
 /// once, because a lesson and a steer written by two arms have to be checked
 /// for collision, and an arm that applied its own would have made that check
 /// impossible before it ran.
-#[derive(Debug)]
 pub struct ArmStep {
     arm: Arc<dyn Arm>,
+}
+
+impl std::fmt::Debug for ArmStep {
+    /// Hand-written because [`Arm`] is not [`Debug`]: an arm holds whatever a
+    /// deployment's evaluator needs, and requiring it to be renderable would
+    /// put a bound on the seam for the sake of a diagnostic. The name is the
+    /// part worth printing anyway.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ArmStep")
+            .field("arm", &self.arm.name())
+            .finish()
+    }
 }
 
 impl ArmStep {
