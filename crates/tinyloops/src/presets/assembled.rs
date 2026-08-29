@@ -182,7 +182,7 @@ impl AssembledLoop {
     pub fn graph(&self) -> Result<tinyflows::model::WorkflowGraph> {
         LoopBuilder::new(self.arms.clone(), self.registry.clone())
             .goal(self.goal.clone())
-            .profile(self.profile)
+            .profile(self.profile.clone())
             .caps(self.budget.caps())
             .autonomy(self.autonomy)
             .ids(self.ids)
@@ -226,7 +226,7 @@ impl AssembledLoop {
     /// - [`Error::ContestedField`] when two arms claim the same narrative
     ///   field, which is a wiring mistake with no correct resolution.
     pub fn drive(&self, recorder: &Recorder) -> Result<Driven> {
-        let mut state = LoopState::with_profile(self.goal.clone(), self.profile);
+        let mut state = LoopState::with_profile(self.goal.clone(), self.profile.clone());
         let mut meter = Meter::default();
         let mut routes = Vec::new();
         let mut bound = None;
