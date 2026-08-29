@@ -112,10 +112,13 @@ fn an_unknown_field_is_ignored() {
 fn a_new_run_starts_on_its_goal_with_nothing_counted() {
     let state = LoopState::new("land the change");
     assert_eq!(state.goal, "land the change");
-    assert_eq!(state, LoopState {
-        goal: "land the change".to_string(),
-        ..LoopState::default()
-    });
+    assert_eq!(
+        state,
+        LoopState {
+            goal: "land the change".to_string(),
+            ..LoopState::default()
+        }
+    );
 }
 
 #[test]
@@ -146,10 +149,7 @@ fn a_reset_and_an_increment_compose_in_one_superstep() {
     restarted.unproductive = 2;
     restarted.restarts = 1;
 
-    let merged = base.apply(&[
-        productive.delta_from(&base),
-        restarted.delta_from(&base),
-    ]);
+    let merged = base.apply(&[productive.delta_from(&base), restarted.delta_from(&base)]);
 
     // Neither arm was lost: -1 and +1 both landed.
     assert_eq!(merged.unproductive, 1);

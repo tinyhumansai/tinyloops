@@ -155,7 +155,7 @@ fn the_ladder_agrees_with_route_on_every_combination() {
 
     // The whole input space of `route`, twice: 4 x 2 x 10 x 4 x 4 x 4 for the
     // defaults, and 5 x 2 x 5 x 3 x 3 x 6 for the second set.
-    assert_eq!(cases.into_inner(), 20_480 + 2_700);
+    assert_eq!(cases.into_inner(), 5_120 + 2_700);
 }
 
 #[test]
@@ -380,7 +380,10 @@ fn a_run_out_of_restarts_is_terminal_without_being_a_route() {
 
 #[test]
 fn a_run_with_time_left_and_no_verdict_is_not_terminal() {
-    assert!(!is_terminal(&LoopState::new("goal"), &Thresholds::default()));
+    assert!(!is_terminal(
+        &LoopState::new("goal"),
+        &Thresholds::default()
+    ));
 }
 
 #[test]
@@ -482,10 +485,7 @@ fn the_wire_names_match_the_serde_representation() {
         assert_eq!(serde_json::to_value(route).unwrap(), route.as_str());
     }
     for judgement in [Judgement::Proceed, Judgement::Steer, Judgement::Restart] {
-        assert_eq!(
-            serde_json::to_value(judgement).unwrap(),
-            judgement.as_str()
-        );
+        assert_eq!(serde_json::to_value(judgement).unwrap(), judgement.as_str());
     }
 }
 
@@ -540,7 +540,10 @@ fn a_zero_plan_interval_disables_planning_rather_than_dividing_by_zero() {
 #[test]
 fn autonomy_defaults_to_the_conservative_setting() {
     assert_eq!(Autonomy::default(), Autonomy::Report);
-    assert_eq!(serde_json::to_value(Autonomy::Assisted).unwrap(), "assisted");
+    assert_eq!(
+        serde_json::to_value(Autonomy::Assisted).unwrap(),
+        "assisted"
+    );
     assert_eq!(
         serde_json::from_value::<Autonomy>(serde_json::json!("unattended")).unwrap(),
         Autonomy::Unattended
@@ -556,7 +559,10 @@ fn a_solved_run_that_banked_something_is_a_success() {
     };
     let thresholds = Thresholds::default();
     assert_eq!(Outcome::classify(&state, &thresholds), Outcome::Success);
-    assert_eq!(Outcome::success(&state, &thresholds).unwrap(), Outcome::Success);
+    assert_eq!(
+        Outcome::success(&state, &thresholds).unwrap(),
+        Outcome::Success
+    );
 }
 
 #[test]
