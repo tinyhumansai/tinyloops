@@ -225,9 +225,7 @@ impl AssembledLoop {
             state = self.run_step(STEP_PLAN, state, pass, recorder)?;
             state = self.run_step(STEP_ATTEMPT, state, pass, recorder)?;
 
-            let report: Value =
-                serde_json::from_str(&state.last_attempt).map_err(|_| Error::StateEncoding)?;
-            state = self.evaluate(&state, &report, pass, recorder)?;
+            state = self.evaluate(&state, pass, recorder)?;
 
             let chosen = route(&state, &self.thresholds);
             routes.push(chosen);
