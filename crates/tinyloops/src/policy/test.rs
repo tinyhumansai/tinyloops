@@ -1094,3 +1094,48 @@ fn every_preset_states_its_bounds_and_none_of_them_permits_everything() {
         }
     }
 }
+
+#[test]
+fn every_field_and_verdict_renders_the_name_it_is_addressed_by() {
+    // The rendered names are what a reader of a run's events matches against
+    // the field that moved, so they are asserted rather than assumed to follow
+    // from the wire form.
+    for field in ThresholdField::ALL {
+        assert_eq!(field.to_string(), field.as_str());
+        assert_eq!(
+            serde_json::to_value(field).unwrap(),
+            serde_json::Value::String(field.as_str().to_owned()),
+        );
+    }
+    for field in CapField::ALL {
+        assert_eq!(field.to_string(), field.as_str());
+        assert_eq!(
+            serde_json::to_value(field).unwrap(),
+            serde_json::Value::String(field.as_str().to_owned()),
+        );
+    }
+
+    assert_eq!(
+        Change::Cap {
+            field: CapField::MaxTokens,
+            to: 10,
+        }
+        .to_string(),
+        "max_tokens := 10",
+    );
+    assert_eq!(
+        Change::UnmuteArm {
+            arm: "judge".to_owned(),
+        }
+        .to_string(),
+        "unmute judge",
+    );
+
+    assert!(crate::policy::Verdict::Applied.applied());
+    assert!(
+        !crate::policy::Verdict::Refused {
+            reason: "no".to_owned(),
+        }
+        .applied()
+    );
+}
