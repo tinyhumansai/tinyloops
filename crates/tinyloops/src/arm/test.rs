@@ -140,7 +140,11 @@ fn two_concluding_arms_are_a_construction_error() {
     // Two arms able to end a run means the outcome depends on which of them
     // finished first, which is the one thing every other rule here removes.
     assert_eq!(
-        ArmSet::new(vec![Fake::concluding("reflect"), Fake::concluding("oracle")]).unwrap_err(),
+        ArmSet::new(vec![
+            Fake::concluding("reflect"),
+            Fake::concluding("oracle")
+        ])
+        .unwrap_err(),
         Error::AmbiguousConclusion {
             first: "reflect",
             second: "oracle",
@@ -190,8 +194,14 @@ fn removing_an_arm_removes_it_from_both_edge_sets_and_the_fold() {
     let two = ArmSet::new(vec![Fake::plain("reflect"), Fake::plain("judge")]).unwrap();
 
     assert!(three.fan_out("attempt").len() == 3 && three.converge("merge").len() == 3);
-    assert!(!two.fan_out("attempt").contains(&Edge::new("attempt", "oracle")));
-    assert!(!two.converge("merge").contains(&Edge::new("oracle", "merge")));
+    assert!(
+        !two.fan_out("attempt")
+            .contains(&Edge::new("attempt", "oracle"))
+    );
+    assert!(
+        !two.converge("merge")
+            .contains(&Edge::new("oracle", "merge"))
+    );
     assert!(!two.fold_inputs().contains(&upstream_address("oracle")));
 }
 
@@ -311,15 +321,17 @@ fn every_permutation_of_four_arms_folds_to_one_answer() {
         for b in 0..4 {
             for c in 0..4 {
                 for d in 0..4 {
-                    if [a, b, c, d].iter().collect::<std::collections::BTreeSet<_>>().len() != 4 {
+                    if [a, b, c, d]
+                        .iter()
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len()
+                        != 4
+                    {
                         continue;
                     }
                     answers.push(
-                        set.merge(
-                            &base,
-                            vec![outcome(a), outcome(b), outcome(c), outcome(d)],
-                        )
-                        .unwrap(),
+                        set.merge(&base, vec![outcome(a), outcome(b), outcome(c), outcome(d)])
+                            .unwrap(),
                     );
                 }
             }

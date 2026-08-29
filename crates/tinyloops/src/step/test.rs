@@ -216,7 +216,9 @@ fn a_failing_step_reports_rather_than_returning_the_state_unchanged() {
 #[test]
 fn a_failing_observer_reports_rather_than_being_swallowed() {
     let mut registry = StepRegistry::new();
-    registry.register_observer(Arc::new(BrokenObserver)).unwrap();
+    registry
+        .register_observer(Arc::new(BrokenObserver))
+        .unwrap();
 
     assert_eq!(
         registry
@@ -315,7 +317,12 @@ fn the_tool_rejects_a_payload_with_no_state() {
     let registry = registry();
 
     assert_eq!(
-        run_loop_step(&registry, &Thresholds::default(), &json!({ "step": "attempt" })).unwrap_err(),
+        run_loop_step(
+            &registry,
+            &Thresholds::default(),
+            &json!({ "step": "attempt" })
+        )
+        .unwrap_err(),
         Error::MalformedStepPayload { field: "state" },
     );
 }

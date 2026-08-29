@@ -558,9 +558,7 @@ fn the_engines_node_activations_join_the_loops_own_stream_in_order() {
 fn a_fan_out_delivers_to_every_installed_sink() {
     let first = Arc::new(Collector::default());
     let second = Arc::new(Collector::default());
-    let fan = FanOutSink::new()
-        .with(first.clone())
-        .with(second.clone());
+    let fan = FanOutSink::new().with(first.clone()).with(second.clone());
     assert_eq!(fan.len(), 2);
     assert!(!fan.is_empty());
 
@@ -645,7 +643,13 @@ fn the_line_sink_renders_one_line_per_event() {
 
     let contents = buffer.contents();
     let lines: Vec<&str> = contents.lines().collect();
-    assert_eq!(lines, vec!["pass 2 step solve entered", "pass 2 step solve finished in 7ms"]);
+    assert_eq!(
+        lines,
+        vec![
+            "pass 2 step solve entered",
+            "pass 2 step solve finished in 7ms"
+        ]
+    );
 }
 
 /// One of every event, so the rendering and the wire form are exercised whole

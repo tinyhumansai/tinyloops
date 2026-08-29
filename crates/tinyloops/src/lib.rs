@@ -65,12 +65,12 @@ mod tinybus_module;
 // person can see why it stopped.
 pub use budget::{Bound, Caps, Meter, RunBudget, TOOL_CALLS_PER_MODEL_CALL};
 pub use error::{Error, Result};
+pub use greeting::greet;
 pub use observe::{
     Accounting, CallSink, Capture, Entry, Event, FanOutSink, JsonlSink, LineSink, ModelCall,
-    Movement, PassProfile, Recorder, RedactingSink, Report, Sink, Spend, StepTiming, ToolCall, Unit,
-    Unpaired, render,
+    Movement, PassProfile, Recorder, RedactingSink, Report, Sink, Spend, StepTiming, ToolCall,
+    Unit, Unpaired, render,
 };
-pub use greeting::greet;
 // The loop's accumulator and the decision made from it. `state` is what one
 // goal run carries between turns; `policy` is the routing that reads it, in
 // both the Rust and the jq spelling.

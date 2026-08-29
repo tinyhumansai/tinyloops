@@ -325,5 +325,6 @@ pub(super) fn decode_state(args: &serde_json::Value) -> Result<LoopState> {
         .get("state")
         .ok_or(Error::MalformedStepPayload { field: "state" })?;
 
-    serde_json::from_value(state.clone()).map_err(|_| Error::MalformedStepPayload { field: "state" })
+    serde_json::from_value(state.clone())
+        .map_err(|_| Error::MalformedStepPayload { field: "state" })
 }

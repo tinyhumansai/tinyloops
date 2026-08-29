@@ -111,10 +111,7 @@ impl ArmSet {
     /// [`upstream_address`].
     #[must_use]
     pub fn fold_inputs(&self) -> Vec<String> {
-        self.names()
-            .into_iter()
-            .map(upstream_address)
-            .collect()
+        self.names().into_iter().map(upstream_address).collect()
     }
 
     /// Folds every arm's outcome onto the base state.

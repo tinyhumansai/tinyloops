@@ -646,7 +646,10 @@ impl Accounting {
     /// Folds one call into the run's total and into its role's and model's.
     pub fn record(&mut self, call: &ModelCall) {
         self.run.record(call);
-        self.per_role.entry(call.role.clone()).or_default().record(call);
+        self.per_role
+            .entry(call.role.clone())
+            .or_default()
+            .record(call);
         self.per_model
             .entry(call.model.clone())
             .or_default()

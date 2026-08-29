@@ -28,7 +28,10 @@ fn the_default_caps_are_a_legal_configuration() {
     // `RunBudget::default` builds the struct directly rather than through the
     // validating constructor, so this is the test that keeps the default from
     // drifting into something no caller could have constructed.
-    assert_eq!(RunBudget::new(Caps::default()).unwrap(), RunBudget::default());
+    assert_eq!(
+        RunBudget::new(Caps::default()).unwrap(),
+        RunBudget::default()
+    );
 }
 
 #[test]
