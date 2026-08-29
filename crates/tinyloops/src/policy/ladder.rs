@@ -118,28 +118,28 @@ end",
 /// to know *whether* the run stops, not which arm stopped it, and the
 /// disjunction is the same set of conditions with the ordering removed.
 ///
+/// Like [`ladder`], a constant that addresses its thresholds.
+///
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{Thresholds, terminal_condition};
-/// let program = terminal_condition(&Thresholds::default());
+/// # use tinyloops::terminal_condition;
+/// let program = terminal_condition();
 /// assert!(program.starts_with('='));
-/// assert!(program.contains(">= 8"));
+/// assert!(program.contains(".profile.thresholds"));
+/// assert!(!program.contains(">= 8"));
 /// ```
 #[must_use]
-pub fn terminal_condition(thresholds: &Thresholds) -> String {
+pub fn terminal_condition() -> String {
     format!(
-        "=(.state // .item) as $s \
+        "=(.state // .item) as $s | (($s | .profile.thresholds) // {{}}) as $t \
 | ((($s | .expired) // false) \
-or ((($s | .restarts) // 0) >= {max_restarts}) \
+or ((($s | .restarts) // 0) >= (($t | .max_restarts) // {none})) \
 or (($s | .solved) // false) \
-or ((($s | .attempts) // 0) >= {max_attempts}) \
-or ((($s | .blocked) // 0) >= {blocked}) \
-or ((($s | .unverified) // 0) >= {unverified}))",
-        max_restarts = thresholds.max_restarts,
-        max_attempts = thresholds.max_attempts,
-        blocked = thresholds.blocked,
-        unverified = thresholds.unverified,
+or ((($s | .attempts) // 0) >= (($t | .max_attempts) // {none})) \
+or ((($s | .blocked) // 0) >= (($t | .blocked) // {none})) \
+or ((($s | .unverified) // 0) >= (($t | .unverified) // {none})))",
+        none = NO_THRESHOLD,
     )
 }
 
