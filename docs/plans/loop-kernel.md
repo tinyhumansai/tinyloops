@@ -28,9 +28,9 @@ block in the same commit rather than adding an alias layer.
 
 ```rust
 // LoopState carries attempts, blocked, unverified, unproductive, computational,
-// restarts (u32) and solved (bool), and serde round-trips to the accumulator.
-impl LoopState { fn from_value(&Value) -> Result<Self>; fn to_value(&self) -> Value; }
-// Thresholds: max_attempts, blocked, unverified, stuck, computational, max_restarts.
+// restarts (u32) and solved (bool); LoopState::{from_value, to_value} serde
+// round-trip it to the accumulator JSON. Thresholds carries max_attempts,
+// blocked, unverified, stuck, computational, max_restarts.
 pub enum Route { Solved, Reported, Retry, Diversify, Blocked }
 pub enum Judgement { Proceed, Steer(String), Restart(String) }
 pub enum Autonomy { Report, Assisted, Unattended }
@@ -255,15 +255,15 @@ are named below.
    `trigger`; `ToolCall` for `plan`, `research`, `attempt`, every arm, `pass`,
    and `report`; `Loop` for the head; `Merge` for the barrier; `Switch` for
    `route`; `Spawn` for `side_arms`; `Gate` for `stand_down`. Every `ToolCall`
-   node names `run_loop_step` with a `step` argument, and no node carries a bare
+   node names `run_loop_step` with a `step` argument, and none carries a bare
    `agent_ref`: `NodeKind::Agent` would lose the operator-directive drain, the
    salvage of a timed-out attempt, and the arms opened beside the loop.
 3. `side_arms` (`Spawn`) and `stand_down` (`Gate`) are this plan's reading of
    "the arms opened beside the loop are started at a named node, at a place a
    checkpoint can land". `Spawn` needs no `TaskRunner` to be correct — with none
    injected the work runs inline and the ticket returns already settled
-   (`vendor/tinyflows/src/model/node_kind.rs`, `NodeKind::Spawn`) — so a host
-   without a scheduler computes the same answer. Record that in the module docs.
+   (`vendor/tinyflows/src/model/node_kind.rs`) — so a host without a scheduler
+   computes the same answer. Record that in the module docs.
 
 ## Task C2: rendering the ladder from `Thresholds`
 
