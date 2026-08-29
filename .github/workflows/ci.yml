@@ -53,9 +53,10 @@ jobs:
       - name: Test default features
         run: cargo test
 
-      # `cargo build --all-targets` only *compiles* an example. `AGENTS.md`
-      # promises `cargo run -p template --example basic` works, and a compiled
-      # example can still fail on its first line.
+      # `cargo build --all-targets` only *compiles* an example. `README.md` and
+      # `AGENTS.md` promise these run, and a compiled example can still fail on
+      # its first line. The harness example is behind `required-features`, so it
+      # needs the feature named explicitly or cargo silently skips it.
       - name: Run the bundled examples
         run: |
           cargo run -p template --example basic
