@@ -93,6 +93,23 @@ A node body is **one registered tool**, invoked through `NodeKind::ToolCall` and
 the host's `ToolInvoker` (`vendor/tinyflows/src/caps/mod.rs:137`), named
 `run_loop_step` and taking the step name as an argument. The step set is
 **closed**: an unrecognised step name is an error from the tool, never a no-op.
+
+Two node kinds sit beside that rule rather than under it, and the boundary is
+worth stating because the specifications otherwise leave it open. Every node
+*inside* the loop body — `attempt`, each evaluation arm, `merge`, `pass` — is a
+`ToolCall` running a named step, so the whole pass is one closed set the graph
+addresses by name. The work opened **beside** the loop is different: it does not
+gate the pass, it outlives it, and it has to be retired at the end. That pair
+uses `NodeKind::Spawn` to start tasks and `NodeKind::Gate` to collect or cancel
+them (see [`orchestrator.md`](orchestrator.md)), which is what makes
+`stand_down` a node the graph can reach rather than a cleanup call somebody
+remembers to make after the workflow returns.
+
+The reason to draw it here rather than let each builder decide: work that was
+cancelled *after* the loop returned is work paid for and thrown away. A live run
+of this design recorded its verdict at minute 29, kept spawning helpers for
+another 62 minutes because nothing had retired them, and spent roughly 85% of
+its wall clock and most of its budget after the problem was already solved.
 A graph naming a step that does not exist would otherwise run green, change
 nothing, and route on a state nobody advanced — which is exactly the class of
 failure `assert_no_null_bindings`
