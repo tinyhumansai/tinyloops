@@ -76,14 +76,7 @@ impl Arm for Evaluator {
 fn graph(thresholds: Thresholds) -> WorkflowGraph {
     let mut registry = StepRegistry::new();
     for name in [
-        "plan",
-        "research",
-        "attempt",
-        STEP_MERGE,
-        "pass",
-        "report",
-        "reflect",
-        "judge",
+        "plan", "research", "attempt", STEP_MERGE, "pass", "report", "reflect", "judge",
     ] {
         registry
             .register(Arc::new(Body(name)))
@@ -125,7 +118,10 @@ fn scope(state: &LoopState) -> Value {
 /// rung of the ladder reads it, so sweeping it multiplies the run time by the
 /// restart allowance and can only ever confirm both sides ignoring the same
 /// field.
-fn first_disagreement(program: &str, thresholds: &Thresholds) -> Option<(LoopState, String, String)> {
+fn first_disagreement(
+    program: &str,
+    thresholds: &Thresholds,
+) -> Option<(LoopState, String, String)> {
     let compiled = Value::String(program.to_string());
     for attempts in 0..=thresholds.max_attempts + 1 {
         for blocked in 0..=thresholds.blocked + 1 {

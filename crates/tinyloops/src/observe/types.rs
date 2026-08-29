@@ -346,6 +346,20 @@ pub enum Event {
         /// What they said.
         directive: String,
     },
+    /// A note was dropped because the mailbox it was posted to was full.
+    ///
+    /// The drop is an event rather than a silent loss because the mailbox
+    /// exists to keep an aside from stalling the solve: dropping is the
+    /// designed behaviour, and a designed loss nobody can see is
+    /// indistinguishable from a bug.
+    NoteDropped {
+        /// The pass it belongs to.
+        pass: u32,
+        /// Who posted the note that did not fit.
+        from: String,
+        /// The capacity it did not fit in.
+        capacity: usize,
+    },
     /// A budget bound tripped.
     BoundTripped {
         /// The pass it belongs to.

@@ -21,8 +21,8 @@
 //! itself, and says what it had to patch to get there.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde_json::{Value, json};
 use tinyflows::caps::{Capabilities, ToolInvoker};
@@ -83,14 +83,7 @@ fn thresholds() -> Thresholds {
 fn graph() -> WorkflowGraph {
     let mut registry = StepRegistry::new();
     for name in [
-        "plan",
-        "research",
-        "attempt",
-        STEP_MERGE,
-        "pass",
-        "report",
-        "reflect",
-        "judge",
+        "plan", "research", "attempt", STEP_MERGE, "pass", "report", "reflect", "judge",
     ] {
         registry
             .register(Arc::new(Body(name)))
@@ -225,7 +218,11 @@ async fn a_run_completes_and_binds_every_expression() {
     assert!(
         trace.failed().is_empty(),
         "nodes failed: {:?}",
-        trace.failed().iter().map(|s| &s.node_id).collect::<Vec<_>>(),
+        trace
+            .failed()
+            .iter()
+            .map(|s| &s.node_id)
+            .collect::<Vec<_>>(),
     );
     // The check a green run hides. A generated ladder that failed to compile,
     // or an address the engine's `nodes` scope does not project, yields `null`

@@ -373,7 +373,10 @@ fn the_accumulator_update_is_an_assignment_not_an_increment() {
 
     // The whole state the pass returned, assigned. A replayed activation lands
     // on the same value; `+ 1` twice is wrong by one and nothing reports it.
-    assert!(update.starts_with("=.nodes[\"pass\"].item.json"), "{update}");
+    assert!(
+        update.starts_with("=.nodes[\"pass\"].item.json"),
+        "{update}"
+    );
     assert!(!update.contains('+'), "{update}");
     assert!(!update.contains(".state"), "{update}");
     assert_eq!(head.config["on_exceeded"], json!("continue"));
