@@ -88,18 +88,28 @@ fn arms() -> ArmSet {
     .expect("two distinct arms are a valid set")
 }
 
-/// A graph that acts, at the given autonomy.
-fn graph_at(autonomy: Autonomy, thresholds: Thresholds) -> WorkflowGraph {
-    LoopBuilder::new(thresholds, arms(), registry())
+/// A graph that acts, at the given autonomy and profile.
+fn graph_at(autonomy: Autonomy, profile: LoopProfile) -> WorkflowGraph {
+    LoopBuilder::new(arms(), registry())
         .goal("ship the release")
         .autonomy(autonomy)
+        .profile(profile)
         .build()
         .expect("the fixture builds a valid graph")
 }
 
 /// The default unattended graph.
 fn graph() -> WorkflowGraph {
-    graph_at(Autonomy::Unattended, Thresholds::default())
+    graph_at(Autonomy::Unattended, LoopProfile::default())
+}
+
+/// A profile carrying `thresholds`, for the tests about what does and does not
+/// move the signature.
+fn profile(thresholds: Thresholds) -> LoopProfile {
+    LoopProfile {
+        thresholds,
+        ..LoopProfile::default()
+    }
 }
 
 #[test]
@@ -236,7 +246,7 @@ fn node_ids_are_declared_not_positional() {
         attempt: "try",
         ..NodeIds::default()
     };
-    let graph = LoopBuilder::new(Thresholds::default(), arms(), registry())
+    let graph = LoopBuilder::new(arms(), registry())
         .autonomy(Autonomy::Unattended)
         .ids(ids)
         .build()
@@ -506,23 +516,68 @@ fn the_signature_is_stable_across_two_builds() {
 }
 
 #[test]
-fn changing_a_threshold_changes_the_signature() {
-    let before = GraphSignature::of(&graph_at(Autonomy::Unattended, Thresholds::default()));
-    let after = GraphSignature::of(&graph_at(
+fn a_graph_is_the_same_graph_under_every_preset() {
+    // The inverse of the assertion this replaces, and the point of the change
+    // it tests. Thresholds are addressed out of the accumulator rather than
+    // rendered into the graph, so they are not topology: one graph serves every
+    // preset, and every revision of one.
+    let baseline = GraphSignature::of(&graph());
+    for preset in crate::presets::Preset::ALL {
+        assert_eq!(
+            GraphSignature::of(&graph_at(Autonomy::Unattended, LoopProfile::of(preset))),
+            baseline,
+            "{preset} emitted a different graph",
+        );
+    }
+
+    let tuned = GraphSignature::of(&graph_at(
         Autonomy::Unattended,
-        Thresholds {
+        profile(Thresholds {
             stuck: 5,
             ..Thresholds::default()
-        },
+        }),
     ));
-    assert_ne!(before, after);
+    assert_eq!(tuned, baseline);
+}
+
+#[test]
+fn a_checkpoint_taken_under_one_preset_resumes_under_another() {
+    // The property the whole addressing change exists to buy: a run that
+    // revises its own thresholds resumes from a checkpoint taken before it did.
+    let recorded = GraphSignature::of(&graph_at(
+        Autonomy::Unattended,
+        LoopProfile::of(crate::presets::Preset::Balanced),
+    ));
+    let current = graph_at(
+        Autonomy::Unattended,
+        LoopProfile::of(crate::presets::Preset::Persistent),
+    );
+    assert!(verify_resume(&recorded, &current).is_ok());
+}
+
+#[test]
+fn the_emitted_graph_holds_no_threshold_literal() {
+    let encoded = serde_json::to_string(&graph()).expect("the graph serializes");
+    let defaults = Thresholds::default();
+    for rendered in [
+        format!(">= {}", defaults.max_attempts),
+        format!(">= {}", defaults.stuck),
+        format!(">= {}", defaults.max_restarts),
+        format!(">= {}", defaults.plan_interval),
+    ] {
+        assert!(
+            !encoded.contains(&rendered),
+            "the graph renders a threshold: {rendered}",
+        );
+    }
+    assert!(encoded.contains(".profile.thresholds"));
 }
 
 #[test]
 fn adding_an_arm_changes_the_signature() {
     let one = ArmSet::new(vec![Arc::new(Evaluator(STEP_REFLECT)) as Arc<dyn Arm>])
         .expect("one arm is a valid set");
-    let smaller = LoopBuilder::new(Thresholds::default(), one, registry())
+    let smaller = LoopBuilder::new(one, registry())
         .goal("ship the release")
         .autonomy(Autonomy::Unattended)
         .build()
@@ -532,14 +587,11 @@ fn adding_an_arm_changes_the_signature() {
 
 #[test]
 fn resuming_against_a_mismatched_signature_is_a_named_error() {
-    let recorded = GraphSignature::of(&graph_at(Autonomy::Unattended, Thresholds::default()));
-    let current = graph_at(
-        Autonomy::Unattended,
-        Thresholds {
-            blocked: 9,
-            ..Thresholds::default()
-        },
-    );
+    // Topology still moves the hash; only values left it. A graph emitted at a
+    // different autonomy has different nodes, which is a resume that must be
+    // refused.
+    let recorded = GraphSignature::of(&graph_at(Autonomy::Unattended, LoopProfile::default()));
+    let current = graph_at(Autonomy::Assisted, LoopProfile::default());
     let error = verify_resume(&recorded, &current).expect_err("a changed topology refuses");
     match error {
         Error::GraphSignatureMismatch {
