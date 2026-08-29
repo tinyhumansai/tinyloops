@@ -471,7 +471,7 @@ impl Arm for TunerArm {
             // trait object an embedder can implement, and an amendment that
             // named another arm as proposer or an earlier pass would
             // misattribute a revision in the run's own record.
-            amendment.proposer = Arm::name(self).to_owned();
+            Arm::name(self).clone_into(&mut amendment.proposer);
             amendment.pass = pass;
             outcome.contribution.amendment = Some(amendment.clone());
             outcome.state.proposed = Some(amendment);
