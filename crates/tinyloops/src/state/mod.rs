@@ -271,6 +271,7 @@ impl LoopState {
         let mut score: Option<(&'static str, u8)> = None;
         let mut judged: Option<(&'static str, Judgement)> = None;
         let mut last_attempt: Option<(&'static str, String)> = None;
+        let mut amendment: Option<(&'static str, crate::policy::Amendment)> = None;
 
         for contribution in contributions {
             claim(
@@ -293,6 +294,12 @@ impl LoopState {
                 contribution.last_attempt.clone(),
                 "last_attempt",
             )?;
+            claim(
+                &mut amendment,
+                contribution.arm,
+                contribution.amendment.clone(),
+                "amendment",
+            )?;
         }
 
         if let Some((_, lesson)) = lesson {
@@ -309,6 +316,9 @@ impl LoopState {
         }
         if let Some((_, report)) = last_attempt {
             merged.last_attempt = report;
+        }
+        if let Some((_, proposed)) = amendment {
+            merged.proposed = Some(proposed);
         }
 
         Ok(merged)

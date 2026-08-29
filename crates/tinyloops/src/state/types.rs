@@ -210,6 +210,12 @@ pub struct Contribution {
     pub judged: Option<Judgement>,
     /// The attempt report, replacing [`LoopState::last_attempt`].
     pub last_attempt: Option<String>,
+    /// The amendment the tuner proposed, if it proposed one.
+    ///
+    /// `pub(crate)` for the same reason [`LoopState::proposed`] is: an arm
+    /// outside this crate cannot fill it, so exactly one role can propose, and
+    /// that is a fact about what compiles rather than a rule in a document.
+    pub(crate) amendment: Option<crate::policy::Amendment>,
 }
 
 impl Contribution {
@@ -223,7 +229,14 @@ impl Contribution {
             score: None,
             judged: None,
             last_attempt: None,
+            amendment: None,
         }
+    }
+
+    /// The amendment this contribution carries, if it carries one.
+    #[must_use]
+    pub fn amendment(&self) -> Option<&crate::policy::Amendment> {
+        self.amendment.as_ref()
     }
 
     /// Applies these claims to `state`.
@@ -253,6 +266,9 @@ impl Contribution {
         }
         if let Some(last_attempt) = self.last_attempt.clone() {
             state.last_attempt = last_attempt;
+        }
+        if let Some(amendment) = self.amendment.clone() {
+            state.proposed = Some(amendment);
         }
     }
 
@@ -286,6 +302,9 @@ impl Contribution {
             judged: (candidate.judged != base.judged).then_some(candidate.judged),
             last_attempt: (candidate.last_attempt != base.last_attempt)
                 .then(|| candidate.last_attempt.clone()),
+            amendment: (candidate.proposed != base.proposed)
+                .then(|| candidate.proposed.clone())
+                .flatten(),
         }
     }
 
@@ -300,5 +319,6 @@ impl Contribution {
             && self.score.is_none()
             && self.judged.is_none()
             && self.last_attempt.is_none()
+            && self.amendment.is_none()
     }
 }
