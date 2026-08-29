@@ -1,9 +1,9 @@
 # tinyloops-bus
 
-Every type that crosses the template module's `TinyBus` boundary, and the names
+Every type that crosses the TinyLoops module's `TinyBus` boundary, and the names
 of the members that carry them.
 
-The template ships as a loadable module so a host does not compile the
+TinyLoops ships as a loadable module so a host does not compile the
 implementation: `crates/tinyloops` is built as a `cdylib` and exports one object.
 A host can load that binary but cannot `use` anything out of it, so the payload
 vocabulary has to be published as an ordinary library. This is it.
@@ -91,7 +91,7 @@ The payload tests pin the serde representation, because that representation is
 the wire form: a host and a module that disagree about a field name fail at
 runtime with a decode error, so the shape is asserted rather than assumed.
 
-## Generating a project from the template
+## Renaming the contract
 
 Rename the interface, the object path, and the member constants in `names`
 together, replace `greeting` with the first real payload family, and reset

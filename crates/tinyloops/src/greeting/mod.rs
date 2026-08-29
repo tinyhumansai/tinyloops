@@ -1,4 +1,4 @@
-//! Greeting behavior used to demonstrate the template's module layout.
+//! Greeting behavior used to demonstrate the crate's module layout.
 //!
 //! A module root like this one documents the module, wires its pieces
 //! together, and exposes the smallest useful API. Substantial type definitions

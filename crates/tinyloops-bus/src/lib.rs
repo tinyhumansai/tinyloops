@@ -1,4 +1,4 @@
-//! Every type that crosses the template module's `TinyBus` boundary, and the
+//! Every type that crosses the TinyLoops module's `TinyBus` boundary, and the
 //! names of the members that carry them.
 //!
 //! This crate ships as a loadable `TinyBus` module: `crates/tinyloops` is built

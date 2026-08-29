@@ -28,7 +28,7 @@ const TARGET_SCORE: i64 = 5;
 
 /// The hard turn budget. A loop without one is a way to spend an afternoon
 /// discovering that a judge never says yes, so the budget is part of the
-/// template rather than something a caller remembers to add.
+/// loop rather than something a caller remembers to add.
 const MAX_TURNS: u32 = 8;
 
 /// One turn of work: read the score handed in, and hand back a better one.
