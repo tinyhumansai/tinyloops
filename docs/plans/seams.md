@@ -115,10 +115,10 @@ recording. A test in H5 asserts it for the reference implementations.
    `a_killed_delegation_that_wrote_an_artifact_is_salvaged`, with the outcome
    citing the artifact; and `a_failed_delegation_is_not_an_error_return`.
 2. Implement `Outcome { brief, ending, artifacts, reply }` and
-   `salvage(brief, artifacts) -> Outcome`. The ordinary way a long delegation ends is its own
-   cap killing it, which destroys its reply and leaves every file it wrote;
-   without salvage the pass reports nothing and the ladder spends a diversify
-   on a run that was not stuck.
+   `salvage(brief, artifacts) -> Outcome`. The ordinary way a long delegation
+   ends is its own cap killing it, which destroys its reply and leaves every
+   file it wrote; without salvage the pass reports nothing and the ladder spends
+   a diversify on a run that was not stuck.
 
 ## Task H5: the offline reference harness
 

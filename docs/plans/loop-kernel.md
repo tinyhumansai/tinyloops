@@ -479,7 +479,7 @@ All through `tinyflows::testkit::TestHarness`.
 
 - [ ] `cargo fmt --all -- --check`
 - [ ] `cargo clippy --all-targets --all-features -- -D warnings`
-- [ ] `cargo build --all-targets --all-features` and `cargo test --all-features`
+- [ ] `cargo build --all-targets --all-features`, `cargo test --all-features`
 - [ ] `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features`
 - [ ] `cargo deny check all`
 
