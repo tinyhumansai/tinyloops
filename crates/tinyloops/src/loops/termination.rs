@@ -24,7 +24,7 @@ use std::ops::{BitAnd, BitOr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::policy::{Outcome, Thresholds, is_terminal, terminal_condition};
+use crate::policy::{Outcome, is_terminal, terminal_condition};
 use crate::state::LoopState;
 
 /// The named state a finished run ended in.
@@ -67,18 +67,17 @@ enum Rule {
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Outcome, TerminationCondition, Thresholds};
-/// let thresholds = Thresholds::default();
+/// # use tinyloops::{LoopState, Outcome, TerminationCondition};
 /// let mut condition = TerminationCondition::terminal() | TerminationCondition::expired();
 ///
 /// let mut state = LoopState::new("goal");
-/// assert_eq!(condition.evaluate(&state, &thresholds), None);
+/// assert_eq!(condition.evaluate(&state), None);
 ///
 /// // Out of attempts is out of attempts, however hopeful the last pass was.
 /// state.solved = true;
 /// state.banked = 1;
-/// state.attempts = thresholds.max_attempts;
-/// assert_eq!(condition.evaluate(&state, &thresholds), Some(Outcome::Exhausted));
+/// state.attempts = state.profile.thresholds.max_attempts;
+/// assert_eq!(condition.evaluate(&state), Some(Outcome::Exhausted));
 ///
 /// condition.reset();
 /// assert_eq!(condition.fired(), None);
@@ -132,13 +131,13 @@ impl TerminationCondition {
     }
 
     /// Whether the rule holds for `state`, ignoring the latch.
-    fn holds(&self, state: &LoopState, thresholds: &Thresholds) -> bool {
+    fn holds(&self, state: &LoopState) -> bool {
         match &self.rule {
-            Rule::Terminal => is_terminal(state, thresholds),
+            Rule::Terminal => is_terminal(state),
             Rule::Expired => state.expired,
             Rule::Solved => state.solved,
-            Rule::All(inner) => inner.iter().all(|c| c.holds(state, thresholds)),
-            Rule::Any(inner) => inner.iter().any(|c| c.holds(state, thresholds)),
+            Rule::All(inner) => inner.iter().all(|c| c.holds(state)),
+            Rule::Any(inner) => inner.iter().any(|c| c.holds(state)),
         }
     }
 
@@ -151,14 +150,14 @@ impl TerminationCondition {
     /// The reported outcome is always [`Outcome::classify`], never a value the
     /// caller chose: that is where "an error or an exhausted budget is never
     /// [`Outcome::Success`]" is enforced.
-    pub fn evaluate(&mut self, state: &LoopState, thresholds: &Thresholds) -> Option<Outcome> {
+    pub fn evaluate(&mut self, state: &LoopState) -> Option<Outcome> {
         if let Some(outcome) = self.fired {
             return Some(outcome);
         }
-        if !self.holds(state, thresholds) {
+        if !self.holds(state) {
             return None;
         }
-        let outcome = Outcome::classify(state, thresholds);
+        let outcome = Outcome::classify(state);
         self.fired = Some(outcome);
         Some(outcome)
     }
@@ -197,33 +196,30 @@ impl TerminationCondition {
     /// "stop when all of nothing holds" stops immediately, and one given "stop
     /// when any of nothing holds" runs to its cap.
     #[must_use]
-    pub fn expression(&self, thresholds: &Thresholds) -> String {
-        format!("={}", self.program(thresholds))
+    pub fn expression(&self) -> String {
+        format!("={}", self.program())
     }
 
     /// The `=`-less body, so a composed rule can nest it.
-    fn program(&self, thresholds: &Thresholds) -> String {
+    fn program(&self) -> String {
         match &self.rule {
             Rule::Terminal => {
-                let rendered = terminal_condition(thresholds);
+                let rendered = terminal_condition();
                 let body = rendered.strip_prefix('=').unwrap_or(&rendered);
                 format!("({body})")
             }
             Rule::Expired => "((.state // .item) as $s | (($s | .expired) // false))".to_string(),
             Rule::Solved => "((.state // .item) as $s | (($s | .solved) // false))".to_string(),
-            Rule::All(inner) => Self::join(inner, thresholds, "and", "true"),
-            Rule::Any(inner) => Self::join(inner, thresholds, "or", "false"),
+            Rule::All(inner) => Self::join(inner, "and", "true"),
+            Rule::Any(inner) => Self::join(inner, "or", "false"),
         }
     }
 
-    fn join(inner: &[Self], thresholds: &Thresholds, operator: &str, empty: &str) -> String {
+    fn join(inner: &[Self], operator: &str, empty: &str) -> String {
         if inner.is_empty() {
             return format!("({empty})");
         }
-        let parts: Vec<String> = inner
-            .iter()
-            .map(|condition| condition.program(thresholds))
-            .collect();
+        let parts: Vec<String> = inner.iter().map(Self::program).collect();
         format!("({})", parts.join(&format!(" {operator} ")))
     }
 }

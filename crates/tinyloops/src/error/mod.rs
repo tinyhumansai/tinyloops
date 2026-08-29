@@ -176,6 +176,63 @@ pub enum Error {
         second: &'static str,
     },
 
+    /// More than one arm declared itself able to propose an amendment.
+    ///
+    /// Exactly one may. Two means the profile a pass folds depends on which of
+    /// them finished first, which is arrival order deciding the run's
+    /// configuration — the same failure [`Self::AmbiguousConclusion`] names,
+    /// arriving at the one field that governs every later route.
+    #[error("both {first} and {second} may tune the loop")]
+    AmbiguousTuning {
+        /// The arm that declared it first.
+        first: &'static str,
+        /// The arm that also declared it.
+        second: &'static str,
+    },
+
+    /// An amendment named a field or an arm the bounds do not mention.
+    ///
+    /// A field with no entry cannot be moved at all. That is the safe default
+    /// and the deliberate one: bounds written without thinking about a field are
+    /// bounds that do not let a tuner touch it.
+    #[error("nothing bounds {field}, so it cannot be amended")]
+    UnboundedAmendment {
+        /// The field or arm the amendment named.
+        field: String,
+    },
+
+    /// A `Bounds` names an arm mutable that the run's declared `ArmSet`
+    /// cannot give that room to.
+    ///
+    /// Caught at assembly, before a tuner ever proposes: an arm not in the
+    /// set has no room to mute at all, so the amendment would be a recorded
+    /// no-op that spends the run's amendment budget on nothing, and the
+    /// concluding arm is refused unconditionally, because a run that mutes
+    /// the one arm able to end it cannot succeed.
+    #[error("{arm} cannot be named mutable: {reason}")]
+    IneligibleMutableArm {
+        /// The arm the bounds tried to make mutable.
+        arm: String,
+        /// Why it is not eligible.
+        reason: &'static str,
+    },
+
+    /// An amendment proposed a value outside the range its bounds allow.
+    ///
+    /// Refused rather than clamped. A clamped proposal reads as accepted at the
+    /// proposer and as a no-op in the state, and nothing joins the two.
+    #[error("{field} may be {low}..={high}, not {value}")]
+    AmendmentOutOfBounds {
+        /// The field the amendment named.
+        field: String,
+        /// The value it proposed.
+        value: u64,
+        /// The lowest value the bounds allow.
+        low: u64,
+        /// The highest value the bounds allow.
+        high: u64,
+    },
+
     /// A merge was handed an outcome from an arm the set does not declare.
     ///
     /// Folding it would credit the run with evidence no declared arm produced.

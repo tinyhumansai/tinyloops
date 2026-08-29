@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::policy::Judgement;
+use crate::policy::{Judgement, LoopProfile};
 
 /// What one goal run carries from turn to turn.
 ///
@@ -103,6 +103,33 @@ pub struct LoopState {
     /// because a decomposition that lives anywhere else is a decomposition the
     /// loop head is not the sole writer of.
     pub board: crate::orchestrate::TaskBoard,
+    /// The configuration this run is operating under.
+    ///
+    /// The routing ladder reads its thresholds from here, at
+    /// `.profile.thresholds.<field>`, rather than from numbers rendered into
+    /// the graph — see [`LoopProfile`] and
+    /// `docs/adr/0006-thresholds-addressed-from-run-state.md`. Like
+    /// [`Self::board`] it is nested, and for the same reason: it has to survive
+    /// a checkpoint with the guarantee every counter has, and a configuration
+    /// that lived anywhere else is a configuration the loop head is not the
+    /// sole writer of.
+    ///
+    /// [`Self::apply`] carries it through the fold untouched and neither
+    /// [`Delta`] nor [`Contribution`] has a slot that reaches it, so no arm can
+    /// move it however it is wired.
+    pub profile: LoopProfile,
+    /// The amendment this pass proposed, if one did.
+    ///
+    /// `pub(crate)` on purpose, and it is the whole of the "one proposer" rule.
+    /// An arm outside this crate is handed a [`LoopState`] it may edit freely
+    /// and cannot reach this field, so `impl Arm` + "propose an amendment" does
+    /// not compile. The only writer is
+    /// [`TunerArm`](crate::TunerArm), the adapter over the
+    /// [`Tuner`](crate::Tuner) trait. Read it with [`Self::proposed`].
+    ///
+    /// Cleared by the `pass` step once the head has folded it, so a proposal
+    /// lands exactly once.
+    pub(crate) proposed: Option<crate::policy::Amendment>,
     /// The run's final answer, written by the `report` step alone.
     ///
     /// Sole authorship is structural rather than conventional: [`Self::apply`]
@@ -183,6 +210,12 @@ pub struct Contribution {
     pub judged: Option<Judgement>,
     /// The attempt report, replacing [`LoopState::last_attempt`].
     pub last_attempt: Option<String>,
+    /// The amendment the tuner proposed, if it proposed one.
+    ///
+    /// `pub(crate)` for the same reason [`LoopState::proposed`] is: an arm
+    /// outside this crate cannot fill it, so exactly one role can propose, and
+    /// that is a fact about what compiles rather than a rule in a document.
+    pub(crate) amendment: Option<crate::policy::Amendment>,
 }
 
 impl Contribution {
@@ -196,7 +229,14 @@ impl Contribution {
             score: None,
             judged: None,
             last_attempt: None,
+            amendment: None,
         }
+    }
+
+    /// The amendment this contribution carries, if it carries one.
+    #[must_use]
+    pub fn amendment(&self) -> Option<&crate::policy::Amendment> {
+        self.amendment.as_ref()
     }
 
     /// Applies these claims to `state`.
@@ -226,6 +266,9 @@ impl Contribution {
         }
         if let Some(last_attempt) = self.last_attempt.clone() {
             state.last_attempt = last_attempt;
+        }
+        if let Some(amendment) = self.amendment.clone() {
+            state.proposed = Some(amendment);
         }
     }
 
@@ -259,6 +302,9 @@ impl Contribution {
             judged: (candidate.judged != base.judged).then_some(candidate.judged),
             last_attempt: (candidate.last_attempt != base.last_attempt)
                 .then(|| candidate.last_attempt.clone()),
+            amendment: (candidate.proposed != base.proposed)
+                .then(|| candidate.proposed.clone())
+                .flatten(),
         }
     }
 
@@ -273,5 +319,6 @@ impl Contribution {
             && self.score.is_none()
             && self.judged.is_none()
             && self.last_attempt.is_none()
+            && self.amendment.is_none()
     }
 }

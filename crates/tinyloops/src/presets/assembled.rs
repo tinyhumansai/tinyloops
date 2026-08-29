@@ -34,13 +34,14 @@ use crate::orchestrate::{
     Attempt, Decompose, DelegateSet, Orchestrator, Plan, Report as ReportStep, Specialists,
     Summarize,
 };
-use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
+use crate::policy::{Autonomy, LoopProfile, Outcome, Route, Verdict, route};
 use crate::state::LoopState;
-use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry};
+use crate::step::{STEP_ATTEMPT, STEP_PASS, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry};
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
 use super::steps::{Advance, ArmStep, Converge, Gather};
+use super::tuner::Rules;
 use super::types::Preset;
 
 /// How a driven run came out.
@@ -53,6 +54,15 @@ use super::types::Preset;
 pub struct Driven {
     /// The accumulator as the last pass left it.
     pub state: LoopState,
+    /// The profile the run finished on, with every amendment it proposed and
+    /// what became of each.
+    ///
+    /// A copy of `state.profile`, surfaced because it is an *output*: it is
+    /// what a cross-run layer would score, and burying the run's account of
+    /// what it changed about itself one field deeper than its answer would
+    /// misstate how much it matters. Nothing in this crate scores it — that
+    /// boundary is ADR 0003.
+    pub profile: LoopProfile,
     /// How the run is classified.
     pub outcome: Outcome,
     /// The route each pass took, oldest first.
@@ -77,7 +87,7 @@ impl Driven {
 pub struct AssembledLoop {
     goal: String,
     preset: Preset,
-    thresholds: Thresholds,
+    profile: LoopProfile,
     arms: ArmSet,
     registry: StepRegistry,
     budget: RunBudget,
@@ -101,10 +111,19 @@ impl AssembledLoop {
         registry: StepRegistry,
         budget: RunBudget,
     ) -> Result<Self> {
+        // Seeded from the budget actually supplied, not from `Caps::default`:
+        // `drive` narrows this budget against `profile.caps` every pass, so a
+        // profile that started at the default would silently restrict a
+        // caller's wider budget back down, and a `Cap` amendment against a
+        // caller's narrower one would report itself applied without tightening
+        // anything.
+        let mut profile = LoopProfile::of(preset);
+        profile.caps = budget.caps();
+
         Ok(Self {
             goal: goal.into(),
             preset,
-            thresholds: preset.thresholds(),
+            profile,
             arms,
             registry,
             budget,
@@ -128,6 +147,9 @@ impl AssembledLoop {
     /// should never silently move the other.
     #[must_use]
     pub fn with_budget(mut self, budget: RunBudget) -> Self {
+        // Kept in step with `Self::new`: `profile.caps` describes the budget
+        // actually in force, not the one the preset started from.
+        self.profile.caps = budget.caps();
         self.budget = budget;
         self
     }
@@ -145,10 +167,15 @@ impl AssembledLoop {
         self.preset
     }
 
-    /// The thresholds it routes on.
+    /// The profile it routes on.
+    ///
+    /// The thresholds live inside it, at `profile().thresholds`. They are one
+    /// value rather than two because the run carries them as one value: the
+    /// accumulator holds the profile, and the routing ladder addresses it
+    /// there.
     #[must_use]
-    pub fn thresholds(&self) -> &Thresholds {
-        &self.thresholds
+    pub fn profile(&self) -> &LoopProfile {
+        &self.profile
     }
 
     /// The closed step set its nodes run.
@@ -175,8 +202,10 @@ impl AssembledLoop {
     /// Whatever [`LoopBuilder::build`] raises: an unknown step, an accumulator
     /// that will not serialize, or a graph the engine's validator rejects.
     pub fn graph(&self) -> Result<tinyflows::model::WorkflowGraph> {
-        LoopBuilder::new(self.thresholds, self.arms.clone(), self.registry.clone())
+        LoopBuilder::new(self.arms.clone(), self.registry.clone())
             .goal(self.goal.clone())
+            .profile(self.profile.clone())
+            .caps(self.budget.caps())
             .autonomy(self.autonomy)
             .ids(self.ids)
             .name(format!("tinyloops::{}", self.preset))
@@ -185,9 +214,13 @@ impl AssembledLoop {
 
     /// The signature a checkpoint of this loop would carry.
     ///
-    /// Two assemblies of the same preset produce the same signature, and a
-    /// changed threshold produces a different one, which is what makes an
-    /// incompatible resume an error rather than silent corruption.
+    /// Two assemblies of the same preset produce the same signature, and so do
+    /// two assemblies of *different* presets: the thresholds are addressed out
+    /// of the accumulator rather than rendered into the graph, so they are not
+    /// topology and do not move the hash. What moves it is the shape — a node,
+    /// an edge, a port, an arm — which is what makes an incompatible resume an
+    /// error rather than silent corruption, and what lets a run that revised
+    /// its own thresholds resume from its own checkpoint.
     ///
     /// # Errors
     ///
@@ -215,7 +248,7 @@ impl AssembledLoop {
     /// - [`Error::ContestedField`] when two arms claim the same narrative
     ///   field, which is a wiring mistake with no correct resolution.
     pub fn drive(&self, recorder: &Recorder) -> Result<Driven> {
-        let mut state = LoopState::new(self.goal.clone());
+        let mut state = LoopState::with_profile(self.goal.clone(), self.profile.clone());
         let mut meter = Meter::default();
         let mut routes = Vec::new();
         let mut bound = None;
@@ -238,7 +271,7 @@ impl AssembledLoop {
 
             state = self.evaluate(&state, pass, recorder)?;
 
-            let chosen = route(&state, &self.thresholds);
+            let chosen = route(&state);
             routes.push(chosen);
             recorder.record(Event::Routed {
                 pass,
@@ -258,13 +291,40 @@ impl AssembledLoop {
             });
 
             meter.pass(!state.last_attempt.is_empty());
-            state.passes = pass.saturating_add(1);
+
+            // The `pass` step, run rather than re-implemented. It counts the
+            // pass, clears the steer, and folds whatever amendment the tuner
+            // proposed — and a driver that inlined the first of those and
+            // skipped the other two would be a second, quieter loop.
+            let folded = state.profile.history.len();
+            state = self.run_step(STEP_PASS, state, pass, recorder)?;
+            for recorded in &state.profile.history[folded..] {
+                recorder.record(match &recorded.verdict {
+                    Verdict::Applied => Event::Amended {
+                        pass,
+                        revision: state.profile.revision,
+                        change: recorded.amendment.change.clone(),
+                        because: recorded.amendment.because.clone(),
+                    },
+                    Verdict::Refused { reason } => Event::AmendmentRefused {
+                        pass,
+                        change: recorded.amendment.change.clone(),
+                        reason: reason.clone(),
+                    },
+                });
+            }
+
             recorder.record(Event::PassFinished {
                 pass,
                 duration: Duration::ZERO,
             });
 
-            if let Some(tripped) = self.budget.tripped(&meter) {
+            // Narrowed by the run's own caps, so a `Cap` amendment actually
+            // tightens what the run may spend. `narrow` takes the lower of the
+            // two field by field, so a run can restrict itself and can never
+            // spend past the budget its embedder set.
+            let budget = self.budget.narrow(state.profile.caps)?;
+            if let Some(tripped) = budget.tripped(&meter) {
                 bound = Some(tripped);
                 recorder.record(Event::BoundTripped {
                     pass,
@@ -272,7 +332,7 @@ impl AssembledLoop {
                 });
                 break;
             }
-            if crate::policy::is_terminal(&state, &self.thresholds) {
+            if crate::policy::is_terminal(&state) {
                 break;
             }
         }
@@ -292,7 +352,7 @@ impl AssembledLoop {
         // claimed. `classify` reads `expired` and the attempt cap; an iteration
         // or a token cap has to be folded in here, and folding it in *after*
         // the classification is what keeps that rule in one place.
-        let classified = Outcome::classify(&state, &self.thresholds);
+        let classified = Outcome::classify(&state);
         let outcome = match bound {
             Some(tripped) if !tripped.is_graceful() => Outcome::Exhausted,
             Some(_) if classified == Outcome::Stalled => Outcome::Exhausted,
@@ -304,6 +364,7 @@ impl AssembledLoop {
         });
 
         Ok(Driven {
+            profile: state.profile.clone(),
             state,
             outcome,
             routes,
@@ -328,7 +389,7 @@ impl AssembledLoop {
             pass,
             step: name.to_owned(),
         });
-        let advanced = self.registry.run(name, state, &self.thresholds)?;
+        let advanced = self.registry.run(name, state)?;
         recorder.record(Event::StepFinished {
             pass,
             step: name.to_owned(),
@@ -360,9 +421,7 @@ impl AssembledLoop {
                 pass,
                 arm: arm.name().to_owned(),
             });
-            let candidate = self
-                .registry
-                .run(arm.name(), state.clone(), &self.thresholds)?;
+            let candidate = self.registry.run(arm.name(), state.clone())?;
             deltas.push(candidate.delta_from(state));
             returned.insert(
                 arm.name().to_owned(),
@@ -404,7 +463,6 @@ impl AssembledLoop {
         self.registry.run_with(
             STEP_MERGE,
             state.clone(),
-            &self.thresholds,
             &json!({ "arms": Value::Object(returned) }),
         )
     }
@@ -462,6 +520,80 @@ pub fn research_loop(
     decompose: Arc<dyn Decompose>,
     specialists: Arc<dyn Specialists>,
 ) -> Result<AssembledLoop> {
+    assemble(goal, preset, delegates, decompose, specialists, None)
+}
+
+/// The same loop, with the shipped rule tuner wired in as a third arm.
+///
+/// A separate function rather than a flag on [`research_loop`], because it is a
+/// different loop: it emits a third arm's node, a third pair of edges, and a
+/// different graph signature. A run that can revise itself and a run that
+/// cannot should not be told apart by an argument nobody reads in a diff.
+///
+/// What it may revise is [`Preset::bounds`], which the preset owns. The tuner
+/// itself is [`Rules`], a pure function of the counters.
+///
+/// # Errors
+///
+/// Whatever [`research_loop`] raises.
+///
+/// # Examples
+///
+/// ```
+/// # use std::sync::Arc;
+/// # use tinyloops::{
+/// #     DelegateSet, FixedPlan, Inline, Preset, Recorder, Scripted, tuned_research_loop,
+/// # };
+/// let delegates = DelegateSet::of(["prover"]);
+/// let assembled = tuned_research_loop(
+///     "bound the error term",
+///     Preset::Balanced,
+///     delegates.clone(),
+///     Arc::new(FixedPlan::of([("bound", "bound the error term", "a proved bound")])),
+///     Arc::new(Inline::of(
+///         delegates,
+///         [("prover".to_owned(), vec![Scripted::Answers {
+///             reply: "no luck".to_owned(),
+///             artifacts: Vec::new(),
+///         }])],
+///     )),
+/// )?;
+///
+/// let sink = Arc::new(tinyloops::LineSink::new(std::io::sink()));
+/// let driven = assembled.drive(&Recorder::new("run", sink))?;
+///
+/// // Every revision it made to itself, and every one its bounds refused.
+/// for recorded in &driven.profile.history {
+///     println!("{recorded}");
+/// }
+/// # Ok::<(), tinyloops::Error>(())
+/// ```
+pub fn tuned_research_loop(
+    goal: impl Into<String>,
+    preset: Preset,
+    delegates: DelegateSet,
+    decompose: Arc<dyn Decompose>,
+    specialists: Arc<dyn Specialists>,
+) -> Result<AssembledLoop> {
+    assemble(
+        goal,
+        preset,
+        delegates,
+        decompose,
+        specialists,
+        Some(Arc::new(Rules::new(preset.bounds().muting_window))),
+    )
+}
+
+/// The assembly both shipped loops share.
+fn assemble(
+    goal: impl Into<String>,
+    preset: Preset,
+    delegates: DelegateSet,
+    decompose: Arc<dyn Decompose>,
+    specialists: Arc<dyn Specialists>,
+    tuner: Option<Arc<dyn crate::arm::Tuner>>,
+) -> Result<AssembledLoop> {
     let delegates_for_research = delegates.clone();
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), delegates)?;
     let mailbox = Arc::new(crate::harness::Mailbox::new(
@@ -484,9 +616,16 @@ pub fn research_loop(
     registry.register(Arc::new(Attempt::new(orchestrator, specialists, mailbox)))?;
     registry.register(Arc::new(ArmStep::new(Arc::clone(&reflect))))?;
     registry.register(Arc::new(ArmStep::new(Arc::clone(&judge))))?;
-    let arms = ArmSet::new(vec![reflect, judge])?;
+
+    let mut declared: Vec<Arc<dyn crate::arm::Arm>> = vec![reflect, judge];
+    if let Some(tuner) = tuner {
+        let tuning: Arc<dyn crate::arm::Arm> = Arc::new(crate::arm::TunerArm::new(tuner));
+        registry.register(Arc::new(ArmStep::new(Arc::clone(&tuning))))?;
+        declared.push(tuning);
+    }
+    let arms = ArmSet::new(declared)?;
     registry.register(Arc::new(Converge::new(arms.clone())))?;
-    registry.register(Arc::new(Advance))?;
+    registry.register(Arc::new(Advance::new(preset.bounds(), &arms)?))?;
     registry.register(Arc::new(ReportStep::new(Arc::new(Summarize))))?;
 
     AssembledLoop::new(goal, preset, arms, registry, RunBudget::default())

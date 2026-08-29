@@ -13,7 +13,9 @@ use std::sync::Arc;
 
 use serde_json::{Value, json};
 
-use super::{AssembledLoop, Judge, Preset, Reflect, SOLVED_MARKER, research_loop};
+use super::{
+    AssembledLoop, Judge, Preset, Reflect, Rules, SOLVED_MARKER, research_loop, tuned_research_loop,
+};
 use crate::arm::{Arm, ArmSet};
 use crate::budget::{Bound, Caps, RunBudget};
 use crate::error::Error;
@@ -63,17 +65,15 @@ fn each_preset_deviates_from_the_default_in_the_field_its_bet_is_about() {
 fn the_persistence_bet_and_the_variation_bet_route_the_same_state_differently() {
     // The same run, one pass into a stall, read by two presets. This is the bet
     // made visible: exploratory diversifies, persistent keeps revising.
-    let mut state = LoopState::new("goal");
-    state.unproductive = 1;
+    let mut exploratory =
+        LoopState::with_profile("goal", crate::policy::LoopProfile::of(Preset::Exploratory));
+    exploratory.unproductive = 1;
+    let mut persistent =
+        LoopState::with_profile("goal", crate::policy::LoopProfile::of(Preset::Persistent));
+    persistent.unproductive = 1;
 
-    assert_eq!(
-        crate::policy::route(&state, &Preset::Exploratory.thresholds()),
-        Route::Diversify
-    );
-    assert_eq!(
-        crate::policy::route(&state, &Preset::Persistent.thresholds()),
-        Route::Retry
-    );
+    assert_eq!(crate::policy::route(&exploratory), Route::Diversify);
+    assert_eq!(crate::policy::route(&persistent), Route::Retry);
 }
 
 #[test]
@@ -97,11 +97,10 @@ fn the_presets_are_the_set_the_parity_sweep_reads() {
     assert_eq!(Preset::ALL.len(), 4);
     for preset in Preset::ALL {
         let thresholds = preset.thresholds();
-        let mut state = LoopState::new("goal");
+        let mut state = LoopState::with_profile("goal", crate::policy::LoopProfile::of(preset));
         state.blocked = thresholds.blocked;
 
-        let rendered =
-            evaluate_ladder(&state, "loop", &thresholds).expect("the generated ladder evaluates");
+        let rendered = evaluate_ladder(&state, "loop").expect("the generated ladder evaluates");
         assert_eq!(
             rendered,
             Route::Blocked,
@@ -134,7 +133,7 @@ fn an_assembled_loop_carries_its_preset_thresholds_and_budget() {
     let assembled = assembled(Preset::Cautious).expect("assembles");
 
     assert_eq!(assembled.preset(), Preset::Cautious);
-    assert_eq!(assembled.thresholds().unverified, 1);
+    assert_eq!(assembled.profile().thresholds.unverified, 1);
     assert_eq!(assembled.budget().caps(), Caps::default());
 }
 
@@ -813,11 +812,11 @@ fn the_pass_step_counts_the_pass_by_assignment_and_consumes_the_steer() {
     let mut state = LoopState::new("goal");
     state.steer = "narrow the claim".to_owned();
 
-    let once = Advance
+    let once = Advance::default()
         .run(state, advancing(4, &thresholds))
         .expect("pass runs")
         .into_state();
-    let twice = Advance
+    let twice = Advance::default()
         .run(once.clone(), advancing(4, &thresholds))
         .expect("pass runs again")
         .into_state();
@@ -825,7 +824,7 @@ fn the_pass_step_counts_the_pass_by_assignment_and_consumes_the_steer() {
     assert_eq!(once.passes, 5);
     assert_eq!(twice, once);
     assert!(once.steer.is_empty());
-    assert_eq!(Advance.name(), crate::step::STEP_PASS);
+    assert_eq!(Advance::default().name(), crate::step::STEP_PASS);
 }
 
 #[test]
@@ -1014,6 +1013,15 @@ fn applying_a_contribution_and_reading_it_back_is_the_identity() {
         score: Some(6),
         judged: Some(Judgement::Restart),
         last_attempt: Some("the report".to_owned()),
+        amendment: Some(crate::policy::Amendment::new(
+            "reflect",
+            0,
+            crate::policy::Change::Threshold {
+                field: crate::policy::ThresholdField::Stuck,
+                to: 3,
+            },
+            "the round trip has to carry it too",
+        )),
     };
 
     let mut candidate = base.clone();
@@ -1084,4 +1092,495 @@ fn merge_of(
             StepContext::advancing_with(base.passes, thresholds, &args),
         )
         .map(crate::step::Advanced::into_state)
+}
+
+#[test]
+fn every_preset_can_reach_its_attempt_ceiling() {
+    // The loop head's `max_iterations` is a runaway backstop, and a backstop
+    // below a preset's own attempt ceiling truncates the run before its
+    // thresholds ever fire. `Preset::Persistent` asks for twelve attempts; a
+    // default cap of eight would stop it four short, and the run would report
+    // "not solved within N attempts" having never spent N.
+    let cap = crate::budget::Caps::default().max_iterations;
+    for preset in Preset::ALL {
+        let ceiling = preset.thresholds().max_attempts;
+        assert!(
+            ceiling <= cap,
+            "{preset} asks for {ceiling} attempts under a cap of {cap}",
+        );
+    }
+}
+
+#[test]
+fn a_presets_wire_name_is_the_name_it_renders() {
+    // A preset travels inside the accumulator as part of the profile, so its
+    // serde names are a wire format. Two spellings of one variant would decode
+    // as an error somewhere nobody is looking.
+    for preset in Preset::ALL {
+        assert_eq!(
+            serde_json::to_value(preset).unwrap(),
+            serde_json::Value::String(preset.as_str().to_owned()),
+        );
+        assert_eq!(
+            serde_json::from_value::<Preset>(serde_json::json!(preset.as_str())).unwrap(),
+            preset,
+        );
+    }
+    assert_eq!(Preset::default(), Preset::Balanced);
+}
+
+// --- adaptation ------------------------------------------------------------
+
+/// A state under `preset` with `edit` applied.
+fn tuned_state(preset: Preset, edit: impl FnOnce(&mut LoopState)) -> LoopState {
+    let mut state = LoopState::with_profile("goal", crate::policy::LoopProfile::of(preset));
+    edit(&mut state);
+    state
+}
+
+/// What the rule tuner proposes for `state`, if anything.
+fn proposal(state: &LoopState) -> Option<crate::policy::Change> {
+    use crate::arm::Tuner as _;
+
+    let thresholds = state.profile.thresholds;
+    Rules::default()
+        .propose(
+            state,
+            &serde_json::Value::Null,
+            crate::step::StepContext::observing(state.passes, &thresholds),
+        )
+        .expect("the rule tuner is total")
+        .map(|amendment| amendment.change)
+}
+
+#[test]
+fn the_rule_tuner_says_nothing_about_an_ordinary_pass() {
+    // The ordinary answer. A tuner that proposes on every pass has mistaken its
+    // own budget for a target.
+    assert_eq!(proposal(&tuned_state(Preset::Balanced, |_| {})), None);
+    assert_eq!(
+        proposal(&tuned_state(Preset::Balanced, |state| {
+            state.unproductive = 1;
+            state.scores = vec![4, 7];
+        })),
+        None
+    );
+}
+
+#[test]
+fn the_rule_tuner_raises_patience_only_once_diversifying_has_failed() {
+    // `unproductive` equal to `stuck` is the pass that diversifies; nothing has
+    // been learned yet about whether the variation paid. One past it is the
+    // pass after a diversify that was still unproductive, which is the run's
+    // own evidence that the threshold was too low for this domain.
+    let at_the_bound = tuned_state(Preset::Balanced, |state| state.unproductive = 2);
+    assert_eq!(proposal(&at_the_bound), None);
+
+    let past_it = tuned_state(Preset::Balanced, |state| state.unproductive = 3);
+    assert_eq!(
+        proposal(&past_it),
+        Some(crate::policy::Change::Threshold {
+            field: crate::policy::ThresholdField::Stuck,
+            to: 3,
+        })
+    );
+}
+
+#[test]
+fn the_rule_tuner_asks_for_a_threshold_once_and_not_again() {
+    // Asking twice is how a tuner spends its whole amendment budget arriving
+    // where one proposal would have put it. A refusal counts as asked: a bound
+    // that said no once will say no again.
+    let bounds = Preset::Balanced.bounds();
+    let mut state = tuned_state(Preset::Balanced, |state| state.unproductive = 3);
+
+    let first = proposal(&state).expect("the first pass past the bound proposes");
+    state.profile.fold(
+        crate::policy::Amendment::new("tune", 1, first, "because"),
+        &bounds,
+    );
+
+    state.unproductive = 9;
+    assert_eq!(proposal(&state), None);
+}
+
+#[test]
+fn the_rule_tuner_spends_less_when_the_machinery_is_failing() {
+    // Infrastructure first, and the only move available that costs less rather
+    // than more. A run whose sandbox will not start has learned nothing about
+    // its own patience.
+    let blocked = tuned_state(Preset::Balanced, |state| {
+        state.blocked = 1;
+        state.unproductive = 9;
+    });
+
+    assert_eq!(
+        proposal(&blocked),
+        Some(crate::policy::Change::Cap {
+            field: crate::policy::CapField::MaxModelCalls,
+            to: u64::from(crate::budget::Caps::default().max_model_calls / 2),
+        }),
+        "the blocked rule outranks the patience rule",
+    );
+}
+
+#[test]
+fn the_rule_tuner_mutes_a_judge_that_has_stopped_discriminating() {
+    // Silence, not "scored worse". The loop has no per-arm reward to rank arms
+    // by, so the rule fires on a signal that has stopped varying and never on a
+    // comparison it cannot make.
+    let flat = tuned_state(Preset::Balanced, |state| {
+        state.scores = vec![9, 4, 4, 4];
+    });
+    assert_eq!(
+        proposal(&flat),
+        Some(crate::policy::Change::MuteArm {
+            arm: crate::step::STEP_JUDGE.to_owned(),
+        })
+    );
+
+    let varying = tuned_state(Preset::Balanced, |state| {
+        state.scores = vec![4, 4, 5];
+    });
+    assert_eq!(proposal(&varying), None);
+}
+
+#[test]
+fn the_rule_tuner_proposes_on_exactly_these_passes() {
+    // The whole behavior as one sequence, so a change to any rule shows here as
+    // a changed list rather than as one test flipping.
+    let sequence: Vec<Option<&str>> = [
+        (0_u32, 0_u32, vec![]),
+        (1, 0, vec![4]),
+        (2, 0, vec![4, 4]),
+        (3, 0, vec![4, 4, 4]),
+        (0, 1, vec![]),
+    ]
+    .into_iter()
+    .map(|(unproductive, blocked, scores)| {
+        let state = tuned_state(Preset::Balanced, |state| {
+            state.unproductive = unproductive;
+            state.blocked = blocked;
+            state.scores = scores;
+        });
+        proposal(&state).map(|change| match change {
+            crate::policy::Change::Threshold { .. } => "stuck",
+            crate::policy::Change::Cap { .. } => "cap",
+            crate::policy::Change::MuteArm { .. } => "mute",
+            crate::policy::Change::UnmuteArm { .. } => "unmute",
+        })
+    })
+    .collect();
+
+    assert_eq!(sequence, vec![None, None, None, Some("stuck"), Some("cap")],);
+}
+
+#[test]
+fn an_amendment_does_not_change_the_route_of_the_pass_that_proposed_it() {
+    // The fold lands at `pass`, the loop's single exit, so a proposal reaches
+    // the router exactly one pass later. An arm that could change a threshold
+    // and have the same pass's route read it would make the route depend on
+    // whether the tuner finished before the routing node.
+    let mut state = tuned_state(Preset::Balanced, |state| state.unproductive = 2);
+    let proposed = crate::policy::Amendment::new(
+        "tune",
+        0,
+        crate::policy::Change::Threshold {
+            field: crate::policy::ThresholdField::Stuck,
+            to: 4,
+        },
+        "because",
+    );
+    state.profile.thresholds.stuck = 2;
+
+    let mut carrying = state.clone();
+    crate::state::Contribution {
+        amendment: Some(proposed),
+        ..crate::state::Contribution::new("tune")
+    }
+    .apply_to(&mut carrying);
+
+    // Proposed, and the route is the one the *current* thresholds give.
+    assert_eq!(crate::policy::route(&carrying), Route::Diversify);
+
+    // Folded at `pass`, and the next route is the one the new thresholds give.
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let advanced = Advance::new(Preset::Balanced.bounds(), &arms)
+        .expect("judge is declared and does not conclude")
+        .run(
+            carrying,
+            crate::step::StepContext::advancing(0, &Thresholds::default()),
+        )
+        .expect("the pass step folds")
+        .into_state();
+
+    assert_eq!(advanced.profile.thresholds.stuck, 4);
+    assert_eq!(advanced.profile.revision, 1);
+    assert!(advanced.proposed().is_none(), "a proposal lands once");
+    assert_eq!(crate::policy::route(&advanced), Route::Retry);
+}
+
+#[test]
+fn a_muted_arm_still_runs_its_node_and_still_converges() {
+    // Muting removes the arm's work, never its edges. Dropping a convergence
+    // edge would leave the barrier waiting on an arm nothing will activate.
+    let mut state = tuned_state(Preset::Balanced, |state| {
+        state.last_attempt = String::new();
+    });
+    state
+        .profile
+        .muted
+        .insert(crate::step::STEP_JUDGE.to_owned());
+
+    let step = ArmStep::new(std::sync::Arc::new(Judge));
+    let returned = step
+        .run(
+            state.clone(),
+            crate::step::StepContext::advancing(0, &Thresholds::default()),
+        )
+        .expect("a muted arm still returns")
+        .into_state();
+
+    // A zero delta and an empty contribution: it ran, and it contributed
+    // nothing, which is what the merge needs from it.
+    assert_eq!(returned, state);
+    assert_eq!(returned.delta_from(&state), crate::Delta::default());
+    assert!(
+        crate::Contribution::claimed_from(crate::step::STEP_JUDGE, &state, &returned).is_empty()
+    );
+}
+
+#[test]
+fn muting_the_concluding_arm_is_refused_whatever_the_bounds_say() {
+    // A run that mutes the one arm able to end it cannot succeed — it would
+    // run to its iteration cap and report nothing about why. Caught here, at
+    // assembly, before a tuner ever proposes it.
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let bounds = crate::policy::Bounds::none().mutable(crate::step::STEP_REFLECT);
+
+    let error = Advance::new(bounds, &arms).expect_err("reflect concludes the run");
+    assert_eq!(
+        error,
+        Error::IneligibleMutableArm {
+            arm: crate::step::STEP_REFLECT.to_owned(),
+            reason: "it is the run's concluding arm",
+        }
+    );
+}
+
+#[test]
+fn muting_an_undeclared_arm_is_refused_rather_than_a_recorded_no_op() {
+    // An arm not in the set has no room to mute at all: accepting the
+    // amendment would spend the run's amendment budget recording a change
+    // that touches nothing.
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let bounds = crate::policy::Bounds::none().mutable("no-such-arm");
+
+    let error = Advance::new(bounds, &arms).expect_err("no arm named no-such-arm is declared");
+    assert_eq!(
+        error,
+        Error::IneligibleMutableArm {
+            arm: "no-such-arm".to_owned(),
+            reason: "the run's arm set does not declare it",
+        }
+    );
+}
+
+#[test]
+fn a_tuned_run_carries_a_third_arm_and_a_different_graph() {
+    let plain = assembled(Preset::Balanced).expect("the preset assembles");
+    let tuned = tuned_research_loop(
+        "bound the error term",
+        Preset::Balanced,
+        delegates(),
+        plan(),
+        Arc::new(Inline::of(
+            delegates(),
+            [(
+                "prover".to_owned(),
+                vec![Scripted::Answers {
+                    reply: "still working".to_owned(),
+                    artifacts: Vec::new(),
+                }],
+            )],
+        )),
+    )
+    .expect("the tuned preset assembles");
+
+    // A run that can revise itself and one that cannot are different loops, and
+    // the difference is in the topology rather than in an argument.
+    let graph = tuned.graph().expect("the tuned graph validates");
+    assert!(graph.node(Rules::NAME).is_some());
+    assert!(
+        plain
+            .graph()
+            .expect("the plain graph validates")
+            .node(Rules::NAME)
+            .is_none()
+    );
+    assert_ne!(
+        plain.signature().expect("signed"),
+        tuned.signature().expect("signed"),
+    );
+}
+
+#[test]
+fn a_tuned_run_reports_every_revision_and_every_refusal() {
+    // End to end, over the reference seams: the specialist keeps failing, the
+    // run notices the machinery rather than the work, and its report says what
+    // it changed about itself.
+    let tuned = tuned_research_loop(
+        "bound the error term",
+        Preset::Balanced,
+        delegates(),
+        plan(),
+        Arc::new(Inline::of(
+            delegates(),
+            [(
+                "prover".to_owned(),
+                // Every pass fails on the machinery rather than on the work,
+                // which is the run the blocked rule exists for.
+                std::iter::repeat_with(|| Scripted::Fails {
+                    reason: "the sandbox would not start".to_owned(),
+                })
+                .take(12)
+                .collect(),
+            )],
+        )),
+    )
+    .expect("the tuned preset assembles");
+
+    let sink = Arc::new(LineSink::new(std::io::sink()));
+    let recorder = Recorder::new("run", sink);
+    let driven = tuned.drive(&recorder).expect("a tuned run drives");
+
+    // The profile is an output, not a detail of the state.
+    assert_eq!(driven.profile, driven.state.profile);
+
+    // Whatever it proposed, every proposal is in the record and in the report,
+    // and the events say which were folded and which were refused.
+    let amended = recorder
+        .journal()
+        .into_iter()
+        .filter(|entry| {
+            matches!(
+                entry.event,
+                Event::Amended { .. } | Event::AmendmentRefused { .. }
+            )
+        })
+        .count();
+    assert_eq!(amended, driven.profile.history.len());
+
+    if !driven.profile.history.is_empty() {
+        assert!(driven.answer().contains("Revised itself"));
+        for recorded in &driven.profile.history {
+            assert!(
+                driven
+                    .answer()
+                    .contains(&recorded.amendment.change.to_string()),
+                "the report omits {recorded}",
+            );
+        }
+    }
+}
+
+#[test]
+fn a_plain_run_proposes_nothing_and_says_nothing_about_revisions() {
+    // The tuner is optional, and a loop without one costs nothing for it and
+    // reports no section about it.
+    let driven = assembled(Preset::Balanced)
+        .expect("the preset assembles")
+        .drive(&Recorder::new(
+            "run",
+            Arc::new(LineSink::new(std::io::sink())),
+        ))
+        .expect("a plain run drives");
+
+    assert!(driven.profile.history.is_empty());
+    assert_eq!(driven.profile.revision, 0);
+    assert!(!driven.answer().contains("Revised itself"));
+}
+
+#[test]
+fn a_run_the_machinery_keeps_failing_spends_less_rather_than_more() {
+    // The end-to-end version of the blocked rule, asserted rather than left to
+    // the "if it proposed anything" branch above: a run whose specialist never
+    // starts should reach for a smaller model-call allowance, not more
+    // attempts.
+    let tuned = tuned_research_loop(
+        "bound the error term",
+        Preset::Balanced,
+        delegates(),
+        plan(),
+        Arc::new(Inline::of(
+            delegates(),
+            [(
+                "prover".to_owned(),
+                std::iter::repeat_with(|| Scripted::Fails {
+                    reason: "the sandbox would not start".to_owned(),
+                })
+                .take(12)
+                .collect(),
+            )],
+        )),
+    )
+    .expect("the tuned preset assembles");
+
+    let driven = tuned
+        .drive(&Recorder::new(
+            "run",
+            Arc::new(LineSink::new(std::io::sink())),
+        ))
+        .expect("a tuned run drives");
+
+    assert!(
+        driven.profile.history.iter().any(|recorded| matches!(
+            recorded.amendment.change,
+            crate::policy::Change::Cap {
+                field: crate::policy::CapField::MaxModelCalls,
+                ..
+            }
+        )),
+        "a blocked run proposed nothing about its spend: {:?}",
+        driven.profile.history,
+    );
+    assert!(driven.profile.applied() > 0);
+    assert!(driven.profile.caps.max_model_calls < crate::budget::Caps::default().max_model_calls);
+}
+
+#[test]
+fn a_raised_attempt_ceiling_buys_passes() {
+    // The claim the backstop exists to keep honest. Raising `max_attempts` is
+    // only a real amendment if the head will actually run the extra passes;
+    // left capped at the starting ceiling it would fold, read back as raised,
+    // and buy nothing.
+    let bounds = Preset::Balanced.bounds();
+    let mut profile = crate::policy::LoopProfile::of(Preset::Balanced);
+    let ceiling = crate::budget::Caps::default().max_iterations;
+
+    profile.fold(
+        crate::policy::Amendment::new(
+            "tune",
+            1,
+            crate::policy::Change::Threshold {
+                field: crate::policy::ThresholdField::MaxAttempts,
+                to: ceiling,
+            },
+            "the run is close and out of attempts",
+        ),
+        &bounds,
+    );
+
+    assert_eq!(profile.thresholds.max_attempts, ceiling);
+
+    // A state one short of the raised ceiling still routes onward, where the
+    // starting ceiling would have stopped it.
+    let mut state = LoopState::with_profile("goal", profile);
+    state.attempts = ceiling - 1;
+    assert_eq!(crate::policy::route(&state), Route::Retry);
+
+    let mut unamended =
+        LoopState::with_profile("goal", crate::policy::LoopProfile::of(Preset::Balanced));
+    unamended.attempts = ceiling - 1;
+    assert_eq!(crate::policy::route(&unamended), Route::Solved);
 }

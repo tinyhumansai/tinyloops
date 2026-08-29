@@ -19,16 +19,27 @@
 //!
 //! - `types.rs` — [`Thresholds`], [`Route`], [`Judgement`], [`Autonomy`], and
 //!   [`Outcome`]: the numbers and the closed vocabularies.
+//! - `profile.rs` — [`LoopProfile`]: the configuration one run operates under,
+//!   carried in its accumulator so the ladder can address it rather than have
+//!   it rendered in.
+//! - `amendment.rs` — [`Amendment`] and [`Change`]: the one way a profile moves.
+//! - `bounds.rs` — [`Bounds`]: how far it may move, owned by the preset.
 //! - `mod.rs` — [`route`] and [`is_terminal`]: the decision itself.
 //! - `ladder.rs` — [`ladder`] and [`terminal_condition`]: the same decision,
 //!   emitted as the jq the graph runs.
 
+mod amendment;
+mod bounds;
 mod ladder;
+mod profile;
 mod types;
 
+pub use amendment::{Amendment, CapField, Change, Muted, Recorded, ThresholdField, Verdict};
+pub use bounds::{Bounds, DEFAULT_MAX_AMENDMENTS, DEFAULT_MUTING_WINDOW, Range};
 pub use ladder::{
     evaluate_ladder, evaluate_terminal_condition, expr_scope, ladder, terminal_condition,
 };
+pub use profile::LoopProfile;
 pub use types::{Autonomy, Judgement, Outcome, Route, Thresholds};
 
 use crate::state::LoopState;
@@ -63,21 +74,24 @@ use crate::state::LoopState;
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Route, Thresholds, route};
-/// let thresholds = Thresholds::default();
+/// # use tinyloops::{LoopState, Route, route};
+/// // The thresholds ride in the accumulator, at `state.profile.thresholds`,
+/// // and `route` reads them from there. That is what keeps the graph's jq and
+/// // this function reading one source.
 /// let mut state = LoopState::new("goal");
 ///
-/// assert_eq!(route(&state, &thresholds), Route::Retry);
+/// assert_eq!(route(&state), Route::Retry);
 ///
 /// state.unproductive = 2;
-/// assert_eq!(route(&state, &thresholds), Route::Diversify);
+/// assert_eq!(route(&state), Route::Diversify);
 ///
 /// // Blocked outranks everything below it.
 /// state.blocked = 2;
-/// assert_eq!(route(&state, &thresholds), Route::Blocked);
+/// assert_eq!(route(&state), Route::Blocked);
 /// ```
 #[must_use]
-pub fn route(state: &LoopState, thresholds: &Thresholds) -> Route {
+pub fn route(state: &LoopState) -> Route {
+    let thresholds = &state.profile.thresholds;
     if state.blocked >= thresholds.blocked {
         Route::Blocked
     } else if state.solved || state.attempts >= thresholds.max_attempts {
@@ -105,19 +119,18 @@ pub fn route(state: &LoopState, thresholds: &Thresholds) -> Route {
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Thresholds, is_terminal};
-/// let thresholds = Thresholds::default();
+/// # use tinyloops::{LoopState, is_terminal};
 /// let mut state = LoopState::new("goal");
-/// assert!(!is_terminal(&state, &thresholds));
+/// assert!(!is_terminal(&state));
 ///
 /// state.expired = true;
-/// assert!(is_terminal(&state, &thresholds));
+/// assert!(is_terminal(&state));
 /// ```
 #[must_use]
-pub fn is_terminal(state: &LoopState, thresholds: &Thresholds) -> bool {
+pub fn is_terminal(state: &LoopState) -> bool {
     state.expired
-        || state.restarts >= thresholds.max_restarts
-        || route(state, thresholds).is_terminal()
+        || state.restarts >= state.profile.thresholds.max_restarts
+        || route(state).is_terminal()
 }
 
 #[cfg(test)]

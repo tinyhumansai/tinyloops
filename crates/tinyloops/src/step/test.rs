@@ -18,7 +18,7 @@
 use serde_json::json;
 
 use super::*;
-use crate::policy::Judgement;
+use crate::policy::{Judgement, Thresholds};
 
 /// A step that stamps the pass number it was handed onto `attempts`.
 ///
@@ -168,9 +168,7 @@ fn runs_the_named_step_and_returns_the_whole_state() {
     state.passes = 2;
     state.lessons.push("something learned".to_string());
 
-    let returned = registry
-        .run(STEP_ATTEMPT, state, &Thresholds::default())
-        .unwrap();
+    let returned = registry.run(STEP_ATTEMPT, state).unwrap();
 
     assert_eq!(returned.attempts, 3);
     assert_eq!(returned.last_attempt, "pass 2");
@@ -192,9 +190,7 @@ fn an_observing_step_returns_the_state_it_was_handed() {
     state.passes = 4;
     state.judged = Judgement::Steer;
 
-    let returned = registry
-        .run("counting", state.clone(), &Thresholds::default())
-        .unwrap();
+    let returned = registry.run("counting", state.clone()).unwrap();
 
     assert_eq!(returned, state);
     assert_eq!(*observer.seen.lock().unwrap(), [4]);
@@ -206,9 +202,7 @@ fn a_failing_step_reports_rather_than_returning_the_state_unchanged() {
     registry.register(Arc::new(Broken)).unwrap();
 
     assert_eq!(
-        registry
-            .run("broken", LoopState::new("goal"), &Thresholds::default())
-            .unwrap_err(),
+        registry.run("broken", LoopState::new("goal")).unwrap_err(),
         Error::EmptyName,
     );
 }
@@ -222,11 +216,7 @@ fn a_failing_observer_reports_rather_than_being_swallowed() {
 
     assert_eq!(
         registry
-            .run(
-                "broken_observer",
-                LoopState::new("goal"),
-                &Thresholds::default()
-            )
+            .run("broken_observer", LoopState::new("goal"))
             .unwrap_err(),
         Error::EmptyName,
     );
@@ -251,12 +241,8 @@ fn the_tool_runs_the_named_step_and_returns_the_state_as_json() {
     let mut state = LoopState::new("goal");
     state.passes = 1;
 
-    let returned = run_loop_step(
-        &registry,
-        &Thresholds::default(),
-        &json!({ "step": STEP_ATTEMPT, "state": state }),
-    )
-    .unwrap();
+    let returned =
+        run_loop_step(&registry, &json!({ "step": STEP_ATTEMPT, "state": state })).unwrap();
 
     assert_eq!(returned["attempts"], json!(2));
     assert_eq!(returned["goal"], json!("goal"));
@@ -264,7 +250,7 @@ fn the_tool_runs_the_named_step_and_returns_the_state_as_json() {
     // slot with exactly this value. The count is spelled out rather than
     // derived so that adding a field to `LoopState` without deciding how the
     // head folds it fails here.
-    assert_eq!(returned.as_object().unwrap().len(), 19);
+    assert_eq!(returned.as_object().unwrap().len(), 21);
 }
 
 #[test]
@@ -274,7 +260,6 @@ fn the_tool_rejects_an_unknown_step_name() {
     assert_eq!(
         run_loop_step(
             &registry,
-            &Thresholds::default(),
             &json!({ "step": "nope", "state": LoopState::new("goal") }),
         )
         .unwrap_err(),
@@ -289,12 +274,7 @@ fn the_tool_rejects_a_payload_with_no_step_name() {
     let registry = registry();
 
     assert_eq!(
-        run_loop_step(
-            &registry,
-            &Thresholds::default(),
-            &json!({ "state": LoopState::new("goal") }),
-        )
-        .unwrap_err(),
+        run_loop_step(&registry, &json!({ "state": LoopState::new("goal") }),).unwrap_err(),
         Error::MalformedStepPayload { field: "step" },
     );
 }
@@ -306,7 +286,6 @@ fn the_tool_rejects_a_step_name_that_is_not_a_string() {
     assert_eq!(
         run_loop_step(
             &registry,
-            &Thresholds::default(),
             &json!({ "step": 7, "state": LoopState::new("goal") }),
         )
         .unwrap_err(),
@@ -319,12 +298,7 @@ fn the_tool_rejects_a_payload_with_no_state() {
     let registry = registry();
 
     assert_eq!(
-        run_loop_step(
-            &registry,
-            &Thresholds::default(),
-            &json!({ "step": "attempt" })
-        )
-        .unwrap_err(),
+        run_loop_step(&registry, &json!({ "step": "attempt" })).unwrap_err(),
         Error::MalformedStepPayload { field: "state" },
     );
 }
@@ -336,7 +310,6 @@ fn the_tool_rejects_a_state_that_is_not_an_accumulator() {
     assert_eq!(
         run_loop_step(
             &registry,
-            &Thresholds::default(),
             &json!({ "step": "attempt", "state": { "passes": "many" } }),
         )
         .unwrap_err(),
@@ -378,4 +351,17 @@ fn debug_rendering_names_the_registered_steps() {
 
     assert!(rendered.contains("attempt"));
     assert!(format!("{:?}", registry.get(STEP_ATTEMPT).unwrap()).contains("advances: true"));
+}
+
+#[test]
+fn a_step_is_handed_the_thresholds_its_state_carries() {
+    // The seam reads the thresholds off the state rather than from a caller:
+    // a body handed a threshold set the run is not using would route on
+    // numbers nobody configured, and nothing would report it.
+    let registry = registry();
+    let state = LoopState::with_profile("goal", crate::LoopProfile::of(crate::Preset::Persistent));
+
+    let returned = registry.run(STEP_ATTEMPT, state).unwrap();
+
+    assert_eq!(returned.profile.thresholds.stuck, 4);
 }

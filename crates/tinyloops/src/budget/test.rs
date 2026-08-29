@@ -79,7 +79,7 @@ fn rejects_a_zero_run_clock() {
 #[test]
 fn rejects_a_tool_timeout_that_outlives_the_run() {
     let caps = Caps {
-        tool_timeout: Duration::from_secs(60 * 60),
+        tool_timeout: Duration::from_hours(1),
         ..valid()
     };
     assert_eq!(
@@ -203,9 +203,9 @@ fn narrowing_clamps_every_cap_to_the_parent() {
         max_model_calls: 1_000,
         max_tool_calls: 100_000,
         max_tokens: 999_999_999,
-        run_timeout: Duration::from_secs(60 * 60 * 24),
-        tool_timeout: Duration::from_secs(60 * 60),
-        request_timeout: Duration::from_secs(60 * 30),
+        run_timeout: Duration::from_hours(24),
+        tool_timeout: Duration::from_hours(1),
+        request_timeout: Duration::from_mins(30),
         max_retries: 99,
     };
 

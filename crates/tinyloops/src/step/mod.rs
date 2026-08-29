@@ -58,7 +58,6 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::policy::Thresholds;
 use crate::state::LoopState;
 use crate::{Error, Result};
 
@@ -216,9 +215,9 @@ impl StepRegistry {
     ///
     /// Returns [`Error::UnknownStep`] when `name` is not registered, or
     /// whatever error the body raises.
-    pub fn run(&self, name: &str, state: LoopState, thresholds: &Thresholds) -> Result<LoopState> {
+    pub fn run(&self, name: &str, state: LoopState) -> Result<LoopState> {
         let pass = state.passes;
-        self.get(name)?.run(state, pass, thresholds)
+        self.get(name)?.run(state, pass)
     }
 
     /// Runs the body registered under `name`, handing it `args`.
@@ -231,15 +230,9 @@ impl StepRegistry {
     ///
     /// Returns [`Error::UnknownStep`] when `name` is not registered, or
     /// whatever error the body raises.
-    pub fn run_with(
-        &self,
-        name: &str,
-        state: LoopState,
-        thresholds: &Thresholds,
-        args: &Value,
-    ) -> Result<LoopState> {
+    pub fn run_with(&self, name: &str, state: LoopState, args: &Value) -> Result<LoopState> {
         let pass = state.passes;
-        self.get(name)?.run_with(state, pass, thresholds, args)
+        self.get(name)?.run_with(state, pass, args)
     }
 }
 
@@ -268,8 +261,7 @@ impl std::fmt::Debug for StepRegistry {
 /// # use std::sync::Arc;
 /// # use serde_json::json;
 /// # use tinyloops::{
-/// #     Advanced, CanWrite, LoopState, Result, Step, StepContext, StepRegistry, Thresholds,
-/// #     run_loop_step,
+/// #     Advanced, CanWrite, LoopState, Result, Step, StepContext, StepRegistry, run_loop_step,
 /// # };
 /// struct Solve;
 ///
@@ -288,7 +280,7 @@ impl std::fmt::Debug for StepRegistry {
 /// registry.register(Arc::new(Solve))?;
 ///
 /// let args = json!({ "step": "solve", "state": LoopState::new("goal") });
-/// let returned = run_loop_step(&registry, &Thresholds::default(), &args)?;
+/// let returned = run_loop_step(&registry, &args)?;
 ///
 /// assert_eq!(returned["solved"], json!(true));
 /// assert_eq!(returned["goal"], json!("goal")); // the *whole* state came back
@@ -306,18 +298,14 @@ impl std::fmt::Debug for StepRegistry {
 /// - [`Error::StateEncoding`] when the returned accumulator cannot be
 ///   serialized.
 /// - Whatever error the body itself raises.
-pub fn run_loop_step(
-    registry: &StepRegistry,
-    thresholds: &Thresholds,
-    args: &Value,
-) -> Result<Value> {
+pub fn run_loop_step(registry: &StepRegistry, args: &Value) -> Result<Value> {
     let name = args
         .get("step")
         .and_then(Value::as_str)
         .ok_or(Error::MalformedStepPayload { field: "step" })?;
 
     let state = types::decode_state(args)?;
-    let returned = registry.run_with(name, state, thresholds, args)?;
+    let returned = registry.run_with(name, state, args)?;
 
     serde_json::to_value(returned).map_err(|_| Error::StateEncoding)
 }

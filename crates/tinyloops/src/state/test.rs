@@ -42,6 +42,8 @@ fn populated() -> LoopState {
         scores: vec![7, 9],
         judged: Judgement::Steer,
         board: board(),
+        profile: crate::policy::LoopProfile::of(crate::presets::Preset::Cautious),
+        proposed: None,
         answer: "the bound holds".to_string(),
     }
 }
@@ -94,6 +96,23 @@ fn the_wire_form_is_pinned() {
                 }],
                 "planned_at": 2,
             },
+            "profile": {
+                "revision": 0,
+                "thresholds": {
+                    "max_attempts": 8,
+                    "stuck": 2,
+                    "blocked": 2,
+                    "computational": 2,
+                    "unverified": 1,
+                    "max_restarts": 2,
+                    "plan_interval": 3,
+                },
+                "origin": "cautious",
+                "caps": serde_json::to_value(crate::budget::Caps::default()).unwrap(),
+                "muted": [],
+                "history": [],
+            },
+            "proposed": null,
             "answer": "the bound holds",
         })
     );

@@ -83,8 +83,10 @@ pub use observe::{
 // goal run carries between turns; `policy` is the routing that reads it, in
 // both the Rust and the jq spelling.
 pub use policy::{
-    Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder, evaluate_terminal_condition,
-    expr_scope, is_terminal, ladder, route, terminal_condition,
+    Amendment, Autonomy, Bounds, CapField, Change, DEFAULT_MAX_AMENDMENTS, DEFAULT_MUTING_WINDOW,
+    Judgement, LoopProfile, Muted, Outcome, Range, Recorded, Route, ThresholdField, Thresholds,
+    Verdict, evaluate_ladder, evaluate_terminal_condition, expr_scope, is_terminal, ladder, route,
+    terminal_condition,
 };
 pub use state::{Contribution, Delta, LoopState};
 
@@ -114,7 +116,7 @@ pub use memory::{
 // The loop body: the arms a pass fans out to, and the closed set of steps their
 // nodes are. `arm` owns the one list both arm edge sets are derived from and the
 // merge that folds them; `step` owns the single tool a node body is.
-pub use arm::{Arm, ArmOutcome, ArmSet, Edge, upstream_address};
+pub use arm::{Arm, ArmOutcome, ArmSet, Edge, Tuner, TunerArm, upstream_address};
 // The graph the loop is: one builder emitting one `WorkflowGraph`, the
 // signature a checkpoint carries so a changed topology refuses a resume rather
 // than corrupting one, and the composable condition that says when — and why —
@@ -127,8 +129,8 @@ pub use loops::{
 // down, the two evaluation arms that keep a verdict mechanical, and a loop with
 // every seam already filled in.
 pub use presets::{
-    Advance, ArmStep, AssembledLoop, Converge, Driven, Gather, Judge, Preset, Reflect,
-    SOLVED_MARKER, research_loop,
+    Advance, ArmStep, AssembledLoop, Converge, Driven, Gather, Judge, Preset, Reflect, Rules,
+    SILENT_SCORES, SOLVED_MARKER, research_loop, tuned_research_loop,
 };
 pub use step::{
     AccumulatorAccess, Advanced, CanWrite, NoWrite, Observer, RUN_LOOP_STEP, RegisteredStep,

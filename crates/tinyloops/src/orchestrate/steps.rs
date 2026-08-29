@@ -385,7 +385,7 @@ impl Step for Attempt {
         // Drained first, so a directive posted since the last pass shapes this
         // pass's briefs rather than the next one's.
         let directives = self.mailbox.collect();
-        let route = crate::policy::route(&state, ctx.thresholds());
+        let route = crate::policy::route(&state);
         let briefs = self.briefs(&state, route, &directives);
 
         for (_, brief) in &briefs {
@@ -503,6 +503,20 @@ impl Compose for Summarize {
             out.push_str("\nLearned:\n");
             for lesson in &state.lessons {
                 let _ = writeln!(out, "- {lesson}");
+            }
+        }
+        // Refusals are rendered beside acceptances. A report that showed only
+        // the revisions that landed would read as a run that was tuned exactly
+        // as much as it needed to be, whatever its tuner actually did.
+        if !state.profile.history.is_empty() {
+            let _ = write!(
+                out,
+                "\nRevised itself {} time(s), at r{}:\n",
+                state.profile.applied(),
+                state.profile.revision,
+            );
+            for recorded in &state.profile.history {
+                let _ = writeln!(out, "- {recorded}");
             }
         }
         Ok(out)

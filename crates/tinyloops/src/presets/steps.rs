@@ -12,6 +12,7 @@ use crate::arm::{Arm, ArmOutcome, ArmSet};
 use crate::error::{Error, Result};
 use crate::harness::{Brief, Ending};
 use crate::orchestrate::{DelegateSet, Specialists};
+use crate::policy::Bounds;
 use crate::state::{Contribution, LoopState};
 use crate::step::{Advanced, CanWrite, STEP_PASS, STEP_RESEARCH, Step, StepContext};
 
@@ -117,6 +118,16 @@ impl Step for ArmStep {
     }
 
     fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced> {
+        // A muted arm's node still runs and still converges; what it does not
+        // do is the work. Dropping its edge instead would leave the merge
+        // barrier waiting on an arm nothing will activate — a hung pass rather
+        // than a saved one — and would make the fan-out and the fold settable
+        // independently, which is the drift the one-list rule exists to make
+        // unrepresentable.
+        if state.profile.is_muted(self.arm.name()) {
+            return Ok(ctx.advance(state));
+        }
+
         // An arm reads the attempt report, never the accumulator: the head
         // folds at the top of a pass, so mid-body the accumulator is one pass
         // behind and an arm reading it routes on a stale answer.
@@ -147,8 +158,52 @@ impl Step for ArmStep {
 /// at-least-once: a replayed activation after a resume applies it twice, and
 /// `passes = n + 1` computed from a stale `n` is wrong in a way `passes += 1`
 /// is not visibly wrong.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Advance;
+#[derive(Debug, Clone, Default)]
+pub struct Advance {
+    bounds: Bounds,
+}
+
+impl Advance {
+    /// A `pass` step that folds amendments within `bounds`, against `arms`.
+    ///
+    /// [`Advance::default`] carries [`Bounds::default`], which permits nothing:
+    /// a loop assembled without deciding what its run may revise is a loop that
+    /// revises nothing. That is the safe direction to get wrong.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::IneligibleMutableArm`] when `bounds` names an arm mutable that
+    /// `arms` does not declare, or names the arm `arms` allows to conclude.
+    /// Both are caught here, at assembly, rather than left for a tuner's
+    /// amendment to discover: the first would spend the run's amendment
+    /// budget on a recorded no-op, and the second would let a run mute the
+    /// one arm able to end it.
+    pub fn new(bounds: Bounds, arms: &ArmSet) -> Result<Self> {
+        let concluding = arms.concluding();
+        let declared = arms.names();
+        for arm in &bounds.mutable_arms {
+            if Some(arm.as_str()) == concluding {
+                return Err(Error::IneligibleMutableArm {
+                    arm: arm.clone(),
+                    reason: "it is the run's concluding arm",
+                });
+            }
+            if !declared.contains(&arm.as_str()) {
+                return Err(Error::IneligibleMutableArm {
+                    arm: arm.clone(),
+                    reason: "the run's arm set does not declare it",
+                });
+            }
+        }
+        Ok(Self { bounds })
+    }
+
+    /// The room this step gives a proposal.
+    #[must_use]
+    pub fn bounds(&self) -> &Bounds {
+        &self.bounds
+    }
+}
 
 impl Step for Advance {
     fn name(&self) -> &'static str {
@@ -159,6 +214,16 @@ impl Step for Advance {
         let mut state = state;
         state.passes = ctx.pass().saturating_add(1);
         state.steer = String::new();
+
+        // The fold lands here, at the loop's single exit, and not in the arm
+        // that proposed it. An arm that could change a threshold and have the
+        // same pass's route read it would make the route depend on whether the
+        // tuner finished before the routing node — arrival order deciding the
+        // run. Taking the proposal also clears it, so one proposal lands once.
+        if let Some(amendment) = state.proposed.take() {
+            state.profile.fold(amendment, &self.bounds);
+        }
+
         Ok(ctx.advance(state))
     }
 }

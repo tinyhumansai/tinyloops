@@ -11,7 +11,13 @@
 //! without being swept is a preset whose generated ladder nobody proved agrees
 //! with [`route`](crate::route).
 
-use crate::policy::Thresholds;
+use serde::{Deserialize, Serialize};
+
+use crate::budget::Caps;
+use crate::policy::{
+    Bounds, CapField, DEFAULT_MAX_AMENDMENTS, DEFAULT_MUTING_WINDOW, Range, ThresholdField,
+    Thresholds,
+};
 
 /// A shipped threshold set.
 ///
@@ -21,7 +27,18 @@ use crate::policy::Thresholds;
 /// self-revision beats drawing several independent attempts only while feedback
 /// accuracy is high; below that, sampling and selecting wins. Every preset here
 /// is an estimate of which side of that crossing a domain sits on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+///
+/// # Wire form
+///
+/// The serde names are [`Preset::as_str`], and `src/presets/test.rs` asserts
+/// the two agree. A preset travels inside the run's accumulator as part of
+/// [`LoopProfile`](crate::LoopProfile), so its names are a wire format: a
+/// variant renamed on one side and not the other is a decode error at run time
+/// rather than a compile error.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum Preset {
     /// The shipped default: [`Thresholds::default`].
@@ -30,6 +47,7 @@ pub enum Preset {
     /// third time. It is the set every other one here is a deliberate deviation
     /// from, and the set a domain should start on before it has measured
     /// anything.
+    #[default]
     Balanced,
     /// Revise for longer before drawing a fresh approach.
     ///
@@ -117,6 +135,75 @@ impl Preset {
                 unverified: 1,
                 ..Thresholds::default()
             },
+        }
+    }
+}
+
+impl Preset {
+    /// The room a run on this preset has to revise itself.
+    ///
+    /// The room is part of the bet, not separate from it. A preset that commits
+    /// to persistence should not be able to tune its way to variation in three
+    /// moves, and a preset that commits to caution should have less room than
+    /// one that does not — so `Cautious` folds fewer amendments than the rest.
+    ///
+    /// Every ceiling on [`Thresholds::max_attempts`] stops at the loop head's
+    /// runaway backstop, [`Caps::max_iterations`](crate::Caps::max_iterations).
+    /// Above it an amendment would fold, read back as raised, and buy nothing;
+    /// `src/presets/test.rs` asserts the relationship rather than the number.
+    ///
+    /// The one arm named mutable is the judge, which is the shipped loop's
+    /// non-concluding arm. An embedder with different arms narrows this or
+    /// replaces it; muting the arm that may *conclude* is refused whatever the
+    /// bounds say, because a run that cannot conclude cannot succeed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::{Bounds, Change, Preset, ThresholdField};
+    /// let bounds = Preset::Balanced.bounds();
+    /// let harder = Change::Threshold { field: ThresholdField::Stuck, to: 4 };
+    /// let absurd = Change::Threshold { field: ThresholdField::Stuck, to: 40 };
+    ///
+    /// assert!(bounds.check(&harder).is_ok());
+    /// assert!(bounds.check(&absurd).is_err());
+    /// ```
+    #[must_use]
+    pub fn bounds(self) -> Bounds {
+        let ceiling = u64::from(Caps::default().max_iterations);
+        let common = Bounds::none()
+            .window(DEFAULT_MUTING_WINDOW)
+            .amendments(DEFAULT_MAX_AMENDMENTS)
+            .mutable(crate::step::STEP_JUDGE)
+            .threshold(ThresholdField::PlanInterval, Range::new(2, 6))
+            .cap(
+                CapField::MaxModelCalls,
+                Range::new(1, u64::from(Caps::default().max_model_calls)),
+            );
+
+        match self {
+            // The middle of the road may move either way, as far as the two
+            // presets on either side of it already sit.
+            Self::Balanced => common
+                .threshold(ThresholdField::MaxAttempts, Range::new(4, ceiling))
+                .threshold(ThresholdField::Stuck, Range::new(1, 4))
+                .threshold(ThresholdField::Computational, Range::new(1, 4)),
+            // A persistent run may become more patient still, and may come back
+            // toward the middle — but not all the way to sampling, which would
+            // be a different preset rather than a revision of this one.
+            Self::Persistent => common
+                .threshold(ThresholdField::MaxAttempts, Range::new(6, ceiling))
+                .threshold(ThresholdField::Stuck, Range::new(2, 6)),
+            // The variation bet moves within variation.
+            Self::Exploratory => common
+                .threshold(ThresholdField::MaxAttempts, Range::new(4, ceiling))
+                .threshold(ThresholdField::Stuck, Range::new(1, 3))
+                .threshold(ThresholdField::Computational, Range::new(1, 3)),
+            // Caution is the one preset that bounds its own revising: half the
+            // amendments, and only the threshold that expresses the caution.
+            Self::Cautious => common
+                .amendments(DEFAULT_MAX_AMENDMENTS / 2)
+                .threshold(ThresholdField::Unverified, Range::new(1, 3)),
         }
     }
 }

@@ -10,7 +10,8 @@ use tinyflows::model::{Edge as GraphEdge, Node, NodeKind, Port, WorkflowGraph};
 use super::termination::TerminationCondition;
 use super::types::{NodeIds, payload_address};
 use crate::arm::ArmSet;
-use crate::policy::{Autonomy, Route, Thresholds, ladder};
+use crate::budget::Caps;
+use crate::policy::{Autonomy, LoopProfile, Route, ladder};
 use crate::state::LoopState;
 use crate::step::{
     RUN_LOOP_STEP, STEP_ATTEMPT, STEP_PASS, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry,
@@ -59,7 +60,7 @@ const DEFAULT_PORT: &str = "default";
 /// # use serde_json::Value;
 /// # use tinyloops::{
 /// #     Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopState, NoWrite,
-/// #     Result, STEP_MERGE, Step, StepContext, StepRegistry, Thresholds,
+/// #     Result, STEP_MERGE, Step, StepContext, StepRegistry,
 /// # };
 /// struct Body(&'static str);
 ///
@@ -100,7 +101,7 @@ const DEFAULT_PORT: &str = "default";
 ///     Arc::new(Evaluator("judge")),
 /// ])?;
 ///
-/// let graph = LoopBuilder::new(Thresholds::default(), arms, registry)
+/// let graph = LoopBuilder::new(arms, registry)
 ///     .goal("ship the release")
 ///     .autonomy(Autonomy::Unattended)
 ///     .build()?;
@@ -110,7 +111,8 @@ const DEFAULT_PORT: &str = "default";
 /// ```
 #[derive(Debug, Clone)]
 pub struct LoopBuilder {
-    thresholds: Thresholds,
+    profile: LoopProfile,
+    caps: Caps,
     arms: ArmSet,
     registry: StepRegistry,
     ids: NodeIds,
@@ -129,10 +131,17 @@ impl LoopBuilder {
     /// stands down, and reports; it emits no attempt, no arms, and no loop. Ask
     /// for [`Autonomy::Assisted`] or [`Autonomy::Unattended`] to get a graph
     /// that acts.
+    ///
+    /// The profile defaults to the balanced preset and the caps to
+    /// [`Caps::default`]. Neither is a constructor argument any more: the
+    /// profile is not topology — it is seeded into the accumulator and read
+    /// from there — so two builders differing only in their thresholds emit the
+    /// same graph, and the same signature.
     #[must_use]
-    pub fn new(thresholds: Thresholds, arms: ArmSet, registry: StepRegistry) -> Self {
+    pub fn new(arms: ArmSet, registry: StepRegistry) -> Self {
         Self {
-            thresholds,
+            profile: LoopProfile::default(),
+            caps: Caps::default(),
             arms,
             registry,
             ids: NodeIds::default(),
@@ -141,6 +150,32 @@ impl LoopBuilder {
             termination: TerminationCondition::default(),
             name: "tinyloops goal run".to_string(),
         }
+    }
+
+    /// The profile the run seeds its accumulator with.
+    ///
+    /// It does not change the emitted topology. The routing ladder addresses
+    /// `.profile.thresholds` in the accumulator rather than carrying the
+    /// numbers, so this changes what the run *decides* and not what the graph
+    /// *is* — which is what lets a run that later revises its own thresholds
+    /// resume from a checkpoint taken before it did.
+    #[must_use]
+    pub fn profile(mut self, profile: LoopProfile) -> Self {
+        self.profile = profile;
+        self
+    }
+
+    /// The run's limits.
+    ///
+    /// Only [`Caps::max_iterations`] reaches the graph, as the loop head's
+    /// runaway backstop. It is deliberately not a threshold: a threshold
+    /// decides where a pass routes and lives in the accumulator, while this
+    /// bounds how many passes the engine will run at all and has to be a
+    /// literal the head can read without evaluating anything.
+    #[must_use]
+    pub fn caps(mut self, caps: Caps) -> Self {
+        self.caps = caps;
+        self
     }
 
     /// The goal the run seeds its accumulator with.
@@ -191,8 +226,11 @@ impl LoopBuilder {
     /// - [`Error::InvalidLoopGraph`] when the emitted graph does not pass the
     ///   engine's own structural validation.
     pub fn build(self) -> Result<WorkflowGraph> {
-        let seed = serde_json::to_value(LoopState::new(self.goal.clone()))
-            .map_err(|_| Error::StateEncoding)?;
+        let seed = serde_json::to_value(LoopState::with_profile(
+            self.goal.clone(),
+            self.profile.clone(),
+        ))
+        .map_err(|_| Error::StateEncoding)?;
 
         let (nodes, edges) = if self.autonomy == Autonomy::Report {
             self.dry_run_shape(&seed)
@@ -440,13 +478,18 @@ impl LoopBuilder {
             type_version: 1,
             name: "the goal loop".to_string(),
             config: json!({
-                // Every number here is interpolated from `Thresholds`.
-                "max_iterations": self.thresholds.max_attempts,
+                // The one number in this graph, and deliberately not a
+                // threshold: it is the engine's runaway backstop, not a
+                // routing decision. `max_attempts` lives in the accumulator
+                // with every other threshold, so raising it mid-run buys the
+                // extra passes it promises rather than being silently capped
+                // here.
+                "max_iterations": self.caps.max_iterations,
                 // `continue` rather than `error`: a run that spent its attempts
                 // still has to reach `stand_down` and `report`, and a run that
                 // failed at the head reports nothing about why it stopped.
                 "on_exceeded": "continue",
-                "until": self.termination.expression(&self.thresholds),
+                "until": self.termination.expression(),
                 "emit": "state",
                 "state": {
                     "init": payload_address(ids.research),
@@ -481,26 +524,29 @@ impl LoopBuilder {
             kind: NodeKind::Switch,
             type_version: 1,
             name: "route the pass".to_string(),
-            config: json!({ "expression": self.routing_expression() }),
+            config: json!({ "expression": routing_expression() }),
             ports,
             position: None,
         }
     }
+}
 
-    /// The jq the routing switch branches on.
-    ///
-    /// [`ladder`] rendered verbatim, with one reshaping pipe in front of it.
-    /// The ladder reads its accumulator as `.state // .item`, and at a switch
-    /// there is no `state` key and `item` is the barrier's output envelope, so
-    /// the pipe presents the folded state where the ladder already looks for
-    /// it. Composing rather than re-rendering is the point: not one threshold
-    /// is typed here, and the program the graph runs is the program
-    /// `src/policy/` generates.
-    fn routing_expression(&self) -> String {
-        let rendered = ladder(&self.thresholds);
-        let body = rendered.strip_prefix('=').unwrap_or(&rendered);
-        format!("={{ item: .item.json }} | ({body})")
-    }
+/// The jq the routing switch branches on.
+///
+/// [`ladder`] rendered verbatim, with one reshaping pipe in front of it. The
+/// ladder reads its accumulator as `.state // .item`, and at a switch there is
+/// no `state` key and `item` is the barrier's output envelope, so the pipe
+/// presents the folded state where the ladder already looks for it. Composing
+/// rather than re-rendering is the point: not one threshold is typed here, and
+/// the program the graph runs is the program `src/policy/` generates.
+///
+/// A free function rather than a method because it no longer reads anything off
+/// the builder — the ladder is a constant now, the same program for every
+/// profile.
+fn routing_expression() -> String {
+    let rendered = ladder();
+    let body = rendered.strip_prefix('=').unwrap_or(&rendered);
+    format!("={{ item: .item.json }} | ({body})")
 }
 
 /// The head's fold expression: the state `pass` returned, or the seed.

@@ -40,8 +40,9 @@ use tinyflows::observability::RunObserver;
 use tinyflows::testkit::{MockCaps, Respond, RunTrace, RunTracer, TestHarness};
 
 use tinyloops::{
-    Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopState, NoWrite,
-    NodeIds, RUN_LOOP_STEP, Result, STEP_MERGE, Step, StepContext, StepRegistry, Thresholds,
+    Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopProfile, LoopState,
+    NoWrite, NodeIds, RUN_LOOP_STEP, Result, STEP_MERGE, Step, StepContext, StepRegistry,
+    Thresholds,
 };
 
 /// A step body that changes nothing: every node's answer comes from the tool
@@ -77,10 +78,13 @@ impl Arm for Evaluator {
 }
 
 /// Three attempts is enough to tell "current" from "one pass behind".
-fn thresholds() -> Thresholds {
-    Thresholds {
-        max_attempts: 3,
-        ..Thresholds::default()
+fn profile() -> LoopProfile {
+    LoopProfile {
+        thresholds: Thresholds {
+            max_attempts: 3,
+            ..Thresholds::default()
+        },
+        ..LoopProfile::default()
     }
 }
 
@@ -100,8 +104,9 @@ fn graph() -> WorkflowGraph {
     ])
     .expect("two distinct arms are a valid set");
 
-    LoopBuilder::new(thresholds(), arms, registry)
+    LoopBuilder::new(arms, registry)
         .goal("ship the release")
+        .profile(profile())
         .autonomy(Autonomy::Unattended)
         .build()
         .expect("the fixture builds a valid graph")
@@ -109,7 +114,7 @@ fn graph() -> WorkflowGraph {
 
 /// A `LoopState` as JSON, with `edit` applied.
 fn state_with(edit: impl FnOnce(&mut LoopState)) -> Value {
-    let mut state = LoopState::new("ship the release");
+    let mut state = LoopState::with_profile("ship the release", profile());
     edit(&mut state);
     serde_json::to_value(state).expect("a state encodes")
 }
@@ -296,7 +301,7 @@ async fn pass_runs_exactly_once_per_iteration() {
     let steps = Arc::new(Steps::default());
     let (_outcome, trace) = run(&graph, &steps, None).await;
 
-    let iterations = usize::try_from(thresholds().max_attempts).expect("a small cap fits");
+    let iterations = usize::try_from(profile().thresholds.max_attempts).expect("a small cap fits");
     assert_eq!(trace.steps_for("pass").len(), iterations);
     assert_eq!(steps.count("pass"), iterations);
     assert_eq!(trace.steps_for("attempt").len(), iterations);

@@ -41,7 +41,7 @@
 //! not panic, because this code runs inside a node the engine is not able to
 //! unwind sensibly.
 
-use crate::policy::Judgement;
+use crate::policy::{Judgement, LoopProfile};
 
 mod types;
 
@@ -97,6 +97,41 @@ impl LoopState {
             goal: goal.into(),
             ..Self::default()
         }
+    }
+
+    /// Starts a run on `goal` under `profile`.
+    ///
+    /// [`Self::new`] seeds the default profile, which is the balanced preset.
+    /// This is the constructor a run with any other preset uses, and it is the
+    /// only place the profile is ever chosen: nothing after construction moves
+    /// it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::{LoopProfile, LoopState, Preset};
+    /// let state = LoopState::with_profile("ship it", LoopProfile::of(Preset::Persistent));
+    /// assert_eq!(state.profile.thresholds.stuck, 4);
+    /// ```
+    #[must_use]
+    pub fn with_profile(goal: impl Into<String>, profile: LoopProfile) -> Self {
+        Self {
+            profile,
+            ..Self::new(goal)
+        }
+    }
+
+    /// The amendment this pass proposed, if one did.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::LoopState;
+    /// assert!(LoopState::new("goal").proposed().is_none());
+    /// ```
+    #[must_use]
+    pub fn proposed(&self) -> Option<&crate::policy::Amendment> {
+        self.proposed.as_ref()
     }
 
     /// Returns the movement from `base` to `self`.
@@ -188,6 +223,8 @@ impl LoopState {
             scores: self.scores.clone(),
             judged: self.judged,
             board: self.board.clone(),
+            profile: self.profile.clone(),
+            proposed: self.proposed.clone(),
             answer: self.answer.clone(),
         }
     }
@@ -234,6 +271,7 @@ impl LoopState {
         let mut score: Option<(&'static str, u8)> = None;
         let mut judged: Option<(&'static str, Judgement)> = None;
         let mut last_attempt: Option<(&'static str, String)> = None;
+        let mut amendment: Option<(&'static str, crate::policy::Amendment)> = None;
 
         for contribution in contributions {
             claim(
@@ -256,6 +294,12 @@ impl LoopState {
                 contribution.last_attempt.clone(),
                 "last_attempt",
             )?;
+            claim(
+                &mut amendment,
+                contribution.arm,
+                contribution.amendment.clone(),
+                "amendment",
+            )?;
         }
 
         if let Some((_, lesson)) = lesson {
@@ -272,6 +316,9 @@ impl LoopState {
         }
         if let Some((_, report)) = last_attempt {
             merged.last_attempt = report;
+        }
+        if let Some((_, proposed)) = amendment {
+            merged.proposed = Some(proposed);
         }
 
         Ok(merged)

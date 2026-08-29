@@ -294,17 +294,18 @@ impl Outcome {
     /// # Examples
     ///
     /// ```
-    /// # use tinyloops::{LoopState, Outcome, Thresholds};
+    /// # use tinyloops::{LoopState, Outcome};
     /// let mut state = LoopState::new("goal");
     /// state.solved = true;
     /// state.banked = 1;
-    /// assert_eq!(Outcome::classify(&state, &Thresholds::default()), Outcome::Success);
+    /// assert_eq!(Outcome::classify(&state), Outcome::Success);
     ///
     /// state.expired = true;
-    /// assert_eq!(Outcome::classify(&state, &Thresholds::default()), Outcome::Exhausted);
+    /// assert_eq!(Outcome::classify(&state), Outcome::Exhausted);
     /// ```
     #[must_use]
-    pub fn classify(state: &LoopState, thresholds: &Thresholds) -> Self {
+    pub fn classify(state: &LoopState) -> Self {
+        let thresholds = &state.profile.thresholds;
         if state.blocked >= thresholds.blocked {
             Self::Blocked
         } else if state.expired || state.attempts >= thresholds.max_attempts {
@@ -334,21 +335,21 @@ impl Outcome {
     /// # Examples
     ///
     /// ```
-    /// # use tinyloops::{Error, LoopState, Outcome, Thresholds};
+    /// # use tinyloops::{Error, LoopState, Outcome};
     /// let mut state = LoopState::new("goal");
     /// state.solved = true;
     /// state.banked = 1;
-    /// assert_eq!(Outcome::success(&state, &Thresholds::default())?, Outcome::Success);
+    /// assert_eq!(Outcome::success(&state)?, Outcome::Success);
     ///
     /// state.expired = true;
     /// assert_eq!(
-    ///     Outcome::success(&state, &Thresholds::default()).unwrap_err(),
+    ///     Outcome::success(&state).unwrap_err(),
     ///     Error::UnearnedSuccess,
     /// );
     /// # Ok::<(), tinyloops::Error>(())
     /// ```
-    pub fn success(state: &LoopState, thresholds: &Thresholds) -> Result<Self> {
-        match Self::classify(state, thresholds) {
+    pub fn success(state: &LoopState) -> Result<Self> {
+        match Self::classify(state) {
             Self::Success => Ok(Self::Success),
             _ => Err(Error::UnearnedSuccess),
         }
