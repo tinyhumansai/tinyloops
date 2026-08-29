@@ -103,35 +103,51 @@ fn span(threshold: u32) -> usize {
     upto(threshold).count()
 }
 
+/// A `state` routing under `thresholds`.
+///
+/// Both sides read the thresholds out of the accumulator now, so a sweep sets
+/// them there rather than passing them alongside. That is the property under
+/// test as much as a convenience: a test that could hand the router one set and
+/// the ladder another would be testing a configuration no run can reach.
+fn under(state: LoopState, thresholds: Thresholds) -> LoopState {
+    LoopState {
+        profile: LoopProfile {
+            thresholds,
+            ..LoopProfile::default()
+        },
+        ..state
+    }
+}
+
 /// Asserts the generated ladder and [`route`] agree about `state`.
-fn assert_ladder_parity(state: &LoopState, thresholds: &Thresholds) {
+fn assert_ladder_parity(state: &LoopState) {
     let scope = expr_scope(state, LOOP_ID);
-    let evaluated = expr::evaluate(&Value::String(ladder(thresholds)), &scope);
+    let evaluated = expr::evaluate(&Value::String(ladder()), &scope);
     assert_ne!(
         evaluated,
         Value::Null,
-        "ladder produced null for {state:?} under {thresholds:?}"
+        "ladder produced null for {state:?}"
     );
     assert_eq!(
         evaluated.as_str(),
-        Some(route(state, thresholds).as_str()),
-        "ladder and route disagree for {state:?} under {thresholds:?}"
+        Some(route(state).as_str()),
+        "ladder and route disagree for {state:?}"
     );
 }
 
 /// Asserts the generated terminal condition and [`is_terminal`] agree.
-fn assert_terminal_parity(state: &LoopState, thresholds: &Thresholds) {
+fn assert_terminal_parity(state: &LoopState) {
     let scope = expr_scope(state, LOOP_ID);
-    let evaluated = expr::evaluate(&Value::String(terminal_condition(thresholds)), &scope);
+    let evaluated = expr::evaluate(&Value::String(terminal_condition()), &scope);
     assert_ne!(
         evaluated,
         Value::Null,
-        "terminal condition produced null for {state:?} under {thresholds:?}"
+        "terminal condition produced null for {state:?}"
     );
     assert_eq!(
         evaluated.as_bool(),
-        Some(is_terminal(state, thresholds)),
-        "terminal condition and is_terminal disagree for {state:?} under {thresholds:?}"
+        Some(is_terminal(state)),
+        "terminal condition and is_terminal disagree for {state:?}"
     );
 }
 
@@ -168,7 +184,7 @@ fn the_ladder_agrees_with_route_on_every_combination() {
                                     solved,
                                     ..LoopState::new("sweep")
                                 };
-                                assert_ladder_parity(&state, &thresholds);
+                                assert_ladder_parity(&under(state, thresholds));
                                 swept += 1;
                             }
                         }
@@ -217,7 +233,7 @@ fn the_terminal_condition_agrees_with_is_terminal_on_every_combination() {
                                     expired,
                                     ..LoopState::new("sweep")
                                 };
-                                assert_terminal_parity(&state, &thresholds);
+                                assert_terminal_parity(&under(state, thresholds));
                                 swept += 1;
                             }
                         }
