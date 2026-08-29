@@ -19,16 +19,21 @@
 //!
 //! - `types.rs` — [`Thresholds`], [`Route`], [`Judgement`], [`Autonomy`], and
 //!   [`Outcome`]: the numbers and the closed vocabularies.
+//! - `profile.rs` — [`LoopProfile`]: the configuration one run operates under,
+//!   carried in its accumulator so the ladder can address it rather than have
+//!   it rendered in.
 //! - `mod.rs` — [`route`] and [`is_terminal`]: the decision itself.
 //! - `ladder.rs` — [`ladder`] and [`terminal_condition`]: the same decision,
 //!   emitted as the jq the graph runs.
 
 mod ladder;
+mod profile;
 mod types;
 
 pub use ladder::{
     evaluate_ladder, evaluate_terminal_condition, expr_scope, ladder, terminal_condition,
 };
+pub use profile::LoopProfile;
 pub use types::{Autonomy, Judgement, Outcome, Route, Thresholds};
 
 use crate::state::LoopState;
