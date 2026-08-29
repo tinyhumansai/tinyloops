@@ -468,12 +468,12 @@ All through `tinyflows::testkit::TestHarness`.
 `crates/tinyloops/tests/public_api.rs`
 
 1. Re-export `LoopBuilder`, `GraphSignature`, `TerminalState`,
-   `TerminationCondition`, `TaskBoard`, and `Orchestrator`.
-2. Add `loops/README.md` covering the emitted shape, the eleven invariants it
-   keeps, and the operational constraint that a threshold change invalidates
-   every outstanding checkpoint. Extend `tests/public_api.rs` with a
+   `TerminationCondition`, `TaskBoard`, and `Orchestrator`. Add
+   `loops/README.md` covering the emitted shape, the eleven invariants it keeps,
+   and the operational constraint that a threshold change invalidates every
+   outstanding checkpoint. Extend `tests/public_api.rs` with a
    build-validate-compile walkthrough using only the public surface.
-3. `cargo test --doc` and
+2. `cargo test --doc` and
    `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features`.
 
 ## Verification
@@ -499,5 +499,5 @@ All through `tinyflows::testkit::TestHarness`.
 | C5 | 9 (checkpoint carries the graph signature) |
 | C4 | 10 (composable termination) |
 | A2, A3, C3 | the closed step set; the builder is pure |
-| C8 | `routing-and-policy.md`: `Autonomy` visible in the topology |
+| C8 | `routing-and-policy.md`: `Autonomy` in the topology |
 | D1–D3 | `orchestrator.md`: the three bindings and the five rules |
