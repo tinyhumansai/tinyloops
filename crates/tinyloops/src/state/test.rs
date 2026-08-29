@@ -108,7 +108,11 @@ fn the_wire_form_is_pinned() {
                     "plan_interval": 3,
                 },
                 "origin": "cautious",
+                "caps": serde_json::to_value(crate::budget::Caps::default()).unwrap(),
+                "muted": [],
+                "history": [],
             },
+            "proposed": null,
             "answer": "the bound holds",
         })
     );

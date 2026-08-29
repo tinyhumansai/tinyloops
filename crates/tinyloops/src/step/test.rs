@@ -250,7 +250,7 @@ fn the_tool_runs_the_named_step_and_returns_the_state_as_json() {
     // slot with exactly this value. The count is spelled out rather than
     // derived so that adding a field to `LoopState` without deciding how the
     // head folds it fails here.
-    assert_eq!(returned.as_object().unwrap().len(), 20);
+    assert_eq!(returned.as_object().unwrap().len(), 21);
 }
 
 #[test]

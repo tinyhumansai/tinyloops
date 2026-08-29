@@ -777,6 +777,9 @@ fn the_profile_wire_form_is_pinned() {
                 "plan_interval": 3,
             },
             "origin": "persistent",
+            "caps": serde_json::to_value(crate::budget::Caps::default()).unwrap(),
+            "muted": [],
+            "history": [],
         })
     );
 }
