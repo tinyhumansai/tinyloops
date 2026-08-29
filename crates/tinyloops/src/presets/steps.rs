@@ -230,7 +230,6 @@ impl Converge {
 
     /// Decodes one arm's returned accumulator out of the `arms` argument.
     fn outcome_of(
-        &self,
         arms: &serde_json::Value,
         arm: &'static str,
         base: &LoopState,
@@ -266,7 +265,7 @@ impl Step for Converge {
             .arms
             .arms()
             .iter()
-            .map(|arm| self.outcome_of(arms, arm.name(), &state))
+            .map(|arm| Self::outcome_of(arms, arm.name(), &state))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(ctx.advance(self.arms.merge(&state, outcomes)?))
