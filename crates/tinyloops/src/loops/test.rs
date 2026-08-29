@@ -405,6 +405,8 @@ fn a_step_absent_from_the_registry_is_a_build_error() {
         STEP_ATTEMPT,
         STEP_PASS,
         STEP_REPORT,
+        STEP_REFLECT,
+        STEP_JUDGE,
     ] {
         missing
             .register(Arc::new(Body(name)))
