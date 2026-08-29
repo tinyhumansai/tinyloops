@@ -88,7 +88,6 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 3. Add `Error::UnknownStep { name }` and `Error::StepFailed { step, reason }`,
    with message assertions in `src/error/test.rs`.
 
-
 ## Task A2: the `Step` trait and the closed registry
 
 **Files:** `crates/tinyloops/src/step/registry.rs`, `src/step/mod.rs`,
