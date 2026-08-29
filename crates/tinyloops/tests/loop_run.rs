@@ -115,8 +115,8 @@ fn state_with(edit: impl FnOnce(&mut LoopState)) -> Value {
 }
 
 /// A tool-call envelope around `state`, as the engine would wrap it.
-fn envelope(state: Value) -> Value {
-    json!({ "json": state.clone(), "text": Value::Null, "raw": state })
+fn envelope(state: &Value) -> Value {
+    json!({ "json": state.clone(), "text": Value::Null, "raw": state.clone() })
 }
 
 /// Answers `run_loop_step`, records every call, and — for the attempt —
@@ -384,7 +384,7 @@ impl StepInterceptor for ReplayPass {
             self.folds.fetch_add(1, Ordering::SeqCst);
         }
         StepAction::Replace {
-            items: vec![Item::new(envelope(self.state.clone()))],
+            items: vec![Item::new(envelope(&self.state))],
             port: None,
         }
     }
