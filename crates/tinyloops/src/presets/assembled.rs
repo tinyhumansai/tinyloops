@@ -267,7 +267,18 @@ impl AssembledLoop {
             state.passes = pass;
 
             state = self.run_step(STEP_PLAN, state, pass, recorder)?;
+            let attempts_before = state.attempts;
             state = self.run_step(STEP_ATTEMPT, state, pass, recorder)?;
+
+            // One model call per attempt spent, which is what the `attempt`
+            // step's specialist round-trip actually is in this in-process
+            // driver. Without this, `Bound::ModelCalls` never trips here and
+            // the blocked rule's cap halving would move a number nothing
+            // reads — the same inert-amendment failure the spec calls out
+            // for `max_attempts`, one field over.
+            for _ in 0..state.attempts.saturating_sub(attempts_before) {
+                meter.model_call(0);
+            }
 
             state = self.evaluate(&state, pass, recorder)?;
 
