@@ -26,6 +26,10 @@ scope. A roadmap that lists everything is a roadmap nobody trusts.
   the accumulator
 - the `research_loop` preset and its two evaluation arms, plus four threshold
   sets that each say what bet they are making
+- a node body that can reach its node's arguments, which is what lets the merge
+  fold every arm inside the graph rather than only in the driver
+- an end-to-end suite that runs the assembled preset through the engine with
+  real steps and real arms, nothing mocked
 - three runnable loop examples — `simple_loop` in plain Rust, `research_loop`
   driving the whole preset, and `tinyagents_harness` under the durable harness —
   all offline against TinyFlows' mock capabilities
@@ -34,16 +38,11 @@ scope. A roadmap that lists everything is a roadmap nobody trusts.
 
 In roughly this order, because each one is what the following one needs:
 
-- widen the step interface so a node body can reach its node's arguments. The
-  emitted `merge` node is handed each arm's output through its tool arguments,
-  but `run_loop_step` passes a step only the decoded state, so the delta fold
-  cannot run inside the graph today. It is written and tested — `ArmSet::merge`,
-  which `AssembledLoop::drive` calls — and a driven loop folds correctly; a loop
-  run through the engine does not yet.
-- run an assembled loop through the engine end to end, not only through
-  `AssembledLoop::drive`
 - a `Decompose` and a `Compose` backed by a model rather than by a fixture, so a
   deployment has something to start from
+- a `Specialists` implementation over the engine's `Spawn`/`Gate` pair, so a
+  host with a `TaskRunner` gets real concurrency rather than an inline dispatch
+- the TinyBus control surface: start, steer, and status over the bus
 
 ## Out Of Scope
 
