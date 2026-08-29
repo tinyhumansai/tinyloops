@@ -5,6 +5,9 @@
 //! registration* rather than of a prompt, so each one is written against the
 //! constructor or the emitted state rather than against a rendered brief.
 
+// Tests may panic on a broken invariant; that is the assertion.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::sync::Arc;
 
 use super::{

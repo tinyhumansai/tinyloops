@@ -6,6 +6,9 @@
 //! detail of an implementation — it is the one control this design has over a
 //! verifier that is itself a model.
 
+// Tests may panic on a broken invariant; that is the assertion.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::sync::Arc;
 
 use serde_json::{Value, json};
