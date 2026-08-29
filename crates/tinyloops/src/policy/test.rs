@@ -479,45 +479,39 @@ fn solved_outranks_reported() {
 
 #[test]
 fn a_run_out_of_restarts_is_terminal_without_being_a_route() {
-    let thresholds = Thresholds::default();
     let state = LoopState {
         restarts: 2,
         ..LoopState::new("goal")
     };
 
-    assert_eq!(route(&state, &thresholds), Route::Retry);
-    assert!(is_terminal(&state, &thresholds));
+    assert_eq!(route(&state), Route::Retry);
+    assert!(is_terminal(&state));
 }
 
 #[test]
 fn a_run_with_time_left_and_no_verdict_is_not_terminal() {
-    assert!(!is_terminal(
-        &LoopState::new("goal"),
-        &Thresholds::default()
-    ));
+    assert!(!is_terminal(&LoopState::new("goal")));
 }
 
 #[test]
 fn evaluating_the_ladder_returns_the_same_route() {
-    let thresholds = Thresholds::default();
     let state = LoopState {
         unproductive: 2,
         ..LoopState::new("goal")
     };
     assert_eq!(
-        super::evaluate_ladder(&state, LOOP_ID, &thresholds).unwrap(),
+        super::evaluate_ladder(&state, LOOP_ID).unwrap(),
         Route::Diversify
     );
 }
 
 #[test]
 fn evaluating_the_terminal_condition_returns_the_same_answer() {
-    let thresholds = Thresholds::default();
     let state = LoopState {
         expired: true,
         ..LoopState::new("goal")
     };
-    assert!(super::evaluate_terminal_condition(&state, LOOP_ID, &thresholds).unwrap());
+    assert!(super::evaluate_terminal_condition(&state, LOOP_ID).unwrap());
 }
 
 #[test]
@@ -668,10 +662,9 @@ fn a_solved_run_that_banked_something_is_a_success() {
         banked: 1,
         ..LoopState::new("goal")
     };
-    let thresholds = Thresholds::default();
-    assert_eq!(Outcome::classify(&state, &thresholds), Outcome::Success);
+    assert_eq!(Outcome::classify(&state), Outcome::Success);
     assert_eq!(
-        Outcome::success(&state, &thresholds).unwrap(),
+        Outcome::success(&state).unwrap(),
         Outcome::Success
     );
 }
@@ -683,7 +676,7 @@ fn a_solved_run_that_banked_nothing_is_a_clean_no_op() {
         ..LoopState::new("goal")
     };
     assert_eq!(
-        Outcome::classify(&state, &Thresholds::default()),
+        Outcome::classify(&state),
         Outcome::CleanNoOp
     );
 }
@@ -696,10 +689,9 @@ fn an_expired_run_is_never_a_success() {
         expired: true,
         ..LoopState::new("goal")
     };
-    let thresholds = Thresholds::default();
-    assert_eq!(Outcome::classify(&state, &thresholds), Outcome::Exhausted);
+    assert_eq!(Outcome::classify(&state), Outcome::Exhausted);
     assert_eq!(
-        Outcome::success(&state, &thresholds).unwrap_err(),
+        Outcome::success(&state).unwrap_err(),
         Error::UnearnedSuccess
     );
 }
@@ -712,10 +704,9 @@ fn a_run_out_of_attempts_is_never_a_success() {
         attempts: 8,
         ..LoopState::new("goal")
     };
-    let thresholds = Thresholds::default();
-    assert_eq!(Outcome::classify(&state, &thresholds), Outcome::Exhausted);
+    assert_eq!(Outcome::classify(&state), Outcome::Exhausted);
     assert_eq!(
-        Outcome::success(&state, &thresholds).unwrap_err(),
+        Outcome::success(&state).unwrap_err(),
         Error::UnearnedSuccess
     );
 }
@@ -728,10 +719,9 @@ fn a_blocked_run_is_never_a_success() {
         blocked: 2,
         ..LoopState::new("goal")
     };
-    let thresholds = Thresholds::default();
-    assert_eq!(Outcome::classify(&state, &thresholds), Outcome::Blocked);
+    assert_eq!(Outcome::classify(&state), Outcome::Blocked);
     assert_eq!(
-        Outcome::success(&state, &thresholds).unwrap_err(),
+        Outcome::success(&state).unwrap_err(),
         Error::UnearnedSuccess
     );
 }
@@ -739,7 +729,7 @@ fn a_blocked_run_is_never_a_success() {
 #[test]
 fn an_unsolved_run_with_budget_left_is_stalled() {
     assert_eq!(
-        Outcome::classify(&LoopState::new("goal"), &Thresholds::default()),
+        Outcome::classify(&LoopState::new("goal")),
         Outcome::Stalled
     );
 }
