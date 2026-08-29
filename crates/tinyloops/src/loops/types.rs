@@ -108,21 +108,12 @@ impl NodeIds {
 
 /// The address a completed node's payload is read at.
 ///
-/// [`upstream_address`](crate::upstream_address) declares *which* node an arm
-/// reads — that is invariant 3's statement of intent. This renders the same
-/// declaration in the spelling the engine's `nodes` scope actually projects: a
-/// completed node's slot exposes `item` and `items`, and a `tool_call`'s item
-/// is the stable `{ json, text, raw }` envelope, so the payload it produced
-/// lives at `.item.json`.
-///
-/// Written without a leading dot on purpose. `=nodes.a-b.item.json` is a
-/// *simple dotted path*, walked segment by segment over the scope, so a node id
-/// containing a hyphen stays addressable; the leading-dot form compiles as jq,
-/// where the same hyphen reads as subtraction and the binding silently yields
-/// `null`.
-pub(super) fn payload_address(node: &str) -> String {
-    format!("=nodes.{node}.item.json")
-}
+/// A re-export of [`upstream_address`](crate::upstream_address) under the name
+/// this module reads better with. It is deliberately *not* a second
+/// implementation: the address is one fact, and the two copies that existed
+/// while `upstream_address` was wrong are exactly how a wrong one survives —
+/// the builder was correct and the helper every other caller used was not.
+pub(super) use crate::upstream_address as payload_address;
 
 /// Whether `config` mentions `address` anywhere, at any depth.
 ///
