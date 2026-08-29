@@ -479,26 +479,30 @@ pub struct Summarize;
 
 impl Compose for Summarize {
     fn compose(&self, state: &LoopState) -> Result<String> {
+        use std::fmt::Write as _;
+
         let mut out = format!("# {}\n\n", state.goal);
-        out.push_str(&format!(
-            "{} of {} tasks discharged after {} attempts across {} passes.\n\n",
+        let _ = writeln!(
+            out,
+            "{} of {} tasks discharged after {} attempts across {} passes.\n",
             state.board.count(TaskStatus::Discharged),
             state.board.len(),
             state.attempts,
             state.passes,
-        ));
+        );
         for task in state.board.tasks() {
-            out.push_str(&format!(
-                "- [{}] {} ({})\n",
+            let _ = writeln!(
+                out,
+                "- [{}] {} ({})",
                 task.status.as_str(),
                 task.statement,
                 task.criterion,
-            ));
+            );
         }
         if !state.lessons.is_empty() {
             out.push_str("\nLearned:\n");
             for lesson in &state.lessons {
-                out.push_str(&format!("- {lesson}\n"));
+                let _ = writeln!(out, "- {lesson}");
             }
         }
         Ok(out)

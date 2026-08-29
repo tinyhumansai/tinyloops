@@ -141,17 +141,16 @@ impl Inline {
 
     /// How many briefs `role` has been served.
     ///
-    /// # Panics
-    ///
-    /// If the internal lock is poisoned, which requires a panic inside this
-    /// type while it held the lock. There is no such path.
+    /// A poisoned lock reads as zero rather than panicking. This is a
+    /// diagnostic accessor, and a diagnostic that takes the process down when
+    /// something else already went wrong is worse than one that reports
+    /// nothing.
     #[must_use]
     pub fn served(&self, role: &str) -> usize {
         self.served
             .lock()
-            .expect("the inline dispatcher's cursor is never held across a panic")
-            .get(role)
-            .copied()
+            .ok()
+            .and_then(|served| served.get(role).copied())
             .unwrap_or_default()
     }
 }
