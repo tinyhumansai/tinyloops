@@ -200,10 +200,13 @@ specification carries the same wording, so the two do not drift.
    unchanged, so reaching the cap emits on `done` rather than failing the run.
 3. `head().config.until` becomes `self.termination.expression()` — no argument.
 4. `AssembledLoop::graph()` passes `self.budget.caps()`.
-5. Fix the truncation the second test exposes: either raise the shipped
-   `Caps::max_iterations` or lower `Persistent::max_attempts`. Raising the cap
-   is the smaller change and the one that keeps the preset's stated bet intact;
-   whichever is chosen, the rustdoc on the changed constant says why it moved.
+5. Fix the truncation the second test exposes by raising the shipped
+   `Caps::max_iterations` from 8 to 12 — the largest `max_attempts` any shipped
+   preset asks for. Raising the backstop keeps every preset's stated bet intact,
+   where lowering `Persistent::max_attempts` would silently revise one. The
+   comment on the constant says what it must clear and why, and the test asserts
+   the *relationship* rather than the number, so a preset that later asks for
+   more fails rather than being truncated.
 
 ## Task L2: the signature stops moving
 
@@ -213,18 +216,27 @@ No change to `signature.rs`. `GraphSignature::of` hashes each node's `config`
 whole, and after L1 and P2 there is no threshold in any `config`.
 
 1. Invert the existing test that asserts two threshold sets give **different**
-   signatures into `a_graph_is_the_same_graph_under_every_preset`: build a graph
-   for each `Preset::ALL` and assert one signature across all four. This is the
-   test that today encodes the behavior being removed, so it is rewritten, not
-   deleted.
-2. Add `the_emitted_graph_holds_no_threshold_literal` — serialize the graph and
-   assert no default threshold value appears in it.
-3. Add `a_checkpoint_taken_under_one_preset_resumes_under_another` — record a
-   signature from one preset's graph and `verify_resume` it against another's.
-   That is the property this whole plan exists to buy, so it gets its own named
-   test rather than being implied by the equality above.
-4. Keep the arm-set test that asserts a *smaller* graph has a different
-   signature. Topology still moves the hash; only values left it.
+   signatures into `the_routing_programs_are_the_same_under_every_preset`: build
+   a graph for each `Preset::ALL` and assert one pair of programs — the switch's
+   expression and the head's `until` — across all four. This is the test that
+   today encodes the behavior being removed, so it is rewritten, not deleted.
+2. Add `the_emitted_graph_renders_no_threshold_into_a_program` — build under
+   deliberately distinctive thresholds and assert none of them appears in either
+   program, and that both address `.profile.thresholds`.
+3. Add `revising_a_threshold_leaves_the_graph_untouched` — move a threshold in a
+   *state*, assert the route changes, and assert the signature and
+   `verify_resume` do not. That is the property this whole plan exists to buy,
+   so it gets its own named test.
+4. Add `a_different_preset_is_a_different_run_but_not_a_different_ladder`, which
+   pins the one place the change stops short of the slogan. The **starting**
+   profile is seeded into the accumulator the `plan` node is handed, exactly as
+   the goal is, so two presets *do* emit different graphs — they are different
+   runs. What they no longer differ in is the routing, and a resume across a
+   revision depends only on that. Better to assert the limit than to leave a
+   reader to discover it.
+5. Keep the arm-set test that asserts a *smaller* graph has a different
+   signature. Topology still moves the hash; only the values the ladder compares
+   against left it.
 
 ## Task L3: the parity harness
 
