@@ -691,6 +691,9 @@ fn a_dropped_note_reaches_the_runs_own_event_stream() {
         Arc::clone(&collector) as Arc<dyn crate::Sink>
     ));
     drops.at_pass(4);
+    // `DropObserver` requires `Debug`, and what it renders is the pass a drop
+    // would be attributed to, since a sink is not renderable.
+    assert!(format!("{drops:?}").contains("pass: 4"), "{drops:?}");
 
     let mailbox = Mailbox::observed(1, Arc::clone(&drops) as Arc<dyn DropObserver>);
     assert!(mailbox.post(Note::new("librarian", "kept")).is_accepted());
