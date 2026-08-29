@@ -236,9 +236,13 @@ estimate that its feedback is on the wrong side of that crossing, which is why
 
 **Iteration should be bounded by saturation, not by a large maximum.** Iterative
 self-improvement saturates: successive rounds return less, and past a few rounds
-they return approximately nothing while continuing to cost. Madaan et al.,
-*Self-Refine: Iterative Refinement with Self-Feedback* (NeurIPS, 2023) reports
-the gains flattening across iterations. So a run should stop when the last *n*
+they return approximately nothing while continuing to cost. Song et al., *Mind
+the Gap: Examining the Self-Improvement Capabilities of Large Language Models*
+(ICLR, 2025) is the primary source: self-improvement is governed by the gap
+between a model's ability to verify and its ability to generate, and iterating
+against that gap saturates rather than converging. Madaan et al., *Self-Refine*
+(NeurIPS, 2023) reports the same shape empirically, gains flattening across
+iterations. So a run should stop when the last *n*
 rounds produced no verdict improvement — the `Stalled` terminal state of
 [`loop-kernel.md`](loop-kernel.md) invariant 10 — and `max_attempts` is a
 backstop against a runaway rather than the intended stopping rule. A large
