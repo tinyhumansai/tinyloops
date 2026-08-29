@@ -164,10 +164,9 @@ pub struct BoundedCapture {
 impl BoundedCapture {
     /// A capture that will retain at most `limit` bytes.
     ///
-    /// # Panics
-    ///
-    /// Never. A zero limit yields a capture that retains nothing and counts
-    /// everything as dropped, which is a degenerate bound rather than an error.
+    /// A zero limit is legal and degenerate: the capture retains nothing and
+    /// counts everything as dropped, which is still a report rather than a
+    /// dead process.
     #[must_use]
     pub fn new(limit: usize) -> Self {
         Self {
