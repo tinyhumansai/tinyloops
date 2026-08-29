@@ -188,7 +188,7 @@ impl Advance {
                     reason: "it is the run's concluding arm",
                 });
             }
-            if !declared.iter().any(|&name| name == arm.as_str()) {
+            if !declared.contains(&arm.as_str()) {
                 return Err(Error::IneligibleMutableArm {
                     arm: arm.clone(),
                     reason: "the run's arm set does not declare it",
