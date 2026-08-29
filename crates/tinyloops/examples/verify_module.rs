@@ -4,11 +4,11 @@ use std::io;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use tinyloops::{GreetRequest, GreetResponse, names};
 use tinybus::Connection;
 use tinybus::broker::Broker;
 use tinybus::module::ModuleHost;
 use tinybus::transport::memory::MemoryBus;
+use tinyloops::{GreetRequest, GreetResponse, names};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
