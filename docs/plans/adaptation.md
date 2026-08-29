@@ -12,9 +12,11 @@
 ## Goal
 
 Move every threshold out of the emitted graph and into the run's accumulator, so
-that one graph serves every preset, a threshold change stops changing
+that one routing program serves every preset, a threshold change stops changing
 `GraphSignature`, and a run that later revises its own thresholds can resume
-from its own checkpoint.
+from its own checkpoint. (Two presets still emit two different `GraphSignature`s
+— the seed accumulator carries the starting profile — but the routing they
+compile is the one program either way; see Task L2.4.)
 
 Nothing here tunes anything. This plan lands the addressing change and the
 `LoopProfile` that holds it; the profile is written once, at construction, and
