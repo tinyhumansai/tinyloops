@@ -12,13 +12,10 @@ Build, in order, the four modules that turn `state` and `policy` into a running
 loop: `step/`, `arm/`, `loops/`, `orchestrate/`. The end state is a builder that
 emits one `tinyflows::model::WorkflowGraph` holding the whole goal run, and a
 closed set of Rust steps that the graph's nodes invoke through a single tool.
-
-## Non-goals
-
-- The seams the steps call into — [`seams.md`](seams.md) — and `budget/`,
-  `observe/`, `presets/`, and the worked example, which are
-  [`observability-and-budget.md`](observability-and-budget.md).
-- Anything spanning runs. That is `vendor/tinyflows/crates/adaptive`.
+Not here: the seams the steps call into ([`seams.md`](seams.md)); `budget/`,
+`observe/`, `presets/`, and the worked example
+([`observability-and-budget.md`](observability-and-budget.md)); and anything
+spanning runs, which is `vendor/tinyflows/crates/adaptive`.
 
 ## Assumptions
 
@@ -219,8 +216,7 @@ Depends only on A1, so it may run alongside group B.
    the law nor excuses skipping the permutation test.
 3. The permutation and association tests are exhaustive over a fixed fixture
    rather than generative: `proptest` is a dependency decision, and 24
-   permutations of four values cover the property with no new crate. Say so in
-   the module docs.
+   permutations of four values cover the property with no new crate.
 
 ## Task B3: `ArmSet` — one list, both edge sets
 
@@ -256,18 +252,16 @@ Depends only on A1, so it may run alongside group B.
 **Files:** `crates/tinyloops/src/loops/mod.rs`, `src/loops/ids.rs`,
 `src/loops/test.rs`
 
-1. Failing tests:
-   - `emits_the_specified_node_set` — exactly `trigger`, `plan`, `research`,
-     `loop`, `attempt`, `side_arms`, one node per arm, `merge`, `route`, `pass`,
-     `stand_down`, `report`.
-   - `pass_is_the_only_node_with_an_edge_back_to_the_head` — invariant 2,
-     asserted on the edge list.
-   - `every_route_port_enters_pass` — all five `Route` ports terminate at
-     `pass`; none returns to `attempt`, because an inner cycle the head never
-     sees cannot be bounded by `config.max_iterations`.
-   - `report_is_reachable_only_after_stand_down`.
-   - `node_ids_are_declared_not_positional` — inserting a node leaves every
-     other id unchanged.
+1. Failing tests: `emits_the_specified_node_set` — exactly `trigger`, `plan`,
+   `research`, `loop`, `attempt`, `side_arms`, one node per arm, `merge`,
+   `route`, `pass`, `stand_down`, `report`;
+   `pass_is_the_only_node_with_an_edge_back_to_the_head`, invariant 2 asserted on
+   the edge list; `every_route_port_enters_pass`, where all five `Route` ports
+   terminate at `pass` and none returns to `attempt`, because an inner cycle the
+   head never sees cannot be bounded by `config.max_iterations`;
+   `report_is_reachable_only_after_stand_down`; and
+   `node_ids_are_declared_not_positional`, where inserting a node leaves every
+   other id unchanged.
 2. Implement `NodeIds`, a struct of `&'static str` constants, and the shape.
    Kinds, all from `vendor/tinyflows/src/model/node_kind.rs`: `Trigger` for
    `trigger`; `ToolCall` for `plan`, `research`, `attempt`, every arm, `pass`,
@@ -287,17 +281,15 @@ Depends only on A1, so it may run alongside group B.
 
 **Files:** `crates/tinyloops/src/loops/ladder.rs`, `src/loops/test.rs`
 
-1. Failing tests:
-   - `renders_every_threshold_from_the_constant` — the rendered program contains
-     each field's value, and the graph JSON contains no other integer literal in
-     a routing position.
-   - `the_rendered_program_compiles_and_answers` — evaluate it through
-     `tinyflows::expr::evaluate` (`vendor/tinyflows/src/expr.rs:102`) against a
-     hand-built scope and assert a non-null answer. A jq program that fails to
-     compile yields `Value::Null` silently, so "it produced a route" is itself
-     the assertion.
-   - `rung_order_is_blocked_solved_reported_diversify_retry` — one state
-     satisfying two rungs at once, asserted to take the higher.
+1. Failing tests: `renders_every_threshold_from_the_constant`, where the
+   rendered program contains each field's value and the graph JSON contains no
+   other integer literal in a routing position;
+   `the_rendered_program_compiles_and_answers`, evaluating it through
+   `tinyflows::expr::evaluate` (`vendor/tinyflows/src/expr.rs:102`) against a
+   hand-built scope and asserting a non-null answer — a jq program that fails to
+   compile yields `Value::Null` silently, so "it produced a route" is itself the
+   assertion; and `rung_order_is_blocked_solved_reported_diversify_retry`, one
+   state satisfying two rungs at once, asserted to take the higher.
 2. Implement `render_ladder(t: Thresholds) -> String`, an `if/elif` chain over
    the merged state emitting the same strings as `Route::as_str`. No literal is
    typed; every one is interpolated from `t`.
@@ -359,8 +351,8 @@ Depends only on A1, so it may run alongside group B.
    *from* the thresholds so a constant change is a topology change;
    `adding_an_arm_changes_the_signature`; and
    `resuming_against_a_mismatched_signature_is_a_named_error_and_runs_no_node`,
-   asserting `Error::GraphSignatureMismatch { recorded, current }` and asserting
-   the mock capabilities logged zero calls.
+   asserting `Error::GraphSignatureMismatch { recorded, current }` and that the
+   mock capabilities logged zero calls.
 2. Implement `GraphSignature`, a SHA-256 over canonical JSON of node ids, kinds,
    ports, edges, and every rendered threshold, plus
    `verify_resume(recorded: &GraphSignature, graph: &WorkflowGraph)`.
@@ -439,15 +431,14 @@ All through `tinyflows::testkit::TestHarness`.
 **Files:** `crates/tinyloops/src/orchestrate/mod.rs`, `src/orchestrate/board.rs`,
 `src/orchestrate/test.rs`
 
-1. Failing tests:
-   `a_task_carries_an_id_a_statement_a_criterion_a_status_and_a_pass`;
+1. Failing tests: `a_task_carries_an_id_a_statement_a_criterion_a_status_and_a_pass`;
    `reusing_an_id_for_a_different_task_is_an_error`, because every count that
    reads the board across passes depends on stable ids;
    `the_board_round_trips_through_the_accumulator` with every id and status
    intact, which is the checkpoint-and-resume test; and
    `counts_are_readable_without_parsing_prose` — "three of five discharged" is a
-   fact only if the tasks are values.
-2. Implement `TaskBoard`, `Task`, `TaskId`, and `TaskStatus`, all serde.
+   fact only if the tasks are values. Implement `TaskBoard`, `Task`, `TaskId`,
+   and `TaskStatus`, all serde.
 
 ## Task D2: registration-time constraints
 
@@ -477,7 +468,7 @@ All through `tinyflows::testkit::TestHarness`.
    - `plan_runs_at_pass_zero_and_then_only_on_its_cadence` — over N passes,
      assert the exact set of passes on which it ran. A board rewritten every
      pass makes "task 3 is still open" stop meaning anything.
-   - `attempt_writes_exactly_one_report_per_pass_at_a_known_address`, and
+   - `attempt_writes_exactly_one_report_per_pass_at_a_known_address` and
      `every_arm_reads_that_one_address`, asserted from `ArmSet` so arm
      independence is structural rather than conventional.
    - `a_timed_out_specialist_yields_a_readable_outcome_and_a_report` — the pass
@@ -487,8 +478,8 @@ All through `tinyflows::testkit::TestHarness`.
      citing the artifact. Without salvage, `unproductive` increments on a pass
      that produced work and the ladder spends a diversify on a run that was not
      stuck.
-   - `a_directive_drained_from_a_full_mailbox_is_dropped_and_recorded`.
-   - `report_is_the_sole_author_of_the_final_answer` — no arm and no specialist
+   - `a_directive_drained_from_a_full_mailbox_is_dropped_and_recorded`, and
+     `report_is_the_sole_author_of_the_final_answer` — no arm and no specialist
      writes that address.
 2. Implement the three steps as `Step` implementations registered in the
    `StepRegistry`, each returning a whole `LoopState`. None writes the
