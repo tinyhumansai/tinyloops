@@ -334,8 +334,10 @@ catches up.
 
 ## Acceptance criteria
 
-- Every commitment `C-1` … `C-19` is referenced by at least one other file in
-  `docs/specs/`, or is explicitly listed below as not yet implemented.
+- Every commitment `C-1` … `C-19` either names the specification that implements
+  it, or is listed below as not yet implemented. The reference runs in this
+  direction on purpose: a specification should be readable without this file,
+  and this file exists to say why that specification chose what it chose.
 - No numeric claim appears here without either a bibliography entry or an
   inline note that it is unverified.
 - Not yet implemented, and tracked in `ROADMAP.md`: C-12 (tiered evaluation and
