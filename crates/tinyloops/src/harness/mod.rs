@@ -397,19 +397,38 @@ impl ScriptedDelegate {
     }
 
     /// The outcome `scripted` describes for `brief`.
+    ///
+    /// A re-export of [`Scripted::outcome`] under the name this type reads
+    /// better with, and deliberately not a second implementation: the mapping
+    /// from a script entry to an outcome is one fact, and the synchronous
+    /// dispatcher in `orchestrate/` needs the same one.
     fn outcome(brief: Brief, scripted: &Scripted) -> DelegationOutcome {
-        match scripted {
-            Scripted::Answers { reply, artifacts } => {
+        scripted.outcome(brief)
+    }
+}
+
+impl Scripted {
+    /// The outcome this script entry describes for `brief`.
+    ///
+    /// Public because the reference dispatcher in
+    /// [`orchestrate`](crate::orchestrate_docs) collects specialists
+    /// synchronously and must produce byte-identical outcomes to the ones
+    /// [`ScriptedDelegate`] produces asynchronously. Two spellings of the same
+    /// mapping is how a test starts agreeing with a bug.
+    #[must_use]
+    pub fn outcome(&self, brief: Brief) -> DelegationOutcome {
+        match self {
+            Self::Answers { reply, artifacts } => {
                 DelegationOutcome::answered(brief, reply.clone()).with_artifacts(artifacts.clone())
             }
-            Scripted::NeverCompletes { artifacts } => DelegationOutcome {
+            Self::NeverCompletes { artifacts } => DelegationOutcome {
                 brief,
                 ending: Ending::TimedOut,
                 artifacts: artifacts.clone(),
                 reply: None,
             },
-            Scripted::Capped { artifacts } => salvage(brief, artifacts.clone()),
-            Scripted::Fails { reason } => DelegationOutcome {
+            Self::Capped { artifacts } => salvage(brief, artifacts.clone()),
+            Self::Fails { reason } => DelegationOutcome {
                 brief,
                 ending: Ending::Failed,
                 artifacts: Vec::new(),
