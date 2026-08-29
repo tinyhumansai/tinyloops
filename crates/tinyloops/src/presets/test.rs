@@ -1395,7 +1395,19 @@ fn a_tuned_run_reports_every_revision_and_every_refusal() {
         Preset::Balanced,
         delegates(),
         plan(),
-        Arc::new(Inline::of(delegates(), [("prover".to_owned(), vec![])])),
+        Arc::new(Inline::of(
+            delegates(),
+            [(
+                "prover".to_owned(),
+                // Every pass fails on the machinery rather than on the work,
+                // which is the run the blocked rule exists for.
+                std::iter::repeat_with(|| Scripted::Fails {
+                    reason: "the sandbox would not start".to_owned(),
+                })
+                .take(12)
+                .collect(),
+            )],
+        )),
     )
     .expect("the tuned preset assembles");
 
