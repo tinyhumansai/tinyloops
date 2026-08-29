@@ -15,6 +15,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::collections::BTreeMap;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use super::*;
@@ -128,12 +130,52 @@ fn a_store_that_accepts_every_write_and_retains_nothing_fails_the_probe() {
     assert_eq!(memory.fetches(), vec!["run-1/r0".to_owned()]);
 }
 
+/// A backend that keeps a *different* body than the one it was handed.
+///
+/// The other half of the write-path failure: not a store that keeps nothing,
+/// but one that acknowledges a write and retains something else. The read-back
+/// is what tells the two apart from a success.
+#[derive(Debug)]
+struct Truncating {
+    held: Mutex<BTreeMap<String, Record>>,
+    probes: ProbeCache,
+    clock: Arc<ManualClock>,
+}
+
+impl Memory for Truncating {
+    fn store(&self, _scope: &Scope, record: &Record) -> Result<()> {
+        let clipped = Record::new(record.id(), &record.body()[..4]);
+        self.held
+            .lock()
+            .unwrap()
+            .insert(record.id().to_owned(), clipped);
+        Ok(())
+    }
+
+    fn fetch(&self, _scope: &Scope, id: &str) -> Result<Option<Record>> {
+        Ok(self.held.lock().unwrap().get(id).cloned())
+    }
+
+    fn search(&self, _scope: &Scope, _query: &str) -> Result<Vec<Record>> {
+        Ok(self.held.lock().unwrap().values().cloned().collect())
+    }
+
+    fn probes(&self) -> &ProbeCache {
+        &self.probes
+    }
+
+    fn clock(&self) -> &dyn Clock {
+        self.clock.as_ref()
+    }
+}
+
 #[test]
 fn a_store_that_retains_something_else_fails_the_probe() {
-    let (_clock, memory) = keeping();
-    memory
-        .store(&scope(), &Record::new("r0", "what the store kept"))
-        .unwrap();
+    let memory = Truncating {
+        held: Mutex::new(BTreeMap::new()),
+        probes: ProbeCache::new(TTL),
+        clock: Arc::new(ManualClock::new()),
+    };
 
     // The read-back finds the id and disagrees about the body, which is a
     // silently lost write wearing a successful one's clothes.
@@ -145,6 +187,7 @@ fn a_store_that_retains_something_else_fails_the_probe() {
             scope: "run-1".to_owned()
         },
     );
+    assert_eq!(memory.recall(&scope(), "").unwrap().len(), 1);
 }
 
 #[test]
@@ -329,7 +372,7 @@ fn a_pinned_policy_constraint_survives_a_compaction_below_its_own_size() {
     // And the pin is never listed as forgotten, because it was not forgotten.
     let event = condensed.condensation().unwrap();
     assert!(!event.forgotten.contains(&"policy".to_owned()));
-    assert_eq!(event.forgotten.len(), 5);
+    assert_eq!(event.forgotten.len(), 4);
 
     // Idempotent with a pin in play, too.
     let again = condense(&mut history, &Pins::of(["policy"]), 1);

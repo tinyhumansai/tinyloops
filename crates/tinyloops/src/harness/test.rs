@@ -30,6 +30,30 @@ use super::*;
 /// against a list somebody has to remember to update.
 const MOD_SOURCE: &str = include_str!("mod.rs");
 
+/// The source of `types.rs`, read at compile time, for the same reason.
+const TYPES_SOURCE: &str = include_str!("types.rs");
+
+/// The field names a struct declares, read from the declaration itself.
+///
+/// "A role is four things and nothing else" is a claim about the type, so it is
+/// asserted against the type rather than against a rendering of one value.
+fn fields_of(source: &str, decl: &str) -> Vec<String> {
+    source
+        .split(decl)
+        .nth(1)
+        .expect("the struct is declared in this source")
+        .split("\n}")
+        .next()
+        .expect("the declaration is brace-terminated")
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.starts_with('/') && !line.starts_with('#'))
+        .filter_map(|line| line.split(':').next())
+        .filter(|name| !name.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
 /// Caps small enough to be obviously a role's rather than a run's.
 fn role_caps() -> Caps {
     Caps {
@@ -106,13 +130,12 @@ fn a_role_is_a_prompt_a_grant_a_budget_and_a_tier() {
     assert_eq!(role.budget().caps().max_model_calls, 4);
     assert_eq!(role.tier(), Tier::Standard);
 
-    // The fifth field is the one that must not exist: a `Role` is exhaustively
-    // rendered by those four, so anything added would show up here.
-    let rendered = format!("{role:?}");
-    for field in ["prompt", "grant", "budget", "tier"] {
-        assert!(rendered.contains(field), "{field} missing from {rendered}");
-    }
-    assert_eq!(rendered.matches(": ").count(), 4, "{rendered}");
+    // The fifth field is the one that must not exist, so the assertion reads
+    // the declaration rather than a rendering of one value.
+    assert_eq!(
+        fields_of(TYPES_SOURCE, "pub struct Role {"),
+        vec!["prompt", "grant", "budget", "tier"],
+    );
 }
 
 #[test]
@@ -569,10 +592,10 @@ fn it_opens_no_transport_of_its_own() {
     assert!(delegate.capabilities().agent.is_none());
     let rendered = format!("{delegate:?}");
     assert!(rendered.contains("<Capabilities>"), "{rendered}");
-    for field in ["roles", "script", "state", "mailbox_capacity", "caps"] {
-        assert!(rendered.contains(field), "{field} missing from {rendered}");
-    }
-    assert_eq!(rendered.matches(": ").count(), 5, "{rendered}");
+    assert_eq!(
+        fields_of(MOD_SOURCE, "pub struct ScriptedDelegate {"),
+        vec!["roles", "caps", "script", "state", "mailbox_capacity"],
+    );
 }
 
 #[test]
