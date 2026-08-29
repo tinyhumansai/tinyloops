@@ -2,17 +2,18 @@
 
 - **Status:** Not started
 - **Specification:** [`../specs/loop-kernel.md`](../specs/loop-kernel.md), with
-  the ladder's constants from [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md)
-  and the role bindings from [`../specs/orchestrator.md`](../specs/orchestrator.md).
+  the ladder's constants from
+  [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md) and the
+  role bindings from [`../specs/orchestrator.md`](../specs/orchestrator.md).
 
 ## Goal
 
 Build, in order, the four modules that turn `state` and `policy` into a running
-loop: `step/`, `arm/`, `loops/`, `orchestrate/`. The end state is a builder that
-emits one `tinyflows::model::WorkflowGraph` holding the whole goal run, and a
-closed set of Rust steps that the graph's nodes invoke through a single tool.
-Not here: the seams ([`seams.md`](seams.md)); `budget/`, `observe/`, `presets/`,
-and the worked example
+loop: `step/`, `arm/`, `loops/`, `orchestrate/`. The end state is a builder
+that emits one `tinyflows::model::WorkflowGraph` holding the whole goal run,
+and a closed set of Rust steps that the graph's nodes invoke through a single
+tool. Not here: the seams ([`seams.md`](seams.md)); `budget/`, `observe/`,
+`presets/`, and the worked example
 ([`observability-and-budget.md`](observability-and-budget.md)); and anything
 spanning runs (`vendor/tinyflows/crates/adaptive`).
 
@@ -44,35 +45,34 @@ derivation, D binds a role to the three nodes C emits. **Parallel within a
 group:** A1 and A2 are one file each and A3 joins them, while A4 needs only A1
 so it can run alongside all of B; B1 and B2 are independent and merge at B3; C1
 and C2 are independent and C3 joins them; D1 and D2 are independent. Every task
-ends with `cargo test -p tinyloops <module>` and
-`cargo clippy --all-targets --all-features -- -D warnings`; only the exceptions
-are named below.
+ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
+--all-features -- -D warnings`; only the exceptions are named below.
 
 ## Task A0: dependencies
 
 **Files:** `Cargo.toml`, `crates/tinyloops/Cargo.toml`
 
 1. Add `sha2` to the root `[workspace.dependencies]`, commented: it hashes the
-   emitted graph for invariant 9, and `std::hash::DefaultHasher` is documented as
-   unstable across releases, so a signature built on it would refuse resumes
+   emitted graph for invariant 9, and `std::hash::DefaultHasher` is documented
+   as unstable across releases, so a signature built on it would refuse resumes
    after a toolchain bump rather than after a topology change.
 2. In `crates/tinyloops/Cargo.toml` take `sha2`, promote `serde` and
-   `serde_json` to dependencies, and extend the dev-dependency `tinyflows` entry
-   to `features = ["mock", "testkit"]` — `testkit` supplies `TestHarness`,
-   `TestRun`, and `TestRun::assert_no_null_bindings`
+   `serde_json` to dependencies, and extend the dev-dependency `tinyflows`
+   entry to `features = ["mock", "testkit"]` — `testkit` supplies
+   `TestHarness`, `TestRun`, and `TestRun::assert_no_null_bindings`
    (`vendor/tinyflows/src/testkit/harness.rs:279`), while the interception seam
-   is always compiled, so `StepInterceptor` needs no feature. Then
-   `cargo build --all-targets --all-features` and `cargo deny check all`.
+   is always compiled, so `StepInterceptor` needs no feature. Then `cargo build
+   --all-targets --all-features` and `cargo deny check all`.
 
 ## Task A1: the capability-typed step context
 
 **Files:** `crates/tinyloops/src/step/mod.rs`, `src/step/types.rs`,
 `src/step/test.rs`, `src/error/mod.rs`, `src/error/test.rs`
 
-1. Failing tests: `kernel_context_writes_the_accumulator` (a `StepCtx<CanWrite>`
-   accepts `set_state` and the value returns from `into_state`) and
-   `an_arm_context_carries_the_base_state_it_was_handed` (a `StepCtx<NoWrite>`
-   exposes `base()` and nothing else).
+1. Failing tests: `kernel_context_writes_the_accumulator` (a
+   `StepCtx<CanWrite>` accepts `set_state` and the value returns from
+   `into_state`) and `an_arm_context_carries_the_base_state_it_was_handed` (a
+   `StepCtx<NoWrite>` exposes `base()` and nothing else).
 2. Implement in `types.rs`:
 
    ```rust
@@ -94,9 +94,9 @@ are named below.
 `src/step/test.rs`
 
 1. Failing tests: `resolves_a_registered_step_by_name`;
-   `rejects_an_unregistered_step_by_name`, asserting `Error::UnknownStep` rather
-   than `Ok`; and `rejects_a_second_registration_of_the_same_name`, so a name in
-   the closed set has one meaning. Implement:
+   `rejects_an_unregistered_step_by_name`, asserting `Error::UnknownStep`
+   rather than `Ok`; and `rejects_a_second_registration_of_the_same_name`, so a
+   name in the closed set has one meaning. Implement:
 
    ```rust
    pub trait Step: Send + Sync {
@@ -118,19 +118,19 @@ are named below.
 `src/lib.rs`
 
 1. Failing tests: `runs_the_named_step_and_returns_its_state`;
-   `an_unknown_step_name_is_a_node_error`, asserting an `EngineError::Capability`
-   whose message names the step; `an_unknown_tool_slug_is_a_node_error`; and
+   `an_unknown_step_name_is_a_node_error`, asserting an
+   `EngineError::Capability` whose message names the step;
+   `an_unknown_tool_slug_is_a_node_error`; and
    `a_missing_step_argument_is_a_node_error`. The second is the acceptance
    criterion that an unknown step name does not advance the run — a no-op there
    is the failure `assert_no_null_bindings` catches one layer too late.
 2. Implement `LoopStepInvoker`, a `tinyflows::caps::ToolInvoker`
-   (`vendor/tinyflows/src/caps/mod.rs:137`):
-   `async fn invoke(&self, slug: &str, args: Value, conn: Option<&str>)`.
-   `slug` must equal `RUN_LOOP_STEP` (`"run_loop_step"`), `args.step` names the
-   step, `args.input` is the node's item. Every rejection maps to
-   `EngineError::Capability` carrying this crate's `Error` display text. Export
-   `RUN_LOOP_STEP`, `Step`, `StepCtx`, `StepRegistry`, and `LoopStepInvoker`
-   from `src/lib.rs`.
+   (`vendor/tinyflows/src/caps/mod.rs:137`): `async fn invoke(&self, slug:
+   &str, args: Value, conn: Option<&str>)`. `slug` must equal `RUN_LOOP_STEP`
+   (`"run_loop_step"`), `args.step` names the step, `args.input` is the node's
+   item. Every rejection maps to `EngineError::Capability` carrying this
+   crate's `Error` display text. Export `RUN_LOOP_STEP`, `Step`, `StepCtx`,
+   `StepRegistry`, and `LoopStepInvoker` from `src/lib.rs`.
 
 ## Task A4: the arm context does not compile against the accumulator
 
@@ -140,8 +140,8 @@ are named below.
 1. Add `trybuild` as a dev-dependency, commented as existing to prove invariant
    11 — "this arm wrote the accumulator" is a compile failure, not a review
    comment. Write the case calling `set_state` on a `StepCtx<'_, NoWrite>` and
-   its `.stderr` fixture, then run `cargo test -p tinyloops --test compile_fail`.
-   Depends only on A1, so it may run alongside group B.
+   its `.stderr` fixture, then run `cargo test -p tinyloops --test
+   compile_fail`. Depends only on A1, so it may run alongside group B.
 
 ## Task B1: the `Arm` trait
 
@@ -149,8 +149,8 @@ are named below.
 `src/arm/test.rs`
 
 1. Failing tests: `an_arm_reads_the_report_it_was_handed` and
-   `an_arm_returns_a_whole_state_not_a_patch` — a whole `LoopState` is what makes
-   B2's fold a delta of two whole values. Implement:
+   `an_arm_returns_a_whole_state_not_a_patch` — a whole `LoopState` is what
+   makes B2's fold a delta of two whole values. Implement:
 
    ```rust
    pub trait Arm: Send + Sync {
@@ -163,7 +163,8 @@ are named below.
    ```
 
    `evaluate` takes the report, never the accumulator: invariant 3, enforced by
-   the type — `StepCtx<'_, NoWrite>` has no accessor for `=.nodes.<loop>.state`.
+   the type — `StepCtx<'_, NoWrite>` has no accessor for
+   `=.nodes.<loop>.state`.
 
 ## Task B2: the delta fold, and its trait law
 
@@ -172,8 +173,9 @@ are named below.
 
 1. Failing tests, all against one base state and hand-built arm outputs:
    - `a_reset_and_an_increment_compose_from_the_same_base` — one arm returns a
-     counter of 0 from a base of 3, another returns 4; the fold yields 1. This is
-     invariant 5's reason for existing, and the test a last-writer-wins fold fails.
+     counter of 0 from a base of 3, another returns 4; the fold yields 1. This
+     is invariant 5's reason for existing, and the test a last-writer-wins fold
+     fails.
    - `a_list_folds_by_what_each_arm_appended`, and
      `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
      `Error::ArmCollision { field, first, second }` naming both arms.
@@ -197,8 +199,8 @@ are named below.
    pub struct DeltaFold;
    ```
 
-   Sort by `id()` before folding — a belt to the braces that neither replaces the
-   law nor excuses skipping the permutation test.
+   Sort by `id()` before folding — a belt to the braces that neither replaces
+   the law nor excuses skipping the permutation test.
 3. The permutation and association tests are exhaustive over a fixed fixture
    rather than generative: `proptest` is a dependency decision, and 24
    permutations of four values cover the property with no new crate.
@@ -210,9 +212,9 @@ are named below.
 1. Failing tests: `fan_out_and_merge_edges_name_the_same_arms`;
    `removing_an_arm_removes_it_from_both_edge_sets_and_the_fold` — build three,
    drop one, assert all three derived views lost it, invariant 6's acceptance
-   criterion that an arm in the fan-out but not the fold runs, costs its budget,
-   and changes nothing; `an_empty_arm_set_is_a_construction_error`, because a
-   loop with no evaluation cannot end; and
+   criterion that an arm in the fan-out but not the fold runs, costs its
+   budget, and changes nothing; `an_empty_arm_set_is_a_construction_error`,
+   because a loop with no evaluation cannot end; and
    `duplicate_arm_ids_are_a_construction_error`.
 2. Implement:
 
@@ -237,10 +239,10 @@ are named below.
 1. Failing tests: `emits_the_specified_node_set` — exactly `trigger`, `plan`,
    `research`, `loop`, `attempt`, `side_arms`, one node per arm, `merge`,
    `route`, `pass`, `stand_down`, `report`;
-   `pass_is_the_only_node_with_an_edge_back_to_the_head`, invariant 2 asserted on
-   the edge list; `every_route_port_enters_pass`, where all five `Route` ports
-   terminate at `pass` and none returns to `attempt`, because an inner cycle the
-   head never sees cannot be bounded by `config.max_iterations`;
+   `pass_is_the_only_node_with_an_edge_back_to_the_head`, invariant 2 asserted
+   on the edge list; `every_route_port_enters_pass`, where all five `Route`
+   ports terminate at `pass` and none returns to `attempt`, because an inner
+   cycle the head never sees cannot be bounded by `config.max_iterations`;
    `report_is_reachable_only_after_stand_down`; and
    `node_ids_are_declared_not_positional`, where inserting a node leaves every
    other id unchanged.
@@ -254,8 +256,8 @@ are named below.
    salvage of a timed-out attempt, and the arms opened beside the loop.
 3. `side_arms` (`Spawn`) and `stand_down` (`Gate`) are this plan's reading of
    "the arms opened beside the loop are started at a named node, at a place a
-   checkpoint can land". `Spawn` needs no `TaskRunner` to be correct — with none
-   injected the work runs inline and the ticket returns already settled
+   checkpoint can land". `Spawn` needs no `TaskRunner` to be correct — with
+   none injected the work runs inline and the ticket returns already settled
    (`vendor/tinyflows/src/model/node_kind.rs`) — so a host without a scheduler
    computes the same answer. Record that in the module docs.
 
@@ -268,12 +270,12 @@ are named below.
    other integer literal in a routing position;
    `the_rendered_program_compiles_and_answers`, evaluating it through
    `tinyflows::expr::evaluate` (`vendor/tinyflows/src/expr.rs:102`) against a
-   hand-built scope and asserting a non-null answer — a jq program that fails to
-   compile yields `Value::Null` silently, so "it produced a route" is itself the
-   assertion; and `rung_order_is_blocked_solved_reported_diversify_retry`, one
-   state satisfying two rungs at once, asserted to take the higher.
-2. Implement `render_ladder(t: Thresholds) -> String`, an `if/elif` chain over the
-   merged state emitting the same strings as `Route::as_str`. No literal is
+   hand-built scope and asserting a non-null answer — a jq program that fails
+   to compile yields `Value::Null` silently, so "it produced a route" is itself
+   the assertion; and `rung_order_is_blocked_solved_reported_diversify_retry`,
+   one state satisfying two rungs at once, asserted to take the higher.
+2. Implement `render_ladder(t: Thresholds) -> String`, an `if/elif` chain over
+   the merged state emitting the same strings as `Route::as_str`. No literal is
    typed; every one is interpolated from `t`.
 
 ## Task C3: the builder, validated and deterministic
@@ -285,9 +287,9 @@ are named below.
    (`vendor/tinyflows/src/compiler.rs:31`);
    `building_twice_emits_byte_identical_json`, the purity C5 rests on; and
    `the_accumulator_update_is_an_assignment_not_an_increment`, asserting the
-   head's `config.state.update` contains no `+ 1` against its own previous value
-   — invariant 4, where a replayed activation makes `attempts + 1` wrong by one
-   and nothing reports it.
+   head's `config.state.update` contains no `+ 1` against its own previous
+   value — invariant 4, where a replayed activation makes `attempts + 1` wrong
+   by one and nothing reports it.
 2. Implement:
 
    ```rust
@@ -300,25 +302,25 @@ are named below.
    `config.max_iterations` (from `t.max_attempts`), `config.until`, and
    `config.on_exceeded`, all documented at
    `vendor/tinyflows/src/nodes/control_flow/loop_node.rs`.
-3. `build` returns `Err` when a node names a step absent from the registry, so the
-   closed set is checked at build time as well as at call time.
+3. `build` returns `Err` when a node names a step absent from the registry, so
+   the closed set is checked at build time as well as at call time.
 
 ## Task C4: termination as a composable condition
 
 **Files:** `crates/tinyloops/src/loops/termination.rs`, `src/loops/test.rs`
 
 1. Failing tests: `an_exhausted_budget_is_never_success`, asserting `Exhausted`
-   and that it is not `Success` — the natural
-   `if done_or_out_of_attempts { answer }` violates this by construction, which
-   is why it is a test rather than a comment;
-   `a_provider_failure_reports_blocked`; `conditions_compose_with_and_and_or`;
+   and that it is not `Success` — the natural `if done_or_out_of_attempts {
+   answer }` violates this by construction, which is why it is a test rather
+   than a comment; `a_provider_failure_reports_blocked`;
+   `conditions_compose_with_and_and_or`;
    `a_condition_round_trips_through_serde`, so it survives a checkpoint; and
    `resetting_a_fired_condition_clears_it`.
-2. Implement `TerminalState { Success, CleanNoOp, Blocked, Stalled, Exhausted }`
-   and `TerminationCondition` with `evaluate`, `reset`, serde, and `BitAnd` /
-   `BitOr` over boxed conditions. Render the composed condition into the head's
-   `config.until` from C3, so the stop test the Rust holds is the one the engine
-   runs.
+2. Implement `TerminalState { Success, CleanNoOp, Blocked, Stalled, Exhausted
+   }` and `TerminationCondition` with `evaluate`, `reset`, serde, and `BitAnd`
+   / `BitOr` over boxed conditions. Render the composed condition into the
+   head's `config.until` from C3, so the stop test the Rust holds is the one
+   the engine runs.
 
 ## Task C5: the graph signature and the refused resume
 
@@ -339,8 +341,8 @@ are named below.
 
 **Files:** `crates/tinyloops/tests/routing_parity.rs`
 
-The load-bearing test of this plan, and an integration test because it must read
-only the public surface the way a reviewer would.
+The load-bearing test of this plan, and an integration test because it must
+read only the public surface the way a reviewer would.
 
 1. `the_rendered_ladder_and_the_rust_router_agree_for_every_preset`: for every
    shipped `Thresholds` preset, sweep the cartesian product of `blocked`,
@@ -351,12 +353,12 @@ only the public surface the way a reviewer would.
    disagreement panic naming the preset and the offending counters. A preset
    with a higher `max_attempts` gets a sweep that reaches past it rather than a
    fixed range that stops short and calls the untested room agreement.
-2. `restarts` is excluded, and the test says why in a comment: no rung reads it,
-   so sweeping it buys nothing but a slower test.
+2. `restarts` is excluded, and the test says why in a comment: no rung reads
+   it, so sweeping it buys nothing but a slower test.
 3. `a_ladder_that_fails_to_compile_is_caught_by_the_sweep` feeds a malformed
    program and asserts the harness reports a disagreement rather than passing.
-   Under this engine a compile error yields `Value::Null` silently, so the sweep
-   must fail closed on null.
+   Under this engine a compile error yields `Value::Null` silently, so the
+   sweep must fail closed on null.
 4. The sweep proves the *translation*, never the answer: both sides read the
    same number, so a wrong threshold is wrong in both and agrees with itself.
    Say that in the test module's `//!` docs.
@@ -369,22 +371,22 @@ All through `tinyflows::testkit::TestHarness`.
 
 1. `a_run_completes_and_binds_every_expression` — `assert_completed` and
    `assert_no_null_bindings` (`vendor/tinyflows/src/testkit/harness.rs:279`).
-   Needed because a generated routing ladder that fails to compile produces null
-   rather than an error, so a green run is not by itself evidence.
+   Needed because a generated routing ladder that fails to compile produces
+   null rather than an error, so a green run is not by itself evidence.
 2. `pass_runs_exactly_once_per_iteration`, counted off `node_output("pass")`.
 3. `an_arm_reading_the_accumulator_routes_one_pass_stale` — mock the attempt
-   with a `Respond` returning a **different** answer on each call, rewire one arm
-   to read `=.nodes.loop.state`, and assert its route history differs from the
-   correctly wired run's. A constant mock passes both ways; say so in a comment
-   beside the test so the weaker version is never mistaken for coverage. This is
-   invariant 3's only real test.
+   with a `Respond` returning a **different** answer on each call, rewire one
+   arm to read `=.nodes.loop.state`, and assert its route history differs from
+   the correctly wired run's. A constant mock passes both ways; say so in a
+   comment beside the test so the weaker version is never mistaken for
+   coverage. This is invariant 3's only real test.
 4. `replaying_one_activation_leaves_every_counter_unchanged` — install a
    `tinyflows::interception::StepInterceptor`
-   (`vendor/tinyflows/src/interception.rs`) returning `StepAction::Replace` with
-   the merge node's own previous items the second time it sees that node, and
-   assert the counters match a single application. An interceptor, not a mock
-   capability: what an interceptor returns is *obeyed*, before and after every
-   non-trigger activation, while a `RunObserver` callback returns `()`.
+   (`vendor/tinyflows/src/interception.rs`) returning `StepAction::Replace`
+   with the merge node's own previous items the second time it sees that node,
+   and assert the counters match a single application. An interceptor, not a
+   mock capability: what an interceptor returns is *obeyed*, before and after
+   every non-trigger activation, while a `RunObserver` callback returns `()`.
 5. `a_failed_step_routes_rather_than_aborting` — `StepAction::Fail` on the
    attempt node, asserting the run reaches `report` with `Blocked`.
 
@@ -394,52 +396,54 @@ All through `tinyflows::testkit::TestHarness`.
 
 1. Failing tests `assisted_emits_approval_gated_nodes`,
    `unattended_emits_the_same_graph_without_them`, and
-   `report_autonomy_emits_no_node_that_acts` — asserted on the emitted nodes and
-   edges, never on a prompt string. A prompt instruction is not a control.
+   `report_autonomy_emits_no_node_that_acts` — asserted on the emitted nodes
+   and edges, never on a prompt string. A prompt instruction is not a control.
 2. Implement the `Autonomy` branch in `build`, emitting `NodeKind::Approval`
    nodes. With no `ApprovalProvider` injected an approval falls back to pausing
    the run for `tinyflows::engine::resume`
    (`vendor/tinyflows/src/model/node_kind.rs`, `NodeKind::Approval`), so a host
-   that forgets to wire approvals gets a paused run it can see, not an unattended
-   one it cannot.
+   that forgets to wire approvals gets a paused run it can see, not an
+   unattended one it cannot.
 
 ## Task D1: the `TaskBoard`
 
-**Files:** `crates/tinyloops/src/orchestrate/mod.rs`, `src/orchestrate/board.rs`,
-`src/orchestrate/test.rs`
+**Files:** `crates/tinyloops/src/orchestrate/mod.rs`,
+`src/orchestrate/board.rs`, `src/orchestrate/test.rs`
 
-1. Failing tests: `a_task_carries_an_id_a_statement_a_criterion_a_status_and_a_pass`;
+1. Failing tests:
+   `a_task_carries_an_id_a_statement_a_criterion_a_status_and_a_pass`;
    `reusing_an_id_for_a_different_task_is_an_error`, because every count that
    reads the board across passes depends on stable ids;
    `the_board_round_trips_through_the_accumulator` with every id and status
    intact, which is the checkpoint-and-resume test; and
-   `counts_are_readable_without_parsing_prose` — "three of five discharged" is a
-   fact only if the tasks are values. Implement `TaskBoard`, `Task`, `TaskId`,
-   and `TaskStatus`, all serde.
+   `counts_are_readable_without_parsing_prose` — "three of five discharged" is
+   a fact only if the tasks are values. Implement `TaskBoard`, `Task`,
+   `TaskId`, and `TaskStatus`, all serde.
 
 ## Task D2: registration-time constraints
 
-**Files:** `crates/tinyloops/src/orchestrate/role.rs`, `src/orchestrate/test.rs`,
-`src/error/mod.rs`
+**Files:** `crates/tinyloops/src/orchestrate/role.rs`,
+`src/orchestrate/test.rs`, `src/error/mod.rs`
 
 1. Failing tests: `a_shell_tool_in_the_orchestrators_set_fails_construction`,
-   asserting the message names the offending tool, and the same for a code runner
-   and a file-write tool, one test each;
+   asserting the message names the offending tool, and the same for a code
+   runner and a file-write tool, one test each;
    `spawning_a_delegate_outside_the_declared_set_is_an_error`;
-   `it_does_not_fall_back_to_the_host_registry`, where the host registry holds the
-   name, the declared set does not, and the spawn still fails; and
-   `the_declared_delegate_set_is_checked_against_the_step_registry`, so a role and
-   a registry cannot diverge quietly.
-2. Implement `Orchestrator::new(tools: ToolGrant, delegates: DelegateSet)
-   -> Result<Self>`, rejecting execution capabilities at construction. Both sets
+   `it_does_not_fall_back_to_the_host_registry`, where the host registry holds
+   the name, the declared set does not, and the spawn still fails; and
+   `the_declared_delegate_set_is_checked_against_the_step_registry`, so a role
+   and a registry cannot diverge quietly.
+2. Implement `Orchestrator::new(tools: ToolGrant, delegates: DelegateSet) ->
+   Result<Self>`, rejecting execution capabilities at construction. Both sets
    are fixed there and have no extend method: a driver that *can* run the
    experiment runs it, and removing the capability removes the option. Add
-   `Error::ExecutionToolInOrchestrator { tool }` and
-   `Error::UndeclaredDelegate { name }`.
+   `Error::ExecutionToolInOrchestrator { tool }` and `Error::UndeclaredDelegate
+   { name }`.
 
 ## Task D3: `plan` on a cadence, `attempt` per pass, `report` last
 
-**Files:** `crates/tinyloops/src/orchestrate/steps.rs`, `src/orchestrate/test.rs`
+**Files:** `crates/tinyloops/src/orchestrate/steps.rs`,
+`src/orchestrate/test.rs`
 
 1. Failing tests:
    - `plan_runs_at_pass_zero_and_then_only_on_its_cadence` — over N passes,
@@ -449,8 +453,8 @@ All through `tinyflows::testkit::TestHarness`.
      `every_arm_reads_that_one_address`, asserted from `ArmSet` so arm
      independence is structural rather than conventional.
    - `a_timed_out_specialist_yields_a_readable_outcome_and_a_report` — the pass
-     still writes a report and does not increment `unproductive` on the strength
-     of the timeout alone.
+     still writes a report and does not increment `unproductive` on the
+     strength of the timeout alone.
    - `a_killed_specialist_that_wrote_an_artifact_yields_a_salvaged_attempt`,
      citing the artifact. Without salvage, `unproductive` increments on a pass
      that produced work and the ladder spends a diversify on a run that was not
@@ -469,9 +473,9 @@ All through `tinyflows::testkit::TestHarness`.
 
 1. Re-export `LoopBuilder`, `GraphSignature`, `TerminalState`,
    `TerminationCondition`, `TaskBoard`, and `Orchestrator`. Add
-   `loops/README.md` covering the emitted shape, the eleven invariants it keeps,
-   and the operational constraint that a threshold change invalidates every
-   outstanding checkpoint. Extend `tests/public_api.rs` with a
+   `loops/README.md` covering the emitted shape, the eleven invariants it
+   keeps, and the operational constraint that a threshold change invalidates
+   every outstanding checkpoint. Extend `tests/public_api.rs` with a
    build-validate-compile walkthrough using only the public surface.
 
 ## Verification
