@@ -24,7 +24,7 @@ use std::ops::{BitAnd, BitOr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::policy::{Outcome, Thresholds, is_terminal, terminal_condition};
+use crate::policy::{Outcome, is_terminal, terminal_condition};
 use crate::state::LoopState;
 
 /// The named state a finished run ended in.

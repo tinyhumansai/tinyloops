@@ -58,7 +58,6 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::policy::Thresholds;
 use crate::state::LoopState;
 use crate::{Error, Result};
 
