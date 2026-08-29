@@ -26,14 +26,40 @@ template-bus = { workspace = true }
 tinybus = { workspace = true }
 tinybus-module = { workspace = true }
 thiserror = { workspace = true }
+# Optional, and only ever reached from an example. The `tinyagents` feature
+# below turns it on; the module library itself never calls into it, so a host
+# that loads the `cdylib` resolves neither the harness nor its HTTP client.
+tinyagents = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
 # The GitHub release verifier passes an explicit empty module configuration.
 serde_json = { workspace = true }
+# The loop examples run real workflow graphs. `mock` supplies the in-memory
+# capability implementations, which is what keeps them offline and
+# deterministic; it is a dev-dependency because a shipped module brings its own
+# capabilities rather than the mocks.
+tinyflows = { workspace = true, features = ["mock"] }
 
 [features]
 default = []
+# Pulls in the TinyAgents durable agent + graph harness so the examples that
+# drive a loop from a harness can compile. Nothing in `src/` is gated on it —
+# it exists to give an example a real harness instead of a hand-rolled stand-in.
+tinyagents = ["dep:tinyagents"]
+
+# `simple_loop` needs only the engine, which arrives as a dev-dependency, so it
+# builds on a bare `cargo test`. The harness example additionally needs the
+# optional crate above, and `required-features` is what keeps a default build
+# from trying to compile it without one.
+[[example]]
+name = "simple_loop"
+path = "examples/simple_loop.rs"
+
+[[example]]
+name = "tinyagents_harness"
+path = "examples/tinyagents_harness.rs"
+required-features = ["tinyagents"]
 
 [lints]
 workspace = true
