@@ -50,13 +50,23 @@
 //!
 //! [TinyFlows]: https://github.com/tinyhumansai/tinyflows
 
+mod budget;
 mod error;
 mod greeting;
+mod observe;
 mod policy;
 mod state;
 mod tinybus_module;
 
+// The limits every run carries, and the events it emits while spending them.
+// `budget` is what stops a run; `observe` is what the run leaves behind so a
+// person can see why it stopped.
+pub use budget::{Bound, Caps, Meter, RunBudget, TOOL_CALLS_PER_MODEL_CALL};
 pub use error::{Error, Result};
+pub use observe::{
+    Accounting, Capture, Entry, Event, FanOutSink, JsonlSink, LineSink, ModelCall, PassProfile,
+    Recorder, RedactingSink, Report, Sink, Spend, StepTiming, ToolCall, Unit, Unpaired, render,
+};
 pub use greeting::greet;
 // The loop's accumulator and the decision made from it. `state` is what one
 // goal run carries between turns; `policy` is the routing that reads it, in
