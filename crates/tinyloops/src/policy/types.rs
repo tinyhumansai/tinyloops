@@ -294,14 +294,14 @@ impl Outcome {
     /// # Examples
     ///
     /// ```
-    /// # use tinyloops::{LoopState, Outcome, Thresholds};
+    /// # use tinyloops::{LoopState, Outcome};
     /// let mut state = LoopState::new("goal");
     /// state.solved = true;
     /// state.banked = 1;
-    /// assert_eq!(Outcome::classify(&state, &Thresholds::default()), Outcome::Success);
+    /// assert_eq!(Outcome::classify(&state), Outcome::Success);
     ///
     /// state.expired = true;
-    /// assert_eq!(Outcome::classify(&state, &Thresholds::default()), Outcome::Exhausted);
+    /// assert_eq!(Outcome::classify(&state), Outcome::Exhausted);
     /// ```
     #[must_use]
     pub fn classify(state: &LoopState) -> Self {
@@ -335,7 +335,7 @@ impl Outcome {
     /// # Examples
     ///
     /// ```
-    /// # use tinyloops::{Error, LoopState, Outcome, Thresholds};
+    /// # use tinyloops::{Error, LoopState, Outcome};
     /// let mut state = LoopState::new("goal");
     /// state.solved = true;
     /// state.banked = 1;

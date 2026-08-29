@@ -261,8 +261,7 @@ impl std::fmt::Debug for StepRegistry {
 /// # use std::sync::Arc;
 /// # use serde_json::json;
 /// # use tinyloops::{
-/// #     Advanced, CanWrite, LoopState, Result, Step, StepContext, StepRegistry, Thresholds,
-/// #     run_loop_step,
+/// #     Advanced, CanWrite, LoopState, Result, Step, StepContext, StepRegistry, run_loop_step,
 /// # };
 /// struct Solve;
 ///
@@ -281,7 +280,7 @@ impl std::fmt::Debug for StepRegistry {
 /// registry.register(Arc::new(Solve))?;
 ///
 /// let args = json!({ "step": "solve", "state": LoopState::new("goal") });
-/// let returned = run_loop_step(&registry, &Thresholds::default(), &args)?;
+/// let returned = run_loop_step(&registry, &args)?;
 ///
 /// assert_eq!(returned["solved"], json!(true));
 /// assert_eq!(returned["goal"], json!("goal")); // the *whole* state came back

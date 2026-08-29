@@ -68,14 +68,16 @@ use crate::state::LoopState;
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Route, Thresholds, route};
-/// let thresholds = Thresholds::default();
+/// # use tinyloops::{LoopState, Route, route};
+/// // The thresholds ride in the accumulator, at `state.profile.thresholds`,
+/// // and `route` reads them from there. That is what keeps the graph's jq and
+/// // this function reading one source.
 /// let mut state = LoopState::new("goal");
 ///
-/// assert_eq!(route(&state, &thresholds), Route::Retry);
+/// assert_eq!(route(&state), Route::Retry);
 ///
 /// state.unproductive = 2;
-/// assert_eq!(route(&state, &thresholds), Route::Diversify);
+/// assert_eq!(route(&state), Route::Diversify);
 ///
 /// // Blocked outranks everything below it.
 /// state.blocked = 2;
@@ -111,13 +113,12 @@ pub fn route(state: &LoopState) -> Route {
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Thresholds, is_terminal};
-/// let thresholds = Thresholds::default();
+/// # use tinyloops::{LoopState, is_terminal};
 /// let mut state = LoopState::new("goal");
-/// assert!(!is_terminal(&state, &thresholds));
+/// assert!(!is_terminal(&state));
 ///
 /// state.expired = true;
-/// assert!(is_terminal(&state, &thresholds));
+/// assert!(is_terminal(&state));
 /// ```
 #[must_use]
 pub fn is_terminal(state: &LoopState) -> bool {

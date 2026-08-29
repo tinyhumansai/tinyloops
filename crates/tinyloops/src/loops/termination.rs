@@ -67,18 +67,17 @@ enum Rule {
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Outcome, TerminationCondition, Thresholds};
-/// let thresholds = Thresholds::default();
+/// # use tinyloops::{LoopState, Outcome, TerminationCondition};
 /// let mut condition = TerminationCondition::terminal() | TerminationCondition::expired();
 ///
 /// let mut state = LoopState::new("goal");
-/// assert_eq!(condition.evaluate(&state, &thresholds), None);
+/// assert_eq!(condition.evaluate(&state), None);
 ///
 /// // Out of attempts is out of attempts, however hopeful the last pass was.
 /// state.solved = true;
 /// state.banked = 1;
-/// state.attempts = thresholds.max_attempts;
-/// assert_eq!(condition.evaluate(&state, &thresholds), Some(Outcome::Exhausted));
+/// state.attempts = state.profile.thresholds.max_attempts;
+/// assert_eq!(condition.evaluate(&state), Some(Outcome::Exhausted));
 ///
 /// condition.reset();
 /// assert_eq!(condition.fired(), None);
