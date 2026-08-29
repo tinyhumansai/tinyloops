@@ -41,9 +41,11 @@
 //! not panic, because this code runs inside a node the engine is not able to
 //! unwind sensibly.
 
+use crate::policy::Judgement;
+
 mod types;
 
-pub use types::{Delta, LoopState};
+pub use types::{Contribution, Delta, LoopState};
 
 /// Sums one field across every delta, saturating rather than overflowing.
 fn total(deltas: &[Delta], pick: impl Fn(&Delta) -> i64) -> i64 {

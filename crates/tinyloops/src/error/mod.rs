@@ -41,6 +41,23 @@ pub enum Error {
     /// silently never terminates is a worse failure than one that says why.
     #[error("terminal condition did not evaluate to a boolean")]
     TerminalConditionNotBoolean,
+
+    /// Two evaluation arms wrote the same narrative field in one merge.
+    ///
+    /// Counters merge by addition and need no owner; text does not. Each
+    /// narrative field on a `Contribution` belongs to exactly one arm, so a
+    /// second writer is a wiring mistake with no correct resolution — picking a
+    /// winner would reintroduce the arrival-order dependence the delta fold
+    /// exists to remove. Both arms are named so the wiring can be found.
+    #[error("field {field} was written by both {held_by} and {also}")]
+    ContestedField {
+        /// The field both arms wrote.
+        field: &'static str,
+        /// The arm that claimed it first.
+        held_by: &'static str,
+        /// The arm that also tried to write it.
+        also: &'static str,
+    },
 }
 
 /// The crate's standard result type.
