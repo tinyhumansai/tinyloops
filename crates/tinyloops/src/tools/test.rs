@@ -27,7 +27,7 @@ struct FailingTool {
 }
 
 impl Tool for FailingTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "execute"
     }
 

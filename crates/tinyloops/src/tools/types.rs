@@ -161,7 +161,7 @@ impl ToolSchema {
                 required.retain(|value| {
                     value
                         .as_str()
-                        .is_none_or(|name| !injected.iter().any(|hidden| *hidden == name))
+                        .is_none_or(|name| !injected.contains(&name))
                 });
             }
         }

@@ -7,6 +7,7 @@
 
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
+use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
 
@@ -268,10 +269,11 @@ impl Snapshot {
             line.push_str(&self.changed.join(", "));
         }
         if self.changed_omitted > 0 {
-            line.push_str(&format!(
+            let _ = write!(
+                line,
                 " (+{} more — fetch the rest with `workspace.state()`)",
                 self.changed_omitted
-            ));
+            );
         }
         line
     }

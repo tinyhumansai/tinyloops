@@ -74,7 +74,7 @@ pub const MAX_REQUERIES: u32 = 3;
 /// more correct by being awaited.
 pub trait Tool: Send + Sync {
     /// The tool's canonical name.
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// The tool's declared schema, injected arguments included.
     fn schema(&self) -> ToolSchema;
@@ -126,7 +126,7 @@ impl std::fmt::Debug for dyn Tool {
 }
 
 impl Tool for Resilient {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         self.inner.name()
     }
 
@@ -399,7 +399,7 @@ const CORPUS: [(&str, &str); 3] = [
 struct ReadTool;
 
 impl Tool for ReadTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "read"
     }
 
@@ -422,7 +422,7 @@ impl Tool for ReadTool {
 struct SearchTool;
 
 impl Tool for SearchTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "search"
     }
 
@@ -449,7 +449,7 @@ impl Tool for SearchTool {
 struct EditTool;
 
 impl Tool for EditTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "edit"
     }
 
@@ -483,7 +483,7 @@ impl Tool for EditTool {
 struct ExecuteTool;
 
 impl Tool for ExecuteTool {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "execute"
     }
 
