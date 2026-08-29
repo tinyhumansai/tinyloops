@@ -216,10 +216,10 @@ impl Tuner for Rules {
         // the whole amendment budget at once.
         let change = Self::on_blocked(base)
             .or_else(|| Self::on_diversifying_badly(base))
-            .or_else(|| Self::on_silence(base));
+            .or_else(|| self.on_silence(base));
 
         Ok(change.map(|change| {
-            let because = Self::because(base, &change);
+            let because = self.because(base, &change);
             Amendment::new(Self::NAME, ctx.pass(), change, because)
         }))
     }
