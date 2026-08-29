@@ -930,10 +930,11 @@ fn a_secret_nested_in_an_array_or_an_object_is_masked_at_depth() {
 }
 
 #[test]
-fn an_event_that_cannot_be_serialized_is_dropped_rather_than_forwarded() {
+fn an_event_json_cannot_represent_is_dropped_rather_than_forwarded() {
     // A provider that reports a nonsense hit rate produces an event JSON has no
-    // number for. Forwarding the original would put the unredacted entry in the
-    // log, so it is dropped and counted instead.
+    // number for: it becomes `null`, which is not a hit rate on the way back.
+    // Forwarding the original would put the unredacted entry in the log, so it
+    // is dropped and counted instead.
     let collector = Arc::new(Collector::default());
     let redacting = RedactingSink::new(collector.clone(), vec![SECRET.to_string()]);
     let mut call = ModelCall::new("acme", "acme-small", "solver");
@@ -1010,10 +1011,4 @@ fn a_nonsense_node_duration_saturates_rather_than_panicking_the_run() {
         }
         other => panic!("expected a node finish, got {other:?}"),
     }
-}
-
-#[test]
-fn probe_nan() {
-    println!("to_string {:?}", serde_json::to_string(&f64::NAN));
-    println!("to_value {:?}", serde_json::to_value(f64::NAN));
 }
