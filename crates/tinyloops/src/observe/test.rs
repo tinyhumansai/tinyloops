@@ -806,3 +806,208 @@ fn only_the_spine_events_are_spine_events() {
         assert_eq!(event.is_spine(), expected, "{}", event.kind());
     }
 }
+
+#[test]
+fn a_redacting_sinks_debug_line_counts_its_secrets_without_naming_them() {
+    // A `Debug` line that printed the secrets would leak exactly what the sink
+    // exists to hide, so the count is the only thing rendered.
+    let collector = Arc::new(Collector::default());
+    let redacting = RedactingSink::new(
+        collector,
+        vec![SECRET.to_string(), "hunter2".to_string(), String::new()],
+    );
+
+    let rendered = format!("{redacting:?}");
+    assert!(!rendered.contains(SECRET), "{rendered}");
+    assert!(!rendered.contains("hunter2"), "{rendered}");
+    // The empty secret was dropped at construction, so two are held.
+    assert!(rendered.contains("secrets: 2"), "{rendered}");
+    assert!(rendered.contains("mask: \"[redacted]\""), "{rendered}");
+    assert!(rendered.contains("drops: 0"), "{rendered}");
+}
+
+#[test]
+fn a_sinks_debug_line_renders_the_counter_rather_than_the_writer() {
+    // A writer is not renderable; what a reader needs from a sink is how much
+    // it has lost.
+    let line = LineSink::new(Buffer::default());
+    let jsonl = JsonlSink::new(Buffer::default());
+    let fan = FanOutSink::new().with(Arc::new(Collector::default()));
+
+    assert!(format!("{line:?}").contains("LineSink { drops: 0"));
+    assert!(format!("{jsonl:?}").contains("JsonlSink { drops: 0"));
+    assert_eq!(format!("{fan:?}"), "FanOutSink { sinks: 1 }");
+}
+
+#[test]
+fn a_recorders_debug_line_names_its_view_and_how_much_it_has_journalled() {
+    let (recorder, _) = recorder(Capture::default());
+    recorder.record(Event::PassStarted { pass: 1 });
+    let judge = recorder.child("judge");
+    judge.record(Event::StepEntered {
+        pass: 1,
+        step: "read-report".to_string(),
+    });
+
+    // Both views render the same journal length, because there is one journal.
+    let rendered = format!("{judge:?}");
+    assert!(rendered.contains("who: \"judge\""), "{rendered}");
+    assert!(rendered.contains("entries: 2"), "{rendered}");
+    assert!(rendered.contains("model_io: false"), "{rendered}");
+    assert!(format!("{recorder:?}").contains("entries: 2"));
+}
+
+#[test]
+fn a_stdout_line_sink_starts_with_nothing_dropped() {
+    // Constructed, not written to: a test that wrote here would pollute the
+    // test runner's own output.
+    let sink = LineSink::stdout();
+    assert_eq!(sink.drops(), 0);
+}
+
+#[test]
+fn a_tool_call_that_timed_out_says_so_on_its_line() {
+    let mut call = ToolCall::new("shell", "solver");
+    call.duration = Duration::from_millis(30);
+    call.timed_out = true;
+
+    assert_eq!(
+        render(&Event::ToolCalled { pass: 4, call }),
+        "pass 4 tool shell for solver took 30ms (timed out)",
+    );
+}
+
+#[test]
+fn an_errored_node_says_so_on_its_line() {
+    let line = render(&Event::NodeFinished {
+        pass: 4,
+        node: "solve".to_string(),
+        duration: Duration::from_millis(12),
+        ok: false,
+    });
+
+    assert_eq!(line, "pass 4 node solve finished in 12ms (error)");
+    assert!(
+        render(&Event::NodeEntered {
+            pass: 4,
+            node: "solve".to_string(),
+        })
+        .ends_with("node solve entered")
+    );
+}
+
+#[test]
+fn a_secret_nested_in_an_array_or_an_object_is_masked_at_depth() {
+    // Redaction is generic rather than field-aware, which is only true if it
+    // recurses: a secret in a `Vec` field is as much a leak as one at the top.
+    let collector = Arc::new(Collector::default());
+    let redacting = RedactingSink::new(collector.clone(), vec![SECRET.to_string()]);
+
+    redacting.emit(&Event::EngineRunFinished {
+        pass: 1,
+        run: "run-1".to_string(),
+        steps: 2,
+        failed: vec![format!("node-holding-{SECRET}")],
+    });
+    let mut call = ModelCall::new("acme", "acme-small", "judge");
+    call.prompt = Some(format!("use {SECRET}"));
+    redacting.emit(&Event::ModelCalled { pass: 1, call });
+
+    let events = collector.events();
+    match &events[0] {
+        Event::EngineRunFinished { failed, .. } => {
+            assert_eq!(failed, &vec!["node-holding-[redacted]".to_string()]);
+        }
+        other => panic!("expected an engine run finish, got {other:?}"),
+    }
+    match &events[1] {
+        Event::ModelCalled { call, .. } => {
+            assert_eq!(call.prompt.as_deref(), Some("use [redacted]"));
+        }
+        other => panic!("expected a model call, got {other:?}"),
+    }
+    assert_eq!(redacting.drops(), 0);
+}
+
+#[test]
+fn an_event_that_cannot_be_serialized_is_dropped_rather_than_forwarded() {
+    // A provider that reports a nonsense hit rate produces an event JSON has no
+    // number for. Forwarding the original would put the unredacted entry in the
+    // log, so it is dropped and counted instead.
+    let collector = Arc::new(Collector::default());
+    let redacting = RedactingSink::new(collector.clone(), vec![SECRET.to_string()]);
+    let mut call = ModelCall::new("acme", "acme-small", "solver");
+    call.cache_hit_rate = f64::NAN;
+
+    redacting.emit(&Event::ModelCalled { pass: 1, call });
+
+    assert!(collector.events().is_empty());
+    assert_eq!(redacting.drops(), 1);
+}
+
+#[test]
+fn an_event_a_mask_makes_undeserializable_is_dropped_rather_than_forwarded() {
+    // A mask wide enough to hit a variant name breaks the event on the way
+    // back. The one entry whose redaction failed must not be the one entry that
+    // reaches the log verbatim.
+    let collector = Arc::new(Collector::default());
+    let redacting = RedactingSink::with_mask(
+        collector.clone(),
+        vec!["success".to_string()],
+        "not-an-outcome",
+    );
+
+    redacting.emit(&Event::LoopFinished {
+        pass: 1,
+        outcome: Outcome::Success,
+    });
+
+    assert!(collector.events().is_empty());
+    assert_eq!(redacting.drops(), 1);
+}
+
+#[test]
+fn a_node_the_engine_reports_as_successful_is_journalled_as_ok() {
+    let (recorder, _) = recorder(Capture::default());
+    recorder.record(Event::PassStarted { pass: 5 });
+    recorder.on_step_finish(&ExecutionStep {
+        node_id: "solve".to_string(),
+        status: StepStatus::Success,
+        duration_ms: 8,
+        ..ExecutionStep::default()
+    });
+
+    match &recorder.journal()[1].event {
+        Event::NodeFinished {
+            pass,
+            node,
+            duration,
+            ok,
+        } => {
+            assert_eq!(*pass, 5);
+            assert_eq!(node, "solve");
+            assert_eq!(*duration, Duration::from_millis(8));
+            assert!(ok, "a successful step must report ok");
+        }
+        other => panic!("expected a node finish, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_nonsense_node_duration_saturates_rather_than_panicking_the_run() {
+    // The engine reports milliseconds as a `u128`; an observability call may
+    // not panic on one that does not fit.
+    let (recorder, _) = recorder(Capture::default());
+    recorder.on_step_finish(&ExecutionStep {
+        node_id: "solve".to_string(),
+        duration_ms: u128::MAX,
+        ..ExecutionStep::default()
+    });
+
+    match &recorder.journal()[0].event {
+        Event::NodeFinished { duration, .. } => {
+            assert_eq!(*duration, Duration::from_millis(u64::MAX));
+        }
+        other => panic!("expected a node finish, got {other:?}"),
+    }
+}
