@@ -187,11 +187,6 @@ impl ToolInvoker for Steps {
     }
 }
 
-/// A `RunObserver` that watches nothing; every callback has a default.
-struct Silent;
-
-impl RunObserver for Silent {}
-
 /// Runs `graph` with one set of capabilities, optionally under `interceptor`.
 async fn run(
     graph: &WorkflowGraph,

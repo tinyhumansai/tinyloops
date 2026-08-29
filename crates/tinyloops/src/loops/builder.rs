@@ -433,7 +433,15 @@ impl LoopBuilder {
                     // wrong by one and nothing reports it, while assigning the
                     // count the pass computed is right however many times it
                     // lands.
-                    "update": payload_address(ids.pass),
+                    //
+                    // The alternative after `//` is never taken at run time —
+                    // the head folds only on re-entry, by which point `pass`
+                    // has run. It is there because a trace resolves a node's
+                    // *whole* config on every activation, so the seeding
+                    // activation would otherwise record a null binding on an
+                    // expression it did not use, and a real null binding is
+                    // then one report among the noise.
+                    "update": fold_address(ids.pass, ids.research),
                 },
             }),
             ports: vec![port("body"), port("done")],
@@ -470,6 +478,19 @@ impl LoopBuilder {
         let body = rendered.strip_prefix('=').unwrap_or(&rendered);
         format!("={{ item: .item.json }} | ({body})")
     }
+}
+
+/// The head's fold expression: the state `pass` returned, or the seed.
+///
+/// Bracketed rather than dotted because this one has to be a jq program — a
+/// simple dotted path has no alternative operator — and bare jq would read a
+/// hyphen in a node id as subtraction.
+fn fold_address(pass: &str, seed: &str) -> String {
+    format!(
+        "=.nodes[{pass}].item.json // .nodes[{seed}].item.json",
+        pass = json!(pass),
+        seed = json!(seed),
+    )
 }
 
 /// One `main`-to-`main` edge.
