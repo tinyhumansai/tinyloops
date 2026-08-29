@@ -1,4 +1,4 @@
-//! TinyLoops: a loop engineering framework.
+//! `TinyLoops`: a loop engineering framework.
 //!
 //! The scaffolding for building agentic loops that run a workflow, judge what
 //! came back, and decide whether to go round again. The pieces it is assembled

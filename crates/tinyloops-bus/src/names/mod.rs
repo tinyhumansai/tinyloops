@@ -1,4 +1,4 @@
-//! The bus identity of the TinyLoops module: interface name, object path, and
+//! The bus identity of the `TinyLoops` module: interface name, object path, and
 //! one constant per member.
 //!
 //! Nothing here is a string literal at a call site. A host names a member
