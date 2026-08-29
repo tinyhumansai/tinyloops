@@ -339,17 +339,17 @@ impl Outcome {
     /// let mut state = LoopState::new("goal");
     /// state.solved = true;
     /// state.banked = 1;
-    /// assert_eq!(Outcome::success(&state, &Thresholds::default())?, Outcome::Success);
+    /// assert_eq!(Outcome::success(&state)?, Outcome::Success);
     ///
     /// state.expired = true;
     /// assert_eq!(
-    ///     Outcome::success(&state, &Thresholds::default()).unwrap_err(),
+    ///     Outcome::success(&state).unwrap_err(),
     ///     Error::UnearnedSuccess,
     /// );
     /// # Ok::<(), tinyloops::Error>(())
     /// ```
-    pub fn success(state: &LoopState, thresholds: &Thresholds) -> Result<Self> {
-        match Self::classify(state, thresholds) {
+    pub fn success(state: &LoopState) -> Result<Self> {
+        match Self::classify(state) {
             Self::Success => Ok(Self::Success),
             _ => Err(Error::UnearnedSuccess),
         }

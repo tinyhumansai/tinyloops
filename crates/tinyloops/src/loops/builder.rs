@@ -446,7 +446,7 @@ impl LoopBuilder {
                 // still has to reach `stand_down` and `report`, and a run that
                 // failed at the head reports nothing about why it stopped.
                 "on_exceeded": "continue",
-                "until": self.termination.expression(&self.thresholds),
+                "until": self.termination.expression(),
                 "emit": "state",
                 "state": {
                     "init": payload_address(ids.research),
@@ -497,7 +497,7 @@ impl LoopBuilder {
     /// is typed here, and the program the graph runs is the program
     /// `src/policy/` generates.
     fn routing_expression(&self) -> String {
-        let rendered = ladder(&self.thresholds);
+        let rendered = ladder();
         let body = rendered.strip_prefix('=').unwrap_or(&rendered);
         format!("={{ item: .item.json }} | ({body})")
     }

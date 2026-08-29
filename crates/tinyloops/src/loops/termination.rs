@@ -132,13 +132,13 @@ impl TerminationCondition {
     }
 
     /// Whether the rule holds for `state`, ignoring the latch.
-    fn holds(&self, state: &LoopState, thresholds: &Thresholds) -> bool {
+    fn holds(&self, state: &LoopState) -> bool {
         match &self.rule {
-            Rule::Terminal => is_terminal(state, thresholds),
+            Rule::Terminal => is_terminal(state),
             Rule::Expired => state.expired,
             Rule::Solved => state.solved,
-            Rule::All(inner) => inner.iter().all(|c| c.holds(state, thresholds)),
-            Rule::Any(inner) => inner.iter().any(|c| c.holds(state, thresholds)),
+            Rule::All(inner) => inner.iter().all(|c| c.holds(state)),
+            Rule::Any(inner) => inner.iter().any(|c| c.holds(state)),
         }
     }
 
@@ -151,14 +151,14 @@ impl TerminationCondition {
     /// The reported outcome is always [`Outcome::classify`], never a value the
     /// caller chose: that is where "an error or an exhausted budget is never
     /// [`Outcome::Success`]" is enforced.
-    pub fn evaluate(&mut self, state: &LoopState, thresholds: &Thresholds) -> Option<Outcome> {
+    pub fn evaluate(&mut self, state: &LoopState) -> Option<Outcome> {
         if let Some(outcome) = self.fired {
             return Some(outcome);
         }
-        if !self.holds(state, thresholds) {
+        if !self.holds(state) {
             return None;
         }
-        let outcome = Outcome::classify(state, thresholds);
+        let outcome = Outcome::classify(state);
         self.fired = Some(outcome);
         Some(outcome)
     }

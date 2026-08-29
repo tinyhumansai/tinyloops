@@ -385,7 +385,7 @@ impl Step for Attempt {
         // Drained first, so a directive posted since the last pass shapes this
         // pass's briefs rather than the next one's.
         let directives = self.mailbox.collect();
-        let route = crate::policy::route(&state, ctx.thresholds());
+        let route = crate::policy::route(&state);
         let briefs = self.briefs(&state, route, &directives);
 
         for (_, brief) in &briefs {
