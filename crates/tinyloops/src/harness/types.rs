@@ -507,7 +507,10 @@ impl std::fmt::Debug for SinkDrops {
         // A sink is not renderable and `DropObserver` requires `Debug`, so what
         // is rendered is the pass a drop would be attributed to.
         f.debug_struct("SinkDrops")
-            .field("pass", &self.pass.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "pass",
+                &self.pass.load(std::sync::atomic::Ordering::Relaxed),
+            )
             .finish_non_exhaustive()
     }
 }

@@ -517,11 +517,10 @@ fn port(name: &str) -> Port {
 /// drain `attempt` performs, the salvage of an attempt its own cap killed, and
 /// the arms opened beside the loop at a node a checkpoint can land on.
 fn tool_call(id: &str, step: &str, args: Value) -> Node {
-    let mut merged = json!({ "step": step });
-    if let (Some(target), Some(extra)) = (merged.as_object_mut(), args.as_object()) {
-        for (key, value) in extra {
-            target.insert(key.clone(), value.clone());
-        }
+    let mut merged = serde_json::Map::new();
+    merged.insert("step".to_string(), Value::String(step.to_string()));
+    if let Value::Object(extra) = args {
+        merged.extend(extra);
     }
     Node {
         id: id.to_string(),
@@ -534,7 +533,7 @@ fn tool_call(id: &str, step: &str, args: Value) -> Node {
             // items would otherwise run its step once per item and fold the
             // last one, which is a fan-out nobody asked for.
             "execution": "once",
-            "args": merged,
+            "args": Value::Object(merged),
         }),
         ports: Vec::new(),
         position: None,
