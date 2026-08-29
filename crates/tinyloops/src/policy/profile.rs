@@ -30,8 +30,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Amendment, Bounds, Muted, Recorded, Thresholds, Verdict};
-use crate::budget::Caps;
+use super::{Amendment, Bounds, Change, Muted, Recorded, Thresholds, Verdict};
+use crate::budget::{Caps, RunBudget};
 use crate::presets::Preset;
 
 /// The configuration a run is operating under.
