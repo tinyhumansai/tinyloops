@@ -126,12 +126,12 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
    criterion that an unknown step name does not advance the run — a no-op there
    is the failure `assert_no_null_bindings` catches one layer too late.
 2. Implement `LoopStepInvoker`, a `tinyflows::caps::ToolInvoker`
-   (`vendor/tinyflows/src/caps/mod.rs:137`): `async fn invoke(&self, slug:
-   &str, args: Value, conn: Option<&str>)`. `slug` must equal `RUN_LOOP_STEP`
-   (`"run_loop_step"`), `args.step` names the step, `args.input` is the node's
-   item. Every rejection maps to `EngineError::Capability` carrying this
-   crate's `Error` display text. Export `RUN_LOOP_STEP`, `Step`, `StepCtx`,
-   `StepRegistry`, and `LoopStepInvoker` from `src/lib.rs`.
+   (`vendor/tinyflows/src/caps/mod.rs:137`). Its `invoke` requires `slug ==
+   RUN_LOOP_STEP` (`"run_loop_step"`), reads the step name from `args.step` and
+   the node's item from `args.input`, and maps every rejection to
+   `EngineError::Capability` carrying this crate's `Error` display text. Export
+   `RUN_LOOP_STEP`, `Step`, `StepCtx`, `StepRegistry`, and `LoopStepInvoker`
+   from `src/lib.rs`.
 
 ## Task A4: the arm context does not compile against the accumulator
 
