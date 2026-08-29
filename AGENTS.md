@@ -63,7 +63,9 @@ crates/
     │       └── test.rs       # module-local unit tests
     ├── tests/          # integration tests against the public API only
     └── examples/       # runnable, compiled-in-CI usage examples
-vendor/tinybus/         # pinned TinyBus host types and module SDK
+vendor/
+├── tinybus/         # pinned TinyBus host types and module SDK
+└── tinyflows/       # pinned workflow engine and its adaptive loop
 docs/
 ├── specs/              # behavior and architecture specifications
 ├── plans/              # test-first implementation plans
@@ -196,18 +198,27 @@ releases are reproducible.
 
 ### Vendored dependencies
 
-TinyBus is registered as the `vendor/tinybus` git submodule and pinned by its
-gitlink. It supplies the host types and module-side SDK required to build this
-crate's `cdylib`. Initialize it after cloning with:
+Two dependencies are vendored as git submodules, each pinned by its gitlink.
+
+- `vendor/tinybus` supplies the host types and module-side SDK required to
+  build this crate's `cdylib`.
+- `vendor/tinyflows` supplies the workflow engine this project's loop framework
+  is built on, plus `crates/adaptive`, the loop that runs beside it. The engine
+  is host-agnostic: every effect — LLMs, tools, HTTP, code execution,
+  persistence — goes through a capability trait the embedder implements, so
+  this repository provides the implementations rather than the engine choosing
+  a vendor.
+
+Initialize both after cloning with:
 
 ```sh
 git submodule update --init --recursive
 ```
 
-Do not edit vendored code from the parent repository. Make TinyBus changes in
-its own repository, push them there, then update this repository's gitlink in a
-separate commit. Keep the exact path dependencies and minimal features unless a
-new module capability requires more.
+Do not edit vendored code from the parent repository. Make a change in the
+submodule's own repository, push it there, then update this repository's
+gitlink in a separate commit. Keep the exact path dependencies and minimal
+features unless a new capability requires more.
 
 ## Testing
 
