@@ -280,17 +280,26 @@ a cheap belt to the braces, and does not replace the law.
 ### 9. A checkpoint carries the graph's signature
 
 Every checkpoint records a signature hash over the emitted graph — node ids,
-kinds, ports, edges, and every rendered threshold. Resume verifies the signature
-and refuses a mismatch with a named error. Node and executor identity is
-**declared** — a stable id chosen by the builder — never derived from allocation
-or insertion order.
+kinds, ports, edges, and each node's config, addressing included. Resume
+verifies the signature and refuses a mismatch with a named error. Node and
+executor identity is **declared** — a stable id chosen by the builder — never
+derived from allocation or insertion order.
 
-*Why.* The graph is generated *from* the thresholds, so changing a constant
-changes the topology. Resuming a checkpoint taken against the old topology onto
-the new one restores state into slots that no longer mean what they meant, which
-is silent corruption rather than a crash. Identity derived from allocation order
-has the same failure in miniature: adding a node renumbers its neighbours and a
-resumed run replays the wrong step.
+*Amended by [ADR 0006](../adr/0006-thresholds-addressed-from-run-state.md).*
+As originally written, this invariant hashed "every rendered threshold",
+because the graph was generated *from* the thresholds and a changed constant
+was a changed topology. Under invariant 7 as amended, no threshold is
+rendered into the graph at all, so there is no rendered value left to hash —
+the addressing is what the signature now covers, and it does not move when a
+run revises its own thresholds (see [`adaptation.md`](adaptation.md)
+invariant 1).
+
+*Why.* A checkpoint resumed onto a graph whose *shape* changed restores state
+into slots that no longer mean what they meant, which is silent corruption
+rather than a crash. Identity derived from allocation order has the same
+failure in miniature: adding a node renumbers its neighbours and a resumed
+run replays the wrong step. Neither failure is about a threshold's value, so
+neither is lost by no longer hashing one.
 
 ### 10. Termination is a composable condition
 
