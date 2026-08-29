@@ -415,7 +415,6 @@ impl AssembledLoop {
         self.registry.run_with(
             STEP_MERGE,
             state.clone(),
-            &self.thresholds,
             &json!({ "arms": Value::Object(returned) }),
         )
     }
