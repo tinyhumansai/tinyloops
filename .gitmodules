@@ -6,3 +6,7 @@
 	path = vendor/tinyflows
 	url = https://github.com/tinyhumansai/tinyflows
 	branch = main
+[submodule "vendor/tinyagents"]
+	path = vendor/tinyagents
+	url = https://github.com/tinyhumansai/tinyagents
+	branch = main
