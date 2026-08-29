@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
+use crate::policy::Amendment;
 use crate::state::{Contribution, LoopState};
 use crate::step::{NoWrite, StepContext};
 use crate::{Error, Result};

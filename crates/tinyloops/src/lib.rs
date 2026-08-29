@@ -116,7 +116,7 @@ pub use memory::{
 // The loop body: the arms a pass fans out to, and the closed set of steps their
 // nodes are. `arm` owns the one list both arm edge sets are derived from and the
 // merge that folds them; `step` owns the single tool a node body is.
-pub use arm::{Arm, ArmOutcome, ArmSet, Edge, upstream_address};
+pub use arm::{Arm, ArmOutcome, ArmSet, Edge, Tuner, TunerArm, upstream_address};
 // The graph the loop is: one builder emitting one `WorkflowGraph`, the
 // signature a checkpoint carries so a changed topology refuses a resume rather
 // than corrupting one, and the composable condition that says when — and why —

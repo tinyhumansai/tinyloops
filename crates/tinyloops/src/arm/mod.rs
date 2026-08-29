@@ -55,7 +55,7 @@
 
 mod types;
 
-pub use types::{Arm, ArmOutcome, ArmSet, Edge};
+pub use types::{Arm, ArmOutcome, ArmSet, Edge, Tuner, TunerArm};
 
 use crate::state::LoopState;
 use crate::{Error, Result};
