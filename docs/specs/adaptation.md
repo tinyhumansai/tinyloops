@@ -211,16 +211,30 @@ longer names anything, since invariant 7 stops rendering one, so
 
 ### 2. One proposer, and the head is still the only writer
 
-An amendment travels as a `Contribution` slot owned by exactly one arm, folded
-by `LoopState::merge` under the exclusive-ownership law. The loop head remains
-the accumulator's sole writer. A step context that is not the tuner's has no
-slot that reaches the profile, so a second proposer does not compile.
+This is a guarantee about **arms**. An amendment travels as a `Contribution`
+slot owned by exactly one arm, folded by `LoopState::merge` under the
+exclusive-ownership law. An arm's `StepContext` that is not the tuner's has no
+slot that reaches the profile, so a second arm proposing does not compile.
 
 *Why.* This is invariant 1 and the narrative merge law applied to the field
 where a silent last-writer-wins would be least detectable. Two arms proposing
 different `stuck` values have no correct resolution, and picking one is arrival
 order wearing a merge's clothes — the exact failure `Contribution` exists to
 refuse.
+
+**This does not bound a `Step`.** A `Step` — the closed, graph-named kernel set
+`plan`/`attempt`/`pass`/`report`/etc. — is handed the whole `LoopState` by
+value and returns the whole state back; that is [`loop-kernel.md`](loop-kernel.md)
+invariant 1's "state crosses whole", the same mechanism that lets `pass` itself
+fold an amendment. `profile` is a plain public field of that state, exactly
+like `attempts` or `board`, so a step an embedder registers in place of a
+shipped one can rewrite it directly and skip `Bounds` entirely — the same trust
+an embedder already extends a custom step over every other field. `Bounds`
+constrains what an **arm** may propose through the one slot that reaches the
+profile; it says nothing about a step body the embedder chose to run in the
+kernel's own seat. A deployment that does not trust its own step
+implementations has a step-authoring problem `Bounds` was never scoped to
+solve.
 
 ### 3. Amendments are closed, bounded per field, and budgeted per run
 
