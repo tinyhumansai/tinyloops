@@ -37,6 +37,25 @@ group:** T1 and T2 are independent files; F1 depends on all of T and B.
 Every task ends with `cargo test -p tinyloops <module>` and
 `cargo clippy --all-targets --all-features -- -D warnings`.
 
+## Deviations this plan made, deliberately
+
+Three, recorded here rather than left for a reader to notice.
+
+**E2 landed as an assertion, not a coupling.** See the task itself.
+
+**Refusals are kept in the profile, not only in the event stream.**
+`LoopProfile::history` holds a `Recorded` — the amendment and its `Verdict` —
+rather than only the amendments that landed. That is what lets both drivers emit
+`Amended` and `AmendmentRefused` by walking one list, it survives a checkpoint
+with the rest of the state where an event stream does not, and it is what the
+report renders.
+
+**`drive` now runs the `pass` step instead of re-implementing part of it.** It
+was inlining the pass counter and skipping the steer clear, so the in-process
+driver and the graph had already diverged by one field before this plan touched
+them. Running the registered step is what makes the fold reachable from both,
+and closes the divergence.
+
 ## Task T1: what a proposal is
 
 **Files:** `crates/tinyloops/src/policy/amendment.rs` (new),
@@ -257,17 +276,20 @@ Every task ends with `cargo test -p tinyloops <module>` and
    as configured; the refusals matter as much as the acceptances, because forty
    refused proposals is a broken tuner reporting nothing.
 
-## Task E2: the head's ceiling follows the bounds
+## Task E2: a raised attempt ceiling has to buy passes
 
-**Files:** `crates/tinyloops/src/loops/builder.rs`, `src/loops/test.rs`
+**Files:** `crates/tinyloops/src/policy/test.rs`, `src/presets/test.rs`
 
 1. Failing test: `a_raised_attempt_ceiling_buys_passes` — a run whose
    `max_attempts` is amended upward actually gets the extra passes.
-2. The head's `max_iterations` reads the bounds' `max_attempts` ceiling rather
-   than the budget's cap where the bound is the larger of the two. Left alone,
-   an amendment raising `max_attempts` folds, the profile says twelve, and the
-   head still stops at the number it was built with — inert, and silent about
-   it.
+2. **Landed differently from this task's original wording, deliberately.** The
+   plan said the head's `max_iterations` should read the bounds' ceiling. Doing
+   that would put the preset's configuration back into the emitted graph and
+   undo [`adaptation.md`](adaptation.md)'s whole point, so the head keeps the
+   budget's runaway backstop and the constraint moves to the other side: no
+   preset's bounds may raise `max_attempts` past it. Asserted in
+   `every_preset_states_its_bounds_and_none_of_them_permits_everything`. Same
+   guarantee against the silent-inert amendment, no coupling restored.
 
 ## Task D1: the run's output
 
