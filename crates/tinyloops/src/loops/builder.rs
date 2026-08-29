@@ -233,7 +233,7 @@ impl LoopBuilder {
         // The body's first node. At `Assisted` an approval sits in front of the
         // attempt, so the topology says what may happen without asking — a
         // prompt instruction is not a control.
-        let body_entry = if self.autonomy == Autonomy::Assisted {
+        if self.autonomy == Autonomy::Assisted {
             nodes.push(approval(ids.approval));
             edges.push(GraphEdge {
                 from_node: ids.loop_head.to_string(),
@@ -255,7 +255,6 @@ impl LoopBuilder {
                 to_node: ids.pass.to_string(),
                 to_port: "main".to_string(),
             });
-            ids.approval
         } else {
             edges.push(GraphEdge {
                 from_node: ids.loop_head.to_string(),
@@ -263,9 +262,7 @@ impl LoopBuilder {
                 to_node: ids.attempt.to_string(),
                 to_port: "main".to_string(),
             });
-            ids.attempt
-        };
-        let _ = body_entry;
+        }
 
         // The attempt reads the accumulator the head folded at the top of this
         // pass, so it is current. An *arm* may not: the head folds at the top,
