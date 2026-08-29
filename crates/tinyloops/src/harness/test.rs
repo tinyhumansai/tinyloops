@@ -690,7 +690,7 @@ fn a_dropped_note_reaches_the_runs_own_event_stream() {
     let drops = Arc::new(SinkDrops::new(Arc::clone(&collector) as Arc<dyn crate::Sink>));
     drops.at_pass(4);
 
-    let mailbox = Mailbox::new(1).observed_by(Arc::clone(&drops) as Arc<dyn DropObserver>);
+    let mailbox = Mailbox::observed(1, Arc::clone(&drops) as Arc<dyn DropObserver>);
     assert!(mailbox.post(Note::new("librarian", "kept")).is_accepted());
     assert!(!mailbox.post(Note::new("librarian", "lost")).is_accepted());
 
