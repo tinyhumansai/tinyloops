@@ -279,17 +279,15 @@ fn claim<T>(
     let Some(value) = value else {
         return Ok(());
     };
-    match slot {
-        Some((held_by, _)) => Err(crate::Error::ContestedField {
+    if let Some((held_by, _)) = slot {
+        return Err(crate::Error::ContestedField {
             field,
             held_by,
             also: arm,
-        }),
-        None => {
-            *slot = Some((arm, value));
-            Ok(())
-        }
+        });
     }
+    *slot = Some((arm, value));
+    Ok(())
 }
 
 #[cfg(test)]
