@@ -13,7 +13,10 @@ use std::sync::Arc;
 
 use serde_json::{Value, json};
 
-use super::{AssembledLoop, Judge, Preset, Reflect, SOLVED_MARKER, research_loop};
+use super::{
+    AssembledLoop, Judge, Preset, Reflect, Rules, SOLVED_MARKER, research_loop,
+    tuned_research_loop,
+};
 use crate::arm::{Arm, ArmSet};
 use crate::budget::{Bound, Caps, RunBudget};
 use crate::error::Error;
