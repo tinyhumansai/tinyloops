@@ -26,8 +26,9 @@ code:
   writes down and where
 - [`budget.md`](docs/specs/budget.md) — the limits every run carries
 - [`observability.md`](docs/specs/observability.md) — the events a run emits
-- [`prior-art.md`](docs/specs/prior-art.md) — what this borrows from, and what it
-  deliberately does not
+- [`prior-art.md`](docs/specs/prior-art.md) — the evidence each default rests
+  on, what the record contradicts, and what it does not settle; its sources are
+  in [`prior-art-bibliography.md`](docs/specs/prior-art-bibliography.md)
 
 ## Project Structure
 
