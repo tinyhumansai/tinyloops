@@ -36,9 +36,7 @@ use crate::orchestrate::{
 };
 use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
 use crate::state::LoopState;
-use crate::step::{
-    STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepContext, StepRegistry,
-};
+use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepContext, StepRegistry};
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
@@ -227,8 +225,8 @@ impl AssembledLoop {
             state = self.run_step(STEP_PLAN, state, pass, recorder)?;
             state = self.run_step(STEP_ATTEMPT, state, pass, recorder)?;
 
-            let report: Value = serde_json::from_str(&state.last_attempt)
-                .map_err(|_| Error::StateEncoding)?;
+            let report: Value =
+                serde_json::from_str(&state.last_attempt).map_err(|_| Error::StateEncoding)?;
             state = self.evaluate(state, &report, pass, recorder)?;
 
             let chosen = route(&state, &self.thresholds);

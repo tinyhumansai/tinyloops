@@ -70,9 +70,7 @@ impl FixedPlan {
         Self {
             tasks: tasks
                 .into_iter()
-                .map(|(id, statement, criterion)| {
-                    (id.into(), statement.into(), criterion.into())
-                })
+                .map(|(id, statement, criterion)| (id.into(), statement.into(), criterion.into()))
                 .collect(),
         }
     }
@@ -310,7 +308,12 @@ impl Attempt {
     /// and so the diversify rule is checkable rather than inferred from an
     /// outcome.
     #[must_use]
-    pub fn briefs(&self, state: &LoopState, route: Route, directives: &[Note]) -> Vec<(String, Brief)> {
+    pub fn briefs(
+        &self,
+        state: &LoopState,
+        route: Route,
+        directives: &[Note],
+    ) -> Vec<(String, Brief)> {
         let context = Self::context(state, directives);
         let outstanding: Vec<&Task> = state.board.outstanding();
         let delegates: Vec<&str> = self.orchestrator.delegates().names().collect();
@@ -428,7 +431,8 @@ impl Step for Attempt {
         } else {
             state.unproductive = state.unproductive.saturating_add(1);
         }
-        state.last_attempt = serde_json::to_string(&report).map_err(|_| crate::Error::StateEncoding)?;
+        state.last_attempt =
+            serde_json::to_string(&report).map_err(|_| crate::Error::StateEncoding)?;
 
         Ok(ctx.advance(state))
     }

@@ -211,13 +211,15 @@ impl Arm for Judge {
         // approach problem rather than a briefing one.
         if base.unproductive.saturating_add(1) >= base.restarts.saturating_add(2) {
             outcome.contribution.judged = Some(Judgement::Restart);
-            outcome.contribution.steer =
-                Some("repeated passes returned nothing; begin from a different approach".to_owned());
+            outcome.contribution.steer = Some(
+                "repeated passes returned nothing; begin from a different approach".to_owned(),
+            );
         } else {
             outcome.contribution.judged = Some(Judgement::Steer);
-            outcome.contribution.steer =
-                Some("the pass returned nothing; narrow the brief and name the evidence wanted"
-                    .to_owned());
+            outcome.contribution.steer = Some(
+                "the pass returned nothing; narrow the brief and name the evidence wanted"
+                    .to_owned(),
+            );
         }
         Ok(outcome)
     }

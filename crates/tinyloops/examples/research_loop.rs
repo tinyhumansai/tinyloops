@@ -21,8 +21,8 @@
 use std::sync::Arc;
 
 use tinyloops::{
-    Artifact, DelegateSet, Driven, Error, FixedPlan, Inline, LineSink, Preset, Recorder, SOLVED_MARKER,
-    Scripted, research_loop,
+    Artifact, DelegateSet, Driven, Error, FixedPlan, Inline, LineSink, Preset, Recorder,
+    SOLVED_MARKER, Scripted, research_loop,
 };
 
 fn main() -> Result<(), Error> {

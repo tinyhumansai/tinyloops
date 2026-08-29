@@ -59,7 +59,10 @@ fn reusing_an_id_for_a_different_task_is_an_error() {
 
     assert!(matches!(clash, Err(Error::DuplicateTask { ref id }) if id == "one"));
     // And the original survives rather than being half-replaced.
-    assert_eq!(board.find(&id("one")).expect("still there").statement, "first");
+    assert_eq!(
+        board.find(&id("one")).expect("still there").statement,
+        "first"
+    );
 }
 
 #[test]
@@ -70,7 +73,12 @@ fn restating_keeps_the_id_and_moves_the_pass() {
         .expect("the add succeeds");
 
     board
-        .restate(&id("one"), "first, more precisely", "a tighter criterion", 4)
+        .restate(
+            &id("one"),
+            "first, more precisely",
+            "a tighter criterion",
+            4,
+        )
         .expect("the restatement succeeds");
 
     let task = board.find(&id("one")).expect("still there");
@@ -187,7 +195,9 @@ fn the_fold_carries_the_board_and_the_answer_through_untouched() {
     // Sole authorship, structurally: no delta and no contribution has a slot
     // that reaches either field, so no arm can write one however it is wired.
     let mut base = LoopState::new("goal");
-    base.board.add(Task::new(id("one"), "first", "c", 0)).expect("added");
+    base.board
+        .add(Task::new(id("one"), "first", "c", 0))
+        .expect("added");
     base.answer = "the run's account".to_owned();
 
     let mut arm = base.clone();
@@ -205,7 +215,10 @@ fn the_fold_carries_the_board_and_the_answer_through_untouched() {
 // -------------------------------------------------------- the registration
 
 fn read_only() -> Result<Orchestrator, Error> {
-    Orchestrator::new(ToolGrant::read_only(), DelegateSet::of(["prover", "refuter"]))
+    Orchestrator::new(
+        ToolGrant::read_only(),
+        DelegateSet::of(["prover", "refuter"]),
+    )
 }
 
 #[test]
@@ -293,8 +306,9 @@ fn it_does_not_fall_back_to_the_host_registry() {
     declare(&mut registry, "wildcard");
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), DelegateSet::of(["prover"]))
         .expect("a legal registration");
-    let delegate = crate::harness::ScriptedDelegate::new(registry, tinyflows::caps::mock::mock_capabilities())
-        .scripting("wildcard", vec![answers("I was reachable")]);
+    let delegate =
+        crate::harness::ScriptedDelegate::new(registry, tinyflows::caps::mock::mock_capabilities())
+            .scripting("wildcard", vec![answers("I was reachable")]);
 
     let refused = orchestrator.spawn(&delegate, "wildcard", Brief::new("do a thing"));
 
@@ -337,8 +351,9 @@ fn a_declared_delegate_reaches_the_harness() {
     declare(&mut registry, "prover");
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), DelegateSet::of(["prover"]))
         .expect("a legal registration");
-    let delegate = crate::harness::ScriptedDelegate::new(registry, tinyflows::caps::mock::mock_capabilities())
-        .scripting("prover", vec![answers("proved")]);
+    let delegate =
+        crate::harness::ScriptedDelegate::new(registry, tinyflows::caps::mock::mock_capabilities())
+            .scripting("prover", vec![answers("proved")]);
 
     let ticket = orchestrator
         .spawn(&delegate, "prover", Brief::new("prove it"))
@@ -450,8 +465,8 @@ fn declare(registry: &mut RoleRegistry, name: &str) {
 
 fn attempt_over(script: Vec<(String, Vec<Scripted>)>, delegates: &[&str]) -> Attempt {
     let set = DelegateSet::of(delegates.iter().copied());
-    let orchestrator = Orchestrator::new(ToolGrant::read_only(), set.clone())
-        .expect("a legal registration");
+    let orchestrator =
+        Orchestrator::new(ToolGrant::read_only(), set.clone()).expect("a legal registration");
     Attempt::new(
         orchestrator,
         Arc::new(Inline::new(set, script)),
@@ -479,7 +494,10 @@ fn attempt_writes_exactly_one_report_per_pass_at_a_known_address() {
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -503,7 +521,10 @@ fn a_briefed_task_moves_to_in_flight_and_no_further() {
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -529,7 +550,10 @@ fn established_is_counted_off_artifacts_rather_than_off_a_reply() {
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -580,7 +604,10 @@ fn a_killed_specialist_that_wrote_an_artifact_yields_a_salvaged_attempt() {
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -588,7 +615,10 @@ fn a_killed_specialist_that_wrote_an_artifact_yields_a_salvaged_attempt() {
     assert_eq!(report.outcomes[0].ending.as_str(), "capped");
     assert!(report.outcomes[0].reply.is_none());
     // The artifact is cited, which is the whole point of salvage.
-    assert_eq!(report.artifacts, vec![Artifact::new("notes.md", "the partial survey")]);
+    assert_eq!(
+        report.artifacts,
+        vec![Artifact::new("notes.md", "the partial survey")]
+    );
     assert_eq!(state.established, 1);
     assert_eq!(state.unproductive, 0);
 }
@@ -607,7 +637,10 @@ fn a_pass_that_produced_nothing_at_all_counts_as_unproductive() {
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -631,7 +664,10 @@ fn a_specialist_that_never_started_counts_as_blocked_rather_than_unproductive() 
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -701,7 +737,10 @@ fn a_failure_that_left_an_artifact_still_counts_as_work() {
     let thresholds = Thresholds::default();
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 
@@ -801,7 +840,10 @@ fn every_brief_carries_the_steer_the_last_lesson_and_the_directives() {
     );
     let mut state = planned("goal", &[("one", "first")]);
     state.steer = "narrow the claim".to_owned();
-    state.lessons = vec!["an old lesson".to_owned(), "read the error first".to_owned()];
+    state.lessons = vec![
+        "an old lesson".to_owned(),
+        "read the error first".to_owned(),
+    ];
 
     let briefs = attempt.briefs(
         &state,
@@ -832,7 +874,10 @@ fn a_directive_reaches_the_next_attempt_and_the_report() {
     );
 
     let state = attempt
-        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .run(
+            planned("goal", &[("one", "first")]),
+            context(0, &thresholds),
+        )
         .expect("the attempt runs")
         .into_state();
 

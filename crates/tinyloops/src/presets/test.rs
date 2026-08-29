@@ -99,7 +99,11 @@ fn the_presets_are_the_set_the_parity_sweep_reads() {
 
         let rendered =
             evaluate_ladder(&state, "loop", &thresholds).expect("the generated ladder evaluates");
-        assert_eq!(rendered, Route::Blocked, "{preset} disagreed at the top rung");
+        assert_eq!(
+            rendered,
+            Route::Blocked,
+            "{preset} disagreed at the top rung"
+        );
     }
 }
 
@@ -231,7 +235,10 @@ fn a_marker_from_one_specialist_and_an_artifact_from_another_is_not_consistency(
             &base,
             &report_with(vec![
                 (&format!("{SOLVED_MARKER}, trust me"), Vec::new()),
-                ("still working on it", vec![Artifact::new("notes.md", "notes")]),
+                (
+                    "still working on it",
+                    vec![Artifact::new("notes.md", "notes")],
+                ),
             ]),
             observing(&thresholds),
         )
@@ -249,7 +256,10 @@ fn an_ordinary_pass_neither_concludes_nor_penalises() {
     let outcome = Reflect
         .evaluate(
             &base,
-            &report_with(vec![("progress, no answer", vec![Artifact::new("a.md", "a")])]),
+            &report_with(vec![(
+                "progress, no answer",
+                vec![Artifact::new("a.md", "a")],
+            )]),
             observing(&thresholds),
         )
         .expect("the arm evaluates");
@@ -430,10 +440,7 @@ fn the_two_arms_are_a_legal_set_with_exactly_one_concluder() {
 
     assert_eq!(set.arms().len(), 2);
     assert_eq!(
-        set.arms()
-            .iter()
-            .filter(|arm| arm.may_conclude())
-            .count(),
+        set.arms().iter().filter(|arm| arm.may_conclude()).count(),
         1
     );
 }
@@ -511,7 +518,10 @@ fn every_pass_announces_its_spine_and_every_step_announces_entry_and_exit() {
         "routed",
         "loop_finished",
     ] {
-        assert!(seen.iter().any(|kind| kind == required), "missing {required}");
+        assert!(
+            seen.iter().any(|kind| kind == required),
+            "missing {required}"
+        );
     }
     assert_eq!(
         seen.iter().filter(|kind| *kind == "step_entered").count(),

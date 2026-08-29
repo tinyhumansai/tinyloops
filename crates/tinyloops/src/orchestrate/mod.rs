@@ -177,10 +177,7 @@ impl Specialists for Inline {
                 });
             };
 
-            let mut served = self
-                .served
-                .lock()
-                .map_err(|_| Error::StateEncoding)?;
+            let mut served = self.served.lock().map_err(|_| Error::StateEncoding)?;
             let cursor = served.entry(role).or_default();
             let entry = &entries[(*cursor).min(last)];
             *cursor += 1;
