@@ -257,11 +257,10 @@ impl RunBudget {
     /// # Ok::<(), tinyloops::Error>(())
     /// ```
     pub fn new(caps: Caps) -> Result<Self> {
-        positive(caps.max_iterations, Bound::Iterations)?;
-        positive(caps.max_model_calls, Bound::ModelCalls)?;
-        positive(caps.max_tool_calls, Bound::ToolCalls)?;
-        positive(u32::try_from(caps.max_tokens).unwrap_or(u32::MAX), Bound::Tokens)?;
-        positive(caps.max_retries, Bound::RequestTimeout)?;
+        positive(u64::from(caps.max_iterations), Bound::Iterations)?;
+        positive(u64::from(caps.max_model_calls), Bound::ModelCalls)?;
+        positive(u64::from(caps.max_tool_calls), Bound::ToolCalls)?;
+        positive(caps.max_tokens, Bound::Tokens)?;
         positive_duration(caps.run_timeout, Bound::RunClock)?;
         positive_duration(caps.tool_timeout, Bound::ToolTimeout)?;
         positive_duration(caps.request_timeout, Bound::RequestTimeout)?;
