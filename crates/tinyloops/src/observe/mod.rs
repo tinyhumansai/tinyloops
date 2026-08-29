@@ -238,9 +238,10 @@ pub struct LineSink {
 
 impl std::fmt::Debug for LineSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // The writer is not renderable, so the counter that matters is.
         f.debug_struct("LineSink")
             .field("drops", &self.drops.load(Ordering::Relaxed))
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -291,9 +292,10 @@ pub struct JsonlSink {
 
 impl std::fmt::Debug for JsonlSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // The writer is not renderable, so the counter that matters is.
         f.debug_struct("JsonlSink")
             .field("drops", &self.drops.load(Ordering::Relaxed))
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -352,7 +354,7 @@ impl std::fmt::Debug for RedactingSink {
             .field("secrets", &self.secrets.len())
             .field("mask", &self.mask)
             .field("drops", &self.drops.load(Ordering::Relaxed))
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
