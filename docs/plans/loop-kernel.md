@@ -175,8 +175,8 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
      counter of 0 from a base of 3, another returns 4; the fold yields 1.
      Invariant 5's reason for existing, and the test last-writer-wins fails.
    - `a_list_folds_by_what_each_arm_appended`, and
-     `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
-     `Error::ArmCollision { field, first, second }` and naming both arms.
+     `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting an
+     `Error::ArmCollision` that names both arms.
    - `folding_is_commutative_over_every_permutation` — four arm outputs, all 24
      permutations, one expected result — and
      `folding_is_associative_over_every_grouping`, the same four folded as
@@ -236,7 +236,7 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 
 1. Failing tests: `emits_the_specified_node_set` — exactly `trigger`, `plan`,
    `research`, `loop`, `attempt`, `side_arms`, one node per arm, `merge`,
-   `route`, `pass`, `stand_down`, `report`;
+   `route`, `pass`, `stand_down`, `report`; then
    `pass_is_the_only_node_with_an_edge_back_to_the_head`, invariant 2 asserted
    on the edge list; `every_route_port_enters_pass`, where all five `Route`
    ports terminate at `pass` and none returns to `attempt`, because an inner
@@ -280,7 +280,7 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 **Files:** `crates/tinyloops/src/loops/builder.rs`, `src/loops/test.rs`
 
 1. Failing tests: `the_emitted_graph_validates`
-   (`vendor/tinyflows/src/validate.rs:35`); `the_emitted_graph_compiles`
+   (`vendor/tinyflows/src/validate.rs:35`) and `the_emitted_graph_compiles`
    (`vendor/tinyflows/src/compiler.rs:31`);
    `building_twice_emits_byte_identical_json`, the purity C5 rests on; and
    `the_accumulator_update_is_an_assignment_not_an_increment`, asserting the
