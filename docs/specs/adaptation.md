@@ -1,6 +1,6 @@
 # Adaptation
 
-- **Status:** Draft — 2026-08-29
+- **Status:** Implemented — 2026-08-29
 - **Owner:** Maintainers
 - **Related:** [`loop-kernel.md`](loop-kernel.md),
   [`routing-and-policy.md`](routing-and-policy.md),

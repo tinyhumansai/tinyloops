@@ -1,6 +1,6 @@
 # Plan: the tuner and the amendments
 
-- **Status:** Not started
+- **Status:** Implemented
 - **Specification:** [`../specs/adaptation.md`](../specs/adaptation.md), with
   the arm laws it rests on in
   [`../specs/loop-kernel.md`](../specs/loop-kernel.md) and the boundary it must
