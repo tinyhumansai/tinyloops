@@ -84,7 +84,8 @@ pub use observe::{
 // both the Rust and the jq spelling.
 pub use policy::{
     Amendment, Autonomy, Bounds, CapField, Change, DEFAULT_MAX_AMENDMENTS, DEFAULT_MUTING_WINDOW,
-    Judgement, LoopProfile, Muted, Outcome, Range, Route, ThresholdField, Thresholds,
+    Judgement, LoopProfile, Muted, Outcome, Range, Recorded, Route, ThresholdField, Thresholds,
+    Verdict,
     evaluate_ladder, evaluate_terminal_condition, expr_scope, is_terminal, ladder, route,
     terminal_condition,
 };

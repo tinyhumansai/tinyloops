@@ -30,7 +30,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Amendment, Muted, Thresholds};
+use super::{Amendment, Bounds, Muted, Recorded, Thresholds, Verdict};
 use crate::budget::Caps;
 use crate::presets::Preset;
 
@@ -89,12 +89,13 @@ pub struct LoopProfile {
     /// unchanged. Removing its edge would leave the merge barrier waiting on an
     /// arm nothing will activate, which is a hung pass rather than a saved one.
     pub muted: Muted,
-    /// Every amendment folded into this profile, oldest first.
+    /// Every amendment proposed against this profile, oldest first, with what
+    /// became of each.
     ///
-    /// The run's own account of what it changed about itself and why. Rendered
-    /// into the report, and the data a cross-run layer would score — this crate
-    /// scores nothing.
-    pub history: Vec<Amendment>,
+    /// The run's own account of what it changed about itself and why, refusals
+    /// included. Rendered into the report, and the data a cross-run layer would
+    /// score — this crate scores nothing.
+    pub history: Vec<Recorded>,
 }
 
 impl LoopProfile {
@@ -124,34 +125,73 @@ impl LoopProfile {
         self.muted.contains(arm)
     }
 
-    /// Folds `amendment` in, bumping the revision and recording it.
+    /// How many amendments have actually moved this profile.
+    #[must_use]
+    pub fn applied(&self) -> usize {
+        self.history
+            .iter()
+            .filter(|recorded| recorded.verdict.applied())
+            .count()
+    }
+
+    /// Folds `amendment` in if `bounds` allow it, and records either way.
     ///
-    /// Assumed checked: [`Bounds::check`](super::Bounds::check) and the run's
-    /// amendment budget are the caller's to consult, and the caller is the
-    /// `pass` step, which is the loop's single exit. Applying here rather than
-    /// where the amendment was proposed is what makes "it takes effect on the
-    /// *next* pass" a property of the code's position rather than a rule
-    /// someone remembers.
+    /// Checks the run's amendment budget first and the field's range second,
+    /// then applies or refuses **whole**. A change that could half-apply would
+    /// leave a profile nobody chose and no record describing it.
+    ///
+    /// Out of range is refused, never clamped: a clamped proposal reads as
+    /// accepted at the proposer and as a no-op in the state, and nothing joins
+    /// the two.
+    ///
+    /// Returns the verdict, which the caller renders as an event. Applying here
+    /// rather than where the amendment was proposed is what makes "it takes
+    /// effect on the *next* pass" a property of the code's position rather than
+    /// a rule someone remembers: the caller is the `pass` step, the loop's
+    /// single exit and the only node that closes the cycle.
     ///
     /// # Examples
     ///
     /// ```
     /// # use tinyloops::{Amendment, Change, LoopProfile, Preset, ThresholdField};
+    /// let bounds = Preset::Balanced.bounds();
     /// let mut profile = LoopProfile::of(Preset::Balanced);
-    /// profile.fold(Amendment::new(
-    ///     "tune",
-    ///     2,
-    ///     Change::Threshold { field: ThresholdField::Stuck, to: 3 },
-    ///     "diversifying made the run worse",
-    /// ));
     ///
+    /// let verdict = profile.fold(
+    ///     Amendment::new(
+    ///         "tune",
+    ///         2,
+    ///         Change::Threshold { field: ThresholdField::Stuck, to: 3 },
+    ///         "diversifying made the run worse",
+    ///     ),
+    ///     &bounds,
+    /// );
+    ///
+    /// assert!(verdict.applied());
     /// assert_eq!(profile.thresholds.stuck, 3);
     /// assert_eq!(profile.revision, 1);
     /// assert_eq!(profile.history.len(), 1);
     /// ```
-    pub fn fold(&mut self, amendment: Amendment) {
-        amendment.change.clone().apply_to(self);
-        self.revision = self.revision.saturating_add(1);
-        self.history.push(amendment);
+    pub fn fold(&mut self, amendment: Amendment, bounds: &Bounds) -> Verdict {
+        let budget = usize::try_from(bounds.max_amendments).unwrap_or(usize::MAX);
+        let verdict = if self.applied() >= budget {
+            Verdict::Refused {
+                reason: format!("the run has folded its {budget} amendments"),
+            }
+        } else if let Err(error) = bounds.check(&amendment.change) {
+            Verdict::Refused {
+                reason: error.to_string(),
+            }
+        } else {
+            amendment.change.apply_to(self);
+            self.revision = self.revision.saturating_add(1);
+            Verdict::Applied
+        };
+
+        self.history.push(Recorded {
+            amendment,
+            verdict: verdict.clone(),
+        });
+        verdict
     }
 }

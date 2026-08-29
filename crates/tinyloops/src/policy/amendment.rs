@@ -334,3 +334,48 @@ impl std::fmt::Display for Amendment {
 /// what makes a profile's wire form stable, and nothing about it needs
 /// defending beyond that.
 pub type Muted = BTreeSet<String>;
+
+/// What became of a proposed amendment.
+///
+/// Both outcomes are kept, and that is the point. A run that quietly retuned
+/// itself and then succeeded is indistinguishable in its report from a run that
+/// succeeded as configured; a tuner proposing forty refused amendments is a
+/// broken tuner reporting nothing. Recording only the acceptances would hide
+/// the second failure completely.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "verdict", rename_all = "snake_case")]
+pub enum Verdict {
+    /// The amendment was folded into the profile.
+    Applied,
+    /// The amendment was refused, and the profile is untouched.
+    Refused {
+        /// Why, in the words of the check that refused it.
+        reason: String,
+    },
+}
+
+impl Verdict {
+    /// Whether the profile moved.
+    #[must_use]
+    pub const fn applied(&self) -> bool {
+        matches!(self, Self::Applied)
+    }
+}
+
+/// One amendment and what became of it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Recorded {
+    /// What was proposed.
+    pub amendment: Amendment,
+    /// What became of it.
+    pub verdict: Verdict,
+}
+
+impl std::fmt::Display for Recorded {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.verdict {
+            Verdict::Applied => write!(f, "{}", self.amendment),
+            Verdict::Refused { reason } => write!(f, "{} [refused: {reason}]", self.amendment),
+        }
+    }
+}
