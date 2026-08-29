@@ -118,9 +118,10 @@ spec's letter is visible rather than discovered.
      it has, and says which bound stopped it.
    - `an_expired_tool_timeout_returns_its_output_and_the_run_goes_on`.
    - `ten_passes_with_signal_and_ten_without_differ_on_effective_feedback`,
-     reaching the same raw-compute total, and the report shows both. A loop that counts only turns cannot
-     distinguish ten productive passes from ten that each learned nothing, and
-     those are the two cases a budget most needs to tell apart.
+     reaching the same raw-compute total, and the report shows both. A loop
+     that counts only turns cannot distinguish ten productive passes from ten
+     that each learned nothing, and those are the two cases a budget most needs
+     to tell apart.
    - `the_cost_sums_generation_verification_and_a_retried_call` — the expected
      total is the sum of all three legs, written out in the test.
    - `no_test_in_this_module_achieves_a_bound_by_instructing_a_model` — stated
