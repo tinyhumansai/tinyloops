@@ -54,6 +54,7 @@ mod arm;
 mod budget;
 mod error;
 mod greeting;
+mod ledger;
 mod harness;
 mod memory;
 mod observe;
