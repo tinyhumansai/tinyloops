@@ -350,8 +350,8 @@ impl RegisteredStep {
     /// # Errors
     ///
     /// Returns whatever [`Error`] the body raises.
-    pub fn run(&self, state: LoopState, pass: u32, thresholds: &Thresholds) -> Result<LoopState> {
-        self.run_with(state, pass, thresholds, &NO_ARGS)
+    pub fn run(&self, state: LoopState, pass: u32) -> Result<LoopState> {
+        self.run_with(state, pass, &NO_ARGS)
     }
 
     /// Runs the body, handing it the arguments its node was invoked with.
@@ -363,15 +363,19 @@ impl RegisteredStep {
         &self,
         state: LoopState,
         pass: u32,
-        thresholds: &Thresholds,
         args: &serde_json::Value,
     ) -> Result<LoopState> {
+        // Copied out before `state` moves, and taken from the state itself
+        // rather than from a caller: a body handed thresholds the run is not
+        // using would route on numbers nobody configured, and nothing would
+        // report it.
+        let thresholds = state.profile.thresholds;
         match self {
             Self::Advancing(step) => step
-                .run(state, StepContext::advancing_with(pass, thresholds, args))
+                .run(state, StepContext::advancing_with(pass, &thresholds, args))
                 .map(Advanced::into_state),
             Self::Observing(observer) => {
-                observer.observe(&state, StepContext::observing_with(pass, thresholds, args))?;
+                observer.observe(&state, StepContext::observing_with(pass, &thresholds, args))?;
                 Ok(state)
             }
         }
