@@ -1,15 +1,28 @@
 # TinyLoops
 
-A loop engineering framework: the scaffolding for building agentic loops that
-run a workflow, judge what came back, and decide whether to go round again.
+A loop engineering framework: the shape of one goal run — attempt, evaluate,
+route, budget — for agentic loops that run a workflow, judge what came back, and
+decide whether to go round again.
 
-The pieces it is assembled from are vendored, not reimplemented:
+It is the middle of three layers, and the split is what keeps each of them
+small:
 
-- [**TinyFlows**](https://github.com/tinyhumansai/tinyflows) executes one graph
-  and decides nothing. A loop's unit of work is a `WorkflowGraph` it compiles
-  once and runs per turn. Every effect — models, tools, HTTP, code execution,
-  persistence — goes through a capability trait, so a loop chooses its own
-  vendors, and its examples run offline against the in-memory mocks.
+- **[TinyFlows](https://github.com/tinyhumansai/tinyflows)** is the engine. It
+  executes one graph run and decides nothing. A loop's unit of work is a
+  `WorkflowGraph` it compiles once and runs per turn. Every effect — models,
+  tools, HTTP, code execution, persistence — goes through a capability trait, so
+  a loop chooses its own vendors, and the examples here run offline against the
+  in-memory mocks.
+- **TinyLoops** — this repository — is one goal run: attempt, evaluate, route,
+  budget, and the orchestrator, roles, tools, memory, workspace, and
+  observability that a run needs to do that honestly.
+- **[`tinyflows-adaptive`](vendor/tinyflows/crates/adaptive)** is what spans
+  runs: ledger rows, scored lessons, workflow selection and authoring,
+  promotion. Its stated rule draws the line this repository works to — the
+  engine may know about one run, anything that spans runs lives there.
+
+Two more dependencies are vendored rather than reimplemented:
+
 - [**TinyAgents**](https://github.com/tinyhumansai/tinyagents) is the optional
   durable agent harness. Once a loop needs to be paused, checkpointed, resumed,
   or observed, the `while` statement stops being enough and the control flow
@@ -25,11 +38,7 @@ behavior — and `crates/tinyloops` is the implementation. A host that only make
 calls depends on the contract crate alone and compiles neither the module nor
 `tinybus` itself.
 
-> The crates are still named `tinyloops`: this repository was generated from
-> [rust-template](https://github.com/tinyhumansai/rust-template) and the rename
-> checklist below has not been worked through yet.
-
-## The Loop Template
+## The Loop, In Miniature
 
 Compile the graph once, run it per turn, feed each result back in, and stop on a
 judge or a budget. That is the whole shape, and it is the complete
@@ -97,27 +106,6 @@ Both loop examples run against TinyFlows' mock capabilities, so they are
 deterministic, offline, and need no provider credentials. `tinyagents` is an
 optional dependency: the harness example declares `required-features`, so a
 default build skips it rather than failing to compile.
-
-## Use This Template
-
-Choose **Use this template** on GitHub, create a repository, then work through
-the checklist at the top of [`AGENTS.md`](AGENTS.md):
-
-- rename the `crates/tinyloops` and `crates/tinyloops-bus` directories and the
-  `name` fields in their manifests, and set the shared `description`,
-  `repository`, `keywords`, and `categories`;
-- update this README and the crate documentation in `crates/tinyloops/src/lib.rs`;
-- replace the placeholder `greeting` module with the first real feature area, in
-  both crates: the payload types in the contract, the behavior in the module;
-- rename the TinyBus interface, object path, and member constants in
-  `crates/tinyloops-bus/src/names/`, and the matching `provides` / `methods`
-  declarations in `crates/tinyloops/src/tinybus_module/`;
-- update the security contact and repository links in the community files;
-- replace `ROADMAP.md` with the real plan, or delete it;
-- change the license if GPL-3.0-only is not appropriate.
-
-Search for `tinyloops` and `tinyloops_bus` to find every remaining
-template-specific value.
 
 ## What You Get
 
