@@ -52,10 +52,20 @@
 
 mod error;
 mod greeting;
+mod policy;
+mod state;
 mod tinybus_module;
 
 pub use error::{Error, Result};
 pub use greeting::greet;
+// The loop's accumulator and the decision made from it. `state` is what one
+// goal run carries between turns; `policy` is the routing that reads it, in
+// both the Rust and the jq spelling.
+pub use policy::{
+    Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder, evaluate_terminal_condition,
+    expr_scope, is_terminal, ladder, route, terminal_condition,
+};
+pub use state::{Delta, LoopState};
 
 // The wire contract, re-exported by module rather than by item so every path
 // through this crate resolves to the same definitions the contract crate

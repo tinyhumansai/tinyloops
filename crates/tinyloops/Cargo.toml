@@ -24,6 +24,18 @@ crate-type = ["rlib", "cdylib"]
 # `tinyloops_bus::GreetRequest` are the same type.
 tinyloops-bus = { workspace = true }
 tinybus = { workspace = true }
+# The workflow engine. `src/policy/ladder.rs` generates the jq the graph
+# branches on and evaluates it through `tinyflows::expr`, which is how the Rust
+# router and its jq translation are checked against each other rather than
+# trusted to match. No engine feature beyond the workspace default is needed:
+# nothing here runs a graph.
+tinyflows = { workspace = true }
+# `LoopState` is the loop's accumulator, and the accumulator crosses the graph
+# as JSON. `derive` is the whole reason it is here.
+serde = { workspace = true }
+# The expression scope a ladder is evaluated against is a `serde_json::Value`,
+# and the accumulator is serialized into it.
+serde_json = { workspace = true }
 tinybus-module = { workspace = true }
 thiserror = { workspace = true }
 # Optional, and only ever reached from an example. The `tinyagents` feature
@@ -35,10 +47,10 @@ tinyagents = { workspace = true, optional = true }
 tokio = { workspace = true }
 # The GitHub release verifier passes an explicit empty module configuration.
 serde_json = { workspace = true }
-# The loop examples run real workflow graphs. `mock` supplies the in-memory
-# capability implementations, which is what keeps them offline and
-# deterministic; it is a dev-dependency because a shipped module brings its own
-# capabilities rather than the mocks.
+# `mock` is a dev-only addition on top of the dependency above: it supplies the
+# in-memory capability implementations the loop examples run on, which is what
+# keeps them offline and deterministic. A shipped module brings its own
+# capabilities rather than the mocks, so the feature stays out of `[dependencies]`.
 tinyflows = { workspace = true, features = ["mock"] }
 
 [features]
