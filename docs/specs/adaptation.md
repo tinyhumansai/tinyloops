@@ -5,7 +5,8 @@
 - **Related:** [`loop-kernel.md`](loop-kernel.md),
   [`routing-and-policy.md`](routing-and-policy.md),
   [`orchestrator.md`](orchestrator.md),
-  [ADR 0003](../adr/0003-three-layer-split-with-tinyflows-adaptive.md)
+  [ADR 0003](../adr/0003-three-layer-split-with-tinyflows-adaptive.md),
+  [ADR 0006](../adr/0006-thresholds-addressed-from-run-state.md)
 
 ## Problem
 
@@ -324,9 +325,12 @@ them on a single sample, which is the failure that makes a tuner confident.
   `GraphSignature`, and a checkpoint taken under one resumes under the other.
 - No emitted graph JSON contains a threshold literal; a test greps the serialized
   graph for every default threshold value and asserts it appears nowhere.
-- The parity sweep runs the counter space crossed with the declared threshold
-  space for every preset and reports the first disagreement with the preset name,
-  the profile revision, and the offending state.
+- The parity sweep runs the counter space exhaustively against every preset
+  tuple and every corner of the bounds box, and reports the first disagreement
+  with the tuple, the profile revision, and the offending state.
+- A preset whose `max_attempts` exceeds the loop head's iteration cap fails a
+  test naming both numbers, so a run cannot be truncated below the ceiling its
+  own thresholds declare.
 - An amendment proposed at pass *n* is absent from the route computed at pass *n*
   and present in the route computed at pass *n + 1*; a test asserts both.
 - Proposing an amendment from any arm other than the tuner does not compile,
