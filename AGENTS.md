@@ -203,7 +203,7 @@ releases are reproducible.
 
 ### Vendored dependencies
 
-Two dependencies are vendored as git submodules, each pinned by its gitlink.
+Three dependencies are vendored as git submodules, each pinned by its gitlink.
 
 - `vendor/tinybus` supplies the host types and module-side SDK required to
   build this crate's `cdylib`.
@@ -219,7 +219,7 @@ Two dependencies are vendored as git submodules, each pinned by its gitlink.
   drive a loop from a real harness instead of a hand-rolled stand-in. A module
   a host loads resolves neither it nor its HTTP client.
 
-Initialize both after cloning with:
+Initialize them all after cloning with:
 
 ```sh
 git submodule update --init --recursive
