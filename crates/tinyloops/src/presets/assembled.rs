@@ -34,7 +34,7 @@ use crate::orchestrate::{
     Attempt, Decompose, DelegateSet, Orchestrator, Plan, Report as ReportStep, Specialists,
     Summarize,
 };
-use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
+use crate::policy::{Autonomy, LoopProfile, Outcome, Route, route};
 use crate::state::LoopState;
 use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry};
 use crate::tools::ToolGrant;
@@ -77,7 +77,7 @@ impl Driven {
 pub struct AssembledLoop {
     goal: String,
     preset: Preset,
-    thresholds: Thresholds,
+    profile: LoopProfile,
     arms: ArmSet,
     registry: StepRegistry,
     budget: RunBudget,
@@ -104,7 +104,7 @@ impl AssembledLoop {
         Ok(Self {
             goal: goal.into(),
             preset,
-            thresholds: preset.thresholds(),
+            profile: LoopProfile::of(preset),
             arms,
             registry,
             budget,
@@ -145,10 +145,15 @@ impl AssembledLoop {
         self.preset
     }
 
-    /// The thresholds it routes on.
+    /// The profile it routes on.
+    ///
+    /// The thresholds live inside it, at `profile().thresholds`. They are one
+    /// value rather than two because the run carries them as one value: the
+    /// accumulator holds the profile, and the routing ladder addresses it
+    /// there.
     #[must_use]
-    pub fn thresholds(&self) -> &Thresholds {
-        &self.thresholds
+    pub fn profile(&self) -> &LoopProfile {
+        &self.profile
     }
 
     /// The closed step set its nodes run.
@@ -175,8 +180,10 @@ impl AssembledLoop {
     /// Whatever [`LoopBuilder::build`] raises: an unknown step, an accumulator
     /// that will not serialize, or a graph the engine's validator rejects.
     pub fn graph(&self) -> Result<tinyflows::model::WorkflowGraph> {
-        LoopBuilder::new(self.thresholds, self.arms.clone(), self.registry.clone())
+        LoopBuilder::new(self.arms.clone(), self.registry.clone())
             .goal(self.goal.clone())
+            .profile(self.profile)
+            .caps(self.budget.caps())
             .autonomy(self.autonomy)
             .ids(self.ids)
             .name(format!("tinyloops::{}", self.preset))
@@ -185,9 +192,13 @@ impl AssembledLoop {
 
     /// The signature a checkpoint of this loop would carry.
     ///
-    /// Two assemblies of the same preset produce the same signature, and a
-    /// changed threshold produces a different one, which is what makes an
-    /// incompatible resume an error rather than silent corruption.
+    /// Two assemblies of the same preset produce the same signature, and so do
+    /// two assemblies of *different* presets: the thresholds are addressed out
+    /// of the accumulator rather than rendered into the graph, so they are not
+    /// topology and do not move the hash. What moves it is the shape — a node,
+    /// an edge, a port, an arm — which is what makes an incompatible resume an
+    /// error rather than silent corruption, and what lets a run that revised
+    /// its own thresholds resume from its own checkpoint.
     ///
     /// # Errors
     ///
@@ -215,7 +226,7 @@ impl AssembledLoop {
     /// - [`Error::ContestedField`] when two arms claim the same narrative
     ///   field, which is a wiring mistake with no correct resolution.
     pub fn drive(&self, recorder: &Recorder) -> Result<Driven> {
-        let mut state = LoopState::new(self.goal.clone());
+        let mut state = LoopState::with_profile(self.goal.clone(), self.profile);
         let mut meter = Meter::default();
         let mut routes = Vec::new();
         let mut bound = None;
@@ -238,7 +249,7 @@ impl AssembledLoop {
 
             state = self.evaluate(&state, pass, recorder)?;
 
-            let chosen = route(&state, &self.thresholds);
+            let chosen = route(&state);
             routes.push(chosen);
             recorder.record(Event::Routed {
                 pass,
@@ -272,7 +283,7 @@ impl AssembledLoop {
                 });
                 break;
             }
-            if crate::policy::is_terminal(&state, &self.thresholds) {
+            if crate::policy::is_terminal(&state) {
                 break;
             }
         }
@@ -292,7 +303,7 @@ impl AssembledLoop {
         // claimed. `classify` reads `expired` and the attempt cap; an iteration
         // or a token cap has to be folded in here, and folding it in *after*
         // the classification is what keeps that rule in one place.
-        let classified = Outcome::classify(&state, &self.thresholds);
+        let classified = Outcome::classify(&state);
         let outcome = match bound {
             Some(tripped) if !tripped.is_graceful() => Outcome::Exhausted,
             Some(_) if classified == Outcome::Stalled => Outcome::Exhausted,
