@@ -664,9 +664,9 @@ fn conditions_compose_with_and_and_or() {
 
     // The identities of the two operators.
     let mut none_of = TerminationCondition::any(Vec::new());
-    assert_eq!(none_of.evaluate(&LoopState::new("g"), &thresholds), None);
+    assert_eq!(none_of.evaluate(&LoopState::new("g")), None);
     let mut all_of = TerminationCondition::all(Vec::new());
-    assert!(all_of.evaluate(&LoopState::new("g"), &thresholds).is_some());
+    assert!(all_of.evaluate(&LoopState::new("g")).is_some());
     assert!(all_of.expression().contains("true"));
     assert!(
         TerminationCondition::any(Vec::new())
@@ -702,7 +702,7 @@ fn resetting_a_fired_condition_clears_it() {
     condition.reset();
     assert_eq!(condition.fired(), None);
     assert_eq!(
-        condition.evaluate(&LoopState::new("goal"), &thresholds),
+        condition.evaluate(&LoopState::new("goal")),
         None,
         "a reset condition re-decides rather than replaying its latch",
     );
@@ -710,9 +710,8 @@ fn resetting_a_fired_condition_clears_it() {
 
 #[test]
 fn a_composed_termination_is_what_the_head_runs() {
-    let thresholds = Thresholds::default();
     let condition = TerminationCondition::solved() | TerminationCondition::expired();
-    let graph = LoopBuilder::new(thresholds, arms(), registry())
+    let graph = LoopBuilder::new(arms(), registry())
         .autonomy(Autonomy::Unattended)
         .termination(condition.clone())
         .build()
