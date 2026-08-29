@@ -164,22 +164,18 @@ fn the_fan_out_and_the_fold_name_the_same_arms() {
     let set = set();
 
     let fanned: Vec<_> = set.fan_out("attempt").into_iter().map(|e| e.to).collect();
-    let folded: Vec<_> = set
-        .fold_inputs()
-        .into_iter()
-        .map(|address| {
-            address
-                .trim_start_matches("=.nodes.")
-                .trim_end_matches(".output")
-                .to_string()
-        })
-        .collect();
+    // Compared through `upstream_address` rather than by stripping a literal
+    // prefix and suffix: a test that re-spells the address format is a second
+    // copy of it, and the two drift the moment the format changes.
+    let folded: Vec<_> = set.fold_inputs();
+    let expected_fold: Vec<_> = fanned.iter().map(|arm| upstream_address(arm)).collect();
     let converged: Vec<_> = set.converge("merge").into_iter().map(|e| e.from).collect();
+
+    assert_eq!(folded, expected_fold);
 
     // One list, three views. Asserted equal because "every arm converges" and
     // "every arm is folded" must be one fact; as two they drift, and the drift
     // costs an arm's budget and changes nothing.
-    assert_eq!(fanned, folded);
     assert_eq!(fanned, converged);
 }
 
