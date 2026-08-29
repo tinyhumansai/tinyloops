@@ -705,8 +705,7 @@ impl PassProfile {
 /// control surface cannot diverge: a field a person can see in the summary is a
 /// field a caller can read over the bus, and neither can quietly gain something
 /// the other lacks.
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Report {
     /// What the run was trying to achieve.
     pub goal: String,
@@ -732,12 +731,6 @@ pub struct Report {
     pub undone: Vec<String>,
 }
 
-impl Default for Outcome {
-    fn default() -> Self {
-        Self::Stalled
-    }
-}
-
 impl Report {
     /// The share of attempts that reached an answer, or `None` before the first
     /// one.
@@ -761,7 +754,10 @@ impl Report {
             .iter()
             .filter(|outcome| matches!(outcome, Outcome::Success | Outcome::CleanNoOp))
             .count();
-        Some(ratio(reached as u64, self.attempts.len() as u64))
+        Some(ratio(
+            u64::try_from(reached).unwrap_or(u64::MAX),
+            u64::try_from(self.attempts.len()).unwrap_or(u64::MAX),
+        ))
     }
 
     /// The run, rendered for a person.
