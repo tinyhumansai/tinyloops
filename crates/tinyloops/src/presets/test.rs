@@ -21,7 +21,7 @@ use crate::harness::{Artifact, Scripted};
 use crate::observe::{Event, LineSink, Recorder, Sink};
 use crate::orchestrate::{AttemptReport, DelegateSet, FixedPlan, Inline};
 use crate::policy::{Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder};
-use crate::state::LoopState;
+use crate::state::{Contribution, LoopState};
 use crate::step::{NoWrite, StepContext};
 
 fn quiet() -> Recorder {
@@ -829,21 +829,255 @@ fn the_pass_step_counts_the_pass_by_assignment_and_consumes_the_steer() {
 }
 
 #[test]
-fn the_merge_step_answers_to_its_name_and_carries_the_state() {
-    // It carries the state through because `run_loop_step` hands a step only
-    // the decoded state, never the node's arguments, so the arm outputs the
-    // fold needs are out of reach. The fold itself is `ArmSet::merge`, which
-    // `AssembledLoop::drive` calls; this asserts the documented behavior rather
-    // than a behavior the type does not have.
+fn the_merge_step_folds_every_arms_counters_by_delta() {
+    // A reset from one arm and an increment from another, computed against one
+    // shared base, land together instead of overwriting one another.
     let thresholds = Thresholds::default();
-    let mut state = LoopState::new("goal");
-    state.established = 3;
+    let mut base = LoopState::new("goal");
+    base.unproductive = 1;
 
-    let after = Converge
-        .run(state.clone(), advancing(0, &thresholds))
-        .expect("merge runs")
-        .into_state();
+    let mut productive = base.clone();
+    productive.unproductive = 0;
+    productive.established = 2;
 
-    assert_eq!(after, state);
-    assert_eq!(Converge.name(), crate::loops::STEP_MERGE);
+    let mut restarted = base.clone();
+    restarted.unproductive = 2;
+    restarted.restarts = 1;
+
+    let merged = merge_of(&base, &[("reflect", &productive), ("judge", &restarted)], &thresholds)
+        .expect("the merge folds");
+
+    assert_eq!(merged.unproductive, 2);
+    assert_eq!(merged.restarts, 1);
+    assert_eq!(merged.established, 2);
+}
+
+#[test]
+fn the_merge_step_is_order_independent() {
+    // The engine states outright that channel update ordering is arbitrary, so
+    // a reducer that depends on arrival order is a bug nothing would report.
+    let thresholds = Thresholds::default();
+    let mut base = LoopState::new("goal");
+    base.unproductive = 1;
+
+    let mut one = base.clone();
+    one.unproductive = 0;
+    one.banked = 3;
+    let mut two = base.clone();
+    two.unproductive = 2;
+    two.established = 5;
+
+    let forwards = merge_of(&base, &[("reflect", &one), ("judge", &two)], &thresholds)
+        .expect("the merge folds");
+    let backwards = merge_of(&base, &[("judge", &two), ("reflect", &one)], &thresholds)
+        .expect("the merge folds");
+
+    assert_eq!(forwards, backwards);
+}
+
+#[test]
+fn the_merge_step_carries_each_arms_narrative_claim_through() {
+    // The round trip that makes the graph path work at all: an arm flattens its
+    // contribution into the state it returns, and the merge reads it back out.
+    let thresholds = Thresholds::default();
+    let base = LoopState::new("goal");
+
+    let mut reflection = base.clone();
+    Contribution {
+        arm: "reflect",
+        lesson: Some("the oracle disagreed".to_owned()),
+        ..Contribution::new("reflect")
+    }
+    .apply_to(&mut reflection);
+
+    let mut judgement = base.clone();
+    Contribution {
+        arm: "judge",
+        steer: Some("narrow the claim".to_owned()),
+        score: Some(7),
+        judged: Some(Judgement::Steer),
+        ..Contribution::new("judge")
+    }
+    .apply_to(&mut judgement);
+
+    let merged = merge_of(
+        &base,
+        &[("reflect", &reflection), ("judge", &judgement)],
+        &thresholds,
+    )
+    .expect("the merge folds");
+
+    assert_eq!(merged.lessons, vec!["the oracle disagreed".to_owned()]);
+    assert_eq!(merged.steer, "narrow the claim");
+    assert_eq!(merged.scores, vec![7]);
+    assert_eq!(merged.judged, Judgement::Steer);
+}
+
+#[test]
+fn two_arms_claiming_the_same_narrative_field_is_refused_at_the_merge() {
+    // A wiring mistake with no correct resolution. Picking a winner would be
+    // arrival-order dependence wearing a merge's clothes.
+    let thresholds = Thresholds::default();
+    let base = LoopState::new("goal");
+
+    let mut one = base.clone();
+    one.steer = "go left".to_owned();
+    let mut two = base.clone();
+    two.steer = "go right".to_owned();
+
+    let refused = merge_of(&base, &[("reflect", &one), ("judge", &two)], &thresholds);
+
+    assert!(matches!(
+        refused,
+        Err(Error::ContestedField { field: "steer", .. })
+    ));
+}
+
+#[test]
+fn an_arm_missing_from_the_merges_arguments_is_an_error() {
+    // Under this engine an expression that failed to resolve yields `null`.
+    // Folding what is there and shrugging at the rest would turn a broken
+    // binding into a route taken on evidence nobody gathered.
+    let thresholds = Thresholds::default();
+    let base = LoopState::new("goal");
+    let candidate = base.clone();
+
+    let refused = merge_of(&base, &[("reflect", &candidate)], &thresholds);
+
+    assert!(matches!(
+        refused,
+        Err(Error::MalformedStepPayload { field: "arms" })
+    ));
+}
+
+#[test]
+fn an_arm_whose_output_is_null_is_an_error_rather_than_a_smaller_fold() {
+    let thresholds = Thresholds::default();
+    let base = LoopState::new("goal");
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let args = json!({
+        "arms": {
+            "reflect": serde_json::to_value(&base).expect("encodes"),
+            "judge": Value::Null,
+        }
+    });
+
+    let refused = Converge::new(arms).run(
+        base,
+        StepContext::advancing_with(0, &thresholds, &args),
+    );
+
+    assert!(matches!(
+        refused,
+        Err(Error::MalformedStepPayload { field: "arms" })
+    ));
+}
+
+#[test]
+fn a_merge_invoked_with_no_arguments_at_all_is_an_error() {
+    let thresholds = Thresholds::default();
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+
+    let refused = Converge::new(arms).run(
+        LoopState::new("goal"),
+        advancing(0, &thresholds),
+    );
+
+    assert!(matches!(
+        refused,
+        Err(Error::MalformedStepPayload { field: "arms" })
+    ));
+}
+
+#[test]
+fn the_merge_step_answers_to_the_name_the_graph_addresses() {
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let step = Converge::new(arms);
+
+    assert_eq!(step.name(), crate::loops::STEP_MERGE);
+    assert!(format!("{step:?}").contains("reflect"));
+}
+
+// ---------------------------------------------- the contribution round trip
+
+#[test]
+fn applying_a_contribution_and_reading_it_back_is_the_identity() {
+    // If these two ever stop being inverses, an arm's contribution silently
+    // stops reaching the accumulator, which is exactly the class of failure
+    // this crate exists to refuse.
+    let base = LoopState::new("goal");
+    let claimed = Contribution {
+        arm: "reflect",
+        lesson: Some("read the error first".to_owned()),
+        steer: Some("narrow it".to_owned()),
+        score: Some(6),
+        judged: Some(Judgement::Restart),
+        last_attempt: Some("the report".to_owned()),
+    };
+
+    let mut candidate = base.clone();
+    claimed.apply_to(&mut candidate);
+
+    assert_eq!(Contribution::claimed_from("reflect", &base, &candidate), claimed);
+}
+
+#[test]
+fn an_arm_that_touched_nothing_claims_nothing() {
+    let base = LoopState::new("goal");
+
+    let read_back = Contribution::claimed_from("reflect", &base, &base.clone());
+
+    assert!(read_back.is_empty());
+}
+
+#[test]
+fn a_contribution_read_back_onto_a_non_empty_base_claims_only_the_new_entries() {
+    let mut base = LoopState::new("goal");
+    base.lessons = vec!["an old lesson".to_owned()];
+    base.scores = vec![3];
+    base.steer = "an old steer".to_owned();
+
+    let mut candidate = base.clone();
+    Contribution {
+        arm: "judge",
+        lesson: Some("a new lesson".to_owned()),
+        score: Some(9),
+        ..Contribution::new("judge")
+    }
+    .apply_to(&mut candidate);
+
+    let read_back = Contribution::claimed_from("judge", &base, &candidate);
+
+    assert_eq!(read_back.lesson.as_deref(), Some("a new lesson"));
+    assert_eq!(read_back.score, Some(9));
+    // Unchanged, so unclaimed: the arm did not write it and must not be
+    // recorded as having done so, or a second arm writing it would be refused
+    // for a collision that never happened.
+    assert_eq!(read_back.steer, None);
+}
+
+// ------------------------------------------------------------------ fixtures
+
+/// Runs the merge step over `arms`, exactly as the emitted node would.
+fn merge_of(
+    base: &LoopState,
+    arms: &[(&str, &LoopState)],
+    thresholds: &Thresholds,
+) -> crate::error::Result<LoopState> {
+    let mut returned = serde_json::Map::new();
+    for (name, state) in arms {
+        returned.insert(
+            (*name).to_owned(),
+            serde_json::to_value(state).expect("a state encodes"),
+        );
+    }
+    let args = json!({ "arms": Value::Object(returned) });
+    let set = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+
+    Converge::new(set)
+        .run(
+            base.clone(),
+            StepContext::advancing_with(base.passes, thresholds, &args),
+        )
+        .map(crate::step::Advanced::into_state)
 }

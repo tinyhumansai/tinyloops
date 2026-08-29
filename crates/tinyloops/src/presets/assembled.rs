@@ -23,12 +23,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::arm::ArmSet;
 use crate::budget::{Bound, Meter, RunBudget};
 use crate::error::{Error, Result};
-use crate::loops::{GraphSignature, LoopBuilder, NodeIds};
+use crate::loops::{GraphSignature, LoopBuilder, NodeIds, STEP_MERGE};
 use crate::observe::{Event, Movement, Recorder};
 use crate::orchestrate::{
     Attempt, Decompose, DelegateSet, Orchestrator, Plan, Report as ReportStep, Specialists,
@@ -36,7 +36,7 @@ use crate::orchestrate::{
 };
 use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
 use crate::state::LoopState;
-use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepContext, StepRegistry};
+use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry};
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
@@ -225,9 +225,7 @@ impl AssembledLoop {
             state = self.run_step(STEP_PLAN, state, pass, recorder)?;
             state = self.run_step(STEP_ATTEMPT, state, pass, recorder)?;
 
-            let report: Value =
-                serde_json::from_str(&state.last_attempt).map_err(|_| Error::StateEncoding)?;
-            state = self.evaluate(&state, &report, pass, recorder)?;
+            state = self.evaluate(&state, pass, recorder)?;
 
             let chosen = route(&state, &self.thresholds);
             routes.push(chosen);
@@ -330,26 +328,35 @@ impl AssembledLoop {
 
     /// Runs every arm over one report and folds the answers.
     ///
-    /// The arms all read `report` and none reads another's output, which is
-    /// what makes them independent and therefore concurrent under an engine.
-    /// Running them in order here changes the wall clock and nothing else: the
-    /// fold is by delta against one shared base, so the result does not depend
-    /// on the order they finished in.
-    fn evaluate(
-        &self,
-        state: &LoopState,
-        report: &Value,
-        pass: u32,
-        recorder: &Recorder,
-    ) -> Result<LoopState> {
-        let ctx = || StepContext::observing(pass, &self.thresholds);
-        let mut outcomes = Vec::new();
+    /// **This is the graph's own path, in one process.** Each arm is run
+    /// through its registered step, its whole returned accumulator is collected
+    /// under its name, and the merge step is invoked with exactly the arguments
+    /// the emitted `merge` node is addressed with. There is no second fold and
+    /// no shortcut: a loop driven here and the same loop run through an engine
+    /// execute the same step bodies over the same values.
+    ///
+    /// The arms all read the one attempt report and none reads another's
+    /// output, which is what makes them independent and therefore concurrent
+    /// under an engine. Running them in order here changes the wall clock and
+    /// nothing else: the fold is by delta against one shared base, so the
+    /// result does not depend on the order they finished in.
+    fn evaluate(&self, state: &LoopState, pass: u32, recorder: &Recorder) -> Result<LoopState> {
+        let mut returned = serde_json::Map::new();
+        let mut deltas = Vec::new();
+
         for arm in self.arms.arms() {
             recorder.record(Event::ArmStarted {
                 pass,
                 arm: arm.name().to_owned(),
             });
-            outcomes.push(arm.evaluate(state, report, ctx())?);
+            let candidate =
+                self.registry
+                    .run(arm.name(), state.clone(), &self.thresholds)?;
+            deltas.push(candidate.delta_from(state));
+            returned.insert(
+                arm.name().to_owned(),
+                serde_json::to_value(&candidate).map_err(|_| Error::StateEncoding)?,
+            );
             recorder.record(Event::ArmFinished {
                 pass,
                 arm: arm.name().to_owned(),
@@ -357,10 +364,6 @@ impl AssembledLoop {
             });
         }
 
-        let deltas: Vec<_> = outcomes
-            .iter()
-            .map(|outcome| outcome.state.delta_from(state))
-            .collect();
         // One `Merged` per pass carrying the summed movement, because that is
         // what the fold actually applied. Reporting each arm's delta separately
         // would invite a reader to add them up by hand and get a different
@@ -383,10 +386,16 @@ impl AssembledLoop {
         });
         recorder.record(Event::Merged {
             pass,
-            arms: outcomes.len(),
+            arms: deltas.len(),
             movement: summed,
         });
-        self.arms.merge(state, outcomes)
+
+        self.registry.run_with(
+            STEP_MERGE,
+            state.clone(),
+            &self.thresholds,
+            &json!({ "arms": Value::Object(returned) }),
+        )
     }
 }
 
@@ -464,10 +473,10 @@ pub fn research_loop(
     registry.register(Arc::new(Attempt::new(orchestrator, specialists, mailbox)))?;
     registry.register(Arc::new(ArmStep::new(Arc::clone(&reflect))))?;
     registry.register(Arc::new(ArmStep::new(Arc::clone(&judge))))?;
-    registry.register(Arc::new(Converge))?;
+    let arms = ArmSet::new(vec![reflect, judge])?;
+    registry.register(Arc::new(Converge::new(arms.clone())))?;
     registry.register(Arc::new(Advance))?;
     registry.register(Arc::new(ReportStep::new(Arc::new(Summarize))))?;
 
-    let arms = ArmSet::new(vec![reflect, judge])?;
     AssembledLoop::new(goal, preset, arms, registry, RunBudget::default())
 }

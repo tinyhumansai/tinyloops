@@ -220,6 +220,27 @@ impl StepRegistry {
         let pass = state.passes;
         self.get(name)?.run(state, pass, thresholds)
     }
+
+    /// Runs the body registered under `name`, handing it `args`.
+    ///
+    /// The graph path. A body reached through a node sees the arguments the
+    /// node was addressed with, which is how a barrier reads inputs a single
+    /// accumulator cannot carry.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::UnknownStep`] when `name` is not registered, or
+    /// whatever error the body raises.
+    pub fn run_with(
+        &self,
+        name: &str,
+        state: LoopState,
+        thresholds: &Thresholds,
+        args: &Value,
+    ) -> Result<LoopState> {
+        let pass = state.passes;
+        self.get(name)?.run_with(state, pass, thresholds, args)
+    }
 }
 
 impl std::fmt::Debug for StepRegistry {
@@ -296,7 +317,7 @@ pub fn run_loop_step(
         .ok_or(Error::MalformedStepPayload { field: "step" })?;
 
     let state = types::decode_state(args)?;
-    let returned = registry.run(name, state, thresholds)?;
+    let returned = registry.run_with(name, state, thresholds, args)?;
 
     serde_json::to_value(returned).map_err(|_| Error::StateEncoding)
 }

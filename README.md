@@ -169,14 +169,20 @@ running version.
 
 ```sh
 cargo run -p tinyloops --example simple_loop                              # the loop, in plain Rust
+cargo run -p tinyloops --example research_loop                            # the whole preset, end to end
 cargo run -p tinyloops --features tinyagents --example tinyagents_harness # the loop, under a harness
 cargo run -p tinyloops --example basic                                    # ordinary library API usage
 ```
 
-Both loop examples run against TinyFlows' mock capabilities, so they are
-deterministic, offline, and need no provider credentials. `tinyagents` is
-optional: the harness example declares `required-features`, so a default build
-skips it instead of failing to compile.
+`research_loop` is the one to read first. It assembles the shipped preset over
+the reference seams, drives it to a terminal state, and prints every pass
+boundary, every step, every arm, the merge, the verdict, and the route each pass
+took with the counters it was taken on.
+
+Every example runs against TinyFlows' mock capabilities or the reference
+implementations, so they are deterministic, offline, and need no provider
+credentials. `tinyagents` is optional: the harness example declares
+`required-features`, so a default build skips it instead of failing to compile.
 
 ## What you get
 
@@ -230,6 +236,7 @@ crates/
     │   └── public_api.rs     # integration tests against the public API only
     └── examples/
         ├── simple_loop.rs            # the loop, in plain Rust
+        ├── research_loop.rs          # the shipped preset, driven end to end
         ├── tinyagents_harness.rs     # the same loop under a durable harness
         ├── basic.rs                  # ordinary library API usage
         ├── verify_module.rs          # local dynamic-module verification
@@ -268,6 +275,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo build --all-targets --all-features
 cargo test --all-features
 cargo run -p tinyloops --example simple_loop
+cargo run -p tinyloops --example research_loop
 cargo run -p tinyloops --features tinyagents --example tinyagents_harness
 cargo build -p tinyloops --release --lib   # produces the installable cdylib
 ```

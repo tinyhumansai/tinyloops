@@ -14,21 +14,36 @@ scope. A roadmap that lists everything is a roadmap nobody trusts.
   checks
 - a manual release workflow that versions, tags, builds the TinyBus module for
   every supported platform, and creates a GitHub release
-- two runnable loop examples — `simple_loop` in plain Rust, and
-  `tinyagents_harness` under the durable harness — both offline against
-  TinyFlows' mock capabilities
+- the loop kernel: run state, policy and routing, steps, arms, and the graph
+  builder that wires them, with the generated routing ladder proved against the
+  Rust router exhaustively for every shipped preset
+- the seams — harness, memory, tools, workspace, ledger — as traits an embedder
+  implements, each with a reference implementation that runs offline
+- budget and observability: the six bounds a run carries and the events it
+  emits, folded into one ordered stream
+- the orchestrator: a role bound to `plan`, `attempt`, and `report`, holding no
+  execution tools and a closed delegate set, over a `TaskBoard` that lives in
+  the accumulator
+- the `research_loop` preset and its two evaluation arms, plus four threshold
+  sets that each say what bet they are making
+- three runnable loop examples — `simple_loop` in plain Rust, `research_loop`
+  driving the whole preset, and `tinyagents_harness` under the durable harness —
+  all offline against TinyFlows' mock capabilities
 
 ## Next
 
 In roughly this order, because each one is what the following one needs:
 
-- the loop kernel: run state, policy and routing, steps, arms, and the graph
-  builder that wires them
-- the orchestrator that drives a goal run end to end
-- the seams — harness, memory, tools, workspace — as traits an embedder
-  implements, so the framework picks no vendor
-- budget and observability: the limits a run carries and the events it emits
-- the `research_loop` preset and the example that runs it
+- widen the step interface so a node body can reach its node's arguments. The
+  emitted `merge` node is handed each arm's output through its tool arguments,
+  but `run_loop_step` passes a step only the decoded state, so the delta fold
+  cannot run inside the graph today. It is written and tested — `ArmSet::merge`,
+  which `AssembledLoop::drive` calls — and a driven loop folds correctly; a loop
+  run through the engine does not yet.
+- run an assembled loop through the engine end to end, not only through
+  `AssembledLoop::drive`
+- a `Decompose` and a `Compose` backed by a model rather than by a fixture, so a
+  deployment has something to start from
 
 ## Out Of Scope
 

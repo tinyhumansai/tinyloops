@@ -72,8 +72,17 @@ impl AccumulatorAccess for NoWrite {}
 pub struct StepContext<'a, A: AccumulatorAccess> {
     pass: u32,
     thresholds: &'a Thresholds,
+    args: &'a serde_json::Value,
     access: PhantomData<A>,
 }
+
+/// The arguments a step built without any is handed.
+///
+/// A step that reads an argument it was not given sees `null`, which is the
+/// same thing it would see from an expression that failed to resolve. That
+/// symmetry is deliberate: there is one absent-argument case for a body to
+/// handle, not two.
+static NO_ARGS: serde_json::Value = serde_json::Value::Null;
 
 impl<'a, A: AccumulatorAccess> StepContext<'a, A> {
     /// Which pass round the loop is running, counted from zero.
@@ -87,15 +96,60 @@ impl<'a, A: AccumulatorAccess> StepContext<'a, A> {
     pub fn thresholds(&self) -> &'a Thresholds {
         self.thresholds
     }
+
+    /// The whole argument object the node was invoked with.
+    ///
+    /// Most steps never touch it: a node body takes the accumulator and returns
+    /// one, and that is the entire contract. Two do not fit that shape, and
+    /// both are barriers rather than transformations — the merge is handed
+    /// every arm's output, and a gate is handed what it is gating. Their inputs
+    /// are addressed in the graph and arrive here rather than in the state,
+    /// because the state is one value and a barrier reads several.
+    ///
+    /// It is `null` for a step invoked without arguments, which is what
+    /// [`StepContext::advancing`] and [`StepContext::observing`] build.
+    #[must_use]
+    pub fn args(&self) -> &'a serde_json::Value {
+        self.args
+    }
+
+    /// One named argument, or `None` when the node was not given it.
+    ///
+    /// Returns `None` for an argument that is present and `null` as well as for
+    /// one that is absent. Under this engine an expression that failed to
+    /// compile, failed to run, produced no output, or named a key nothing
+    /// writes *all* resolve to `null`, so a body cannot tell those apart and
+    /// should not pretend to: a null argument is a missing argument.
+    #[must_use]
+    pub fn arg(&self, name: &str) -> Option<&'a serde_json::Value> {
+        self.args
+            .get(name)
+            .filter(|value| !value.is_null())
+    }
 }
 
 impl<'a> StepContext<'a, CanWrite> {
     /// Builds the context handed to a step that advances the run.
     #[must_use]
     pub fn advancing(pass: u32, thresholds: &'a Thresholds) -> Self {
+        Self::advancing_with(pass, thresholds, &NO_ARGS)
+    }
+
+    /// Builds the context handed to a step that advances the run, carrying the
+    /// arguments its node was invoked with.
+    ///
+    /// This is what [`run_loop_step`](crate::run_loop_step) uses, so a body
+    /// reached through the graph sees everything the node was addressed with.
+    #[must_use]
+    pub fn advancing_with(
+        pass: u32,
+        thresholds: &'a Thresholds,
+        args: &'a serde_json::Value,
+    ) -> Self {
         Self {
             pass,
             thresholds,
+            args,
             access: PhantomData,
         }
     }
@@ -115,9 +169,20 @@ impl<'a> StepContext<'a, NoWrite> {
     /// Builds the context handed to a step that may only look.
     #[must_use]
     pub fn observing(pass: u32, thresholds: &'a Thresholds) -> Self {
+        Self::observing_with(pass, thresholds, &NO_ARGS)
+    }
+
+    /// Builds the observing context, carrying the node's arguments.
+    #[must_use]
+    pub fn observing_with(
+        pass: u32,
+        thresholds: &'a Thresholds,
+        args: &'a serde_json::Value,
+    ) -> Self {
         Self {
             pass,
             thresholds,
+            args,
             access: PhantomData,
         }
     }
@@ -288,12 +353,27 @@ impl RegisteredStep {
     ///
     /// Returns whatever [`Error`] the body raises.
     pub fn run(&self, state: LoopState, pass: u32, thresholds: &Thresholds) -> Result<LoopState> {
+        self.run_with(state, pass, thresholds, &NO_ARGS)
+    }
+
+    /// Runs the body, handing it the arguments its node was invoked with.
+    ///
+    /// # Errors
+    ///
+    /// Returns whatever [`Error`] the body raises.
+    pub fn run_with(
+        &self,
+        state: LoopState,
+        pass: u32,
+        thresholds: &Thresholds,
+        args: &serde_json::Value,
+    ) -> Result<LoopState> {
         match self {
             Self::Advancing(step) => step
-                .run(state, StepContext::advancing(pass, thresholds))
+                .run(state, StepContext::advancing_with(pass, thresholds, args))
                 .map(Advanced::into_state),
             Self::Observing(observer) => {
-                observer.observe(&state, StepContext::observing(pass, thresholds))?;
+                observer.observe(&state, StepContext::observing_with(pass, thresholds, args))?;
                 Ok(state)
             }
         }

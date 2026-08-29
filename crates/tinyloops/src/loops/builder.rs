@@ -296,11 +296,17 @@ impl LoopBuilder {
             fold_inputs.insert(arm.to_string(), Value::String(payload_address(arm)));
         }
 
+        // The merge is the one node handed more than one input. `state` is the
+        // shared base — the attempt's output, which is the same value every arm
+        // was handed — and `arms` is each arm's whole returned accumulator,
+        // keyed by the arm's name. Keyed rather than a bare list because the
+        // fold has to be able to say *which* arm claimed a contested field, and
+        // a positional list would make that a matter of edge order.
         nodes.push(tool_call(
             ids.merge,
             STEP_MERGE,
             json!({
-                "base": payload_address(ids.attempt),
+                "state": payload_address(ids.attempt),
                 "arms": Value::Object(fold_inputs),
             }),
         ));

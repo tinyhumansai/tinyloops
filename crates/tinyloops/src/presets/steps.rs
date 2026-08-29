@@ -8,11 +8,11 @@
 
 use std::sync::Arc;
 
-use crate::arm::Arm;
+use crate::arm::{Arm, ArmOutcome, ArmSet};
 use crate::error::{Error, Result};
 use crate::harness::{Brief, Ending};
 use crate::orchestrate::{DelegateSet, Specialists};
-use crate::state::LoopState;
+use crate::state::{Contribution, LoopState};
 use crate::step::{Advanced, CanWrite, STEP_PASS, STEP_RESEARCH, Step, StepContext};
 
 /// `research`: one round of context gathering, before anything is attempted.
@@ -75,11 +75,18 @@ impl Step for Gather {
 /// reads the pass's one attempt report out of [`LoopState::last_attempt`],
 /// hands it to the arm, and returns the candidate state the arm computed.
 ///
-/// It does **not** apply the arm's [`Contribution`](crate::Contribution). Those
-/// are folded by [`ArmSet::merge`](crate::ArmSet::merge) across every arm at
-/// once, because a lesson and a steer written by two arms have to be checked
-/// for collision, and an arm that applied its own would have made that check
-/// impossible before it ran.
+/// It **does** apply the arm's [`Contribution`](crate::Contribution) to the
+/// state it returns, and that is load-bearing rather than a convenience. A
+/// node returns one accumulator; there is nowhere else for a lesson or a steer
+/// to ride. [`Converge`] reads the claims back out with
+/// [`Contribution::claimed_from`](crate::Contribution::claimed_from) — a field
+/// that differs from the shared base is a field this arm claimed — so two arms
+/// writing the same one is still [`Error::ContestedField`] at the merge rather
+/// than a winner picked by arrival order.
+///
+/// The two halves are inverses and are tested as such. If they ever stop being
+/// inverses, an arm's contribution silently stops reaching the accumulator,
+/// which is exactly the class of failure this crate is built to refuse.
 pub struct ArmStep {
     arm: Arc<dyn Arm>,
 }
@@ -121,7 +128,10 @@ impl Step for ArmStep {
 
         let observing = StepContext::observing(ctx.pass(), ctx.thresholds());
         let outcome = self.arm.evaluate(&state, &report, observing)?;
-        Ok(ctx.advance(outcome.state))
+
+        let mut advanced = outcome.state;
+        outcome.contribution.apply_to(&mut advanced);
+        Ok(ctx.advance(advanced))
     }
 }
 
@@ -153,26 +163,81 @@ impl Step for Advance {
     }
 }
 
-/// `merge`: the barrier every arm converges on.
+/// `merge`: the barrier every arm converges on, and the fold.
 ///
-/// **What it does here: nothing to the state.** That is a limitation worth
-/// stating rather than hiding. The emitted merge node is handed each arm's
-/// output through its tool arguments — `{"base": …, "arms": {"reflect": …,
-/// "judge": …}}` — but [`run_loop_step`](crate::run_loop_step) passes a step
-/// only the decoded `state`, so a [`Step`] implementation cannot reach the arm
-/// outputs it would need to fold. Widening that interface is the loop kernel's
-/// decision, not this module's.
+/// It is the one node body handed more than one input. Its node is addressed
+/// with `state` — the attempt's output, the shared base every arm was given —
+/// and `arms`, an object mapping each arm's name to the whole accumulator that
+/// arm returned. Both arrive as node arguments rather than in the state,
+/// because the state is one value and a barrier reads several.
 ///
-/// The fold itself is written and tested: it is
-/// [`ArmSet::merge`](crate::ArmSet::merge), which
-/// [`AssembledLoop::drive`](super::AssembledLoop::drive) calls with every arm's
-/// outcome. So a driven loop folds correctly today, and a loop run through an
-/// engine will fold correctly once the step interface carries the node's
-/// arguments. Registering this rather than leaving `merge` unregistered is what
-/// keeps the graph buildable and the gap visible in one place instead of
-/// surfacing as an `UnknownStep` nobody can act on.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Converge;
+/// # The fold
+///
+/// Counters merge by addition, computed as a delta against the shared base, so
+/// a reset from one arm and an increment from another land together instead of
+/// overwriting one another and the result does not depend on the order the arms
+/// finished in. Narrative merges by exclusive ownership: each field is claimed
+/// by at most one arm, recovered with
+/// [`Contribution::claimed_from`](crate::Contribution::claimed_from), and two
+/// arms claiming the same one is [`Error::ContestedField`] rather than a winner
+/// picked by arrival order.
+///
+/// Both laws live in [`ArmSet::merge`](crate::ArmSet::merge), which this calls.
+/// There is deliberately no second implementation here: the driven path calls
+/// the same function with the same base, so a loop run through the engine and
+/// the same loop driven in-process fold identically.
+///
+/// # What it refuses
+///
+/// An arm's output that will not decode as an accumulator is
+/// [`Error::MalformedStepPayload`], not a skipped arm. Under this engine an
+/// expression that failed to resolve yields `null`, so silently dropping an
+/// undecodable arm would turn a broken binding into a merge that quietly folded
+/// fewer arms than the graph fanned out to — a route taken on evidence nobody
+/// gathered. `ArmSet::merge` separately refuses a fold that is missing a
+/// declared arm.
+pub struct Converge {
+    arms: ArmSet,
+}
+
+impl std::fmt::Debug for Converge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Converge")
+            .field(
+                "arms",
+                &self.arms.arms().iter().map(|arm| arm.name()).collect::<Vec<_>>(),
+            )
+            .finish()
+    }
+}
+
+impl Converge {
+    /// The merge step, folding exactly the arms `arms` declares.
+    ///
+    /// Taking the [`ArmSet`] rather than deriving the arm names from the
+    /// arguments is what keeps "every arm converges" and "every arm is folded"
+    /// one fact: an arm missing from the arguments is an error here rather than
+    /// a smaller fold nobody notices.
+    #[must_use]
+    pub fn new(arms: ArmSet) -> Self {
+        Self { arms }
+    }
+
+    /// Decodes one arm's returned accumulator out of the `arms` argument.
+    fn outcome_of(&self, arms: &serde_json::Value, arm: &'static str, base: &LoopState) -> Result<ArmOutcome> {
+        let returned = arms
+            .get(arm)
+            .filter(|value| !value.is_null())
+            .ok_or(Error::MalformedStepPayload { field: "arms" })?;
+        let state: LoopState = serde_json::from_value(returned.clone())
+            .map_err(|_| Error::MalformedStepPayload { field: "arms" })?;
+
+        Ok(ArmOutcome {
+            contribution: Contribution::claimed_from(arm, base, &state),
+            state,
+        })
+    }
+}
 
 impl Step for Converge {
     fn name(&self) -> &'static str {
@@ -180,6 +245,20 @@ impl Step for Converge {
     }
 
     fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced> {
-        Ok(ctx.advance(state))
+        // The base is the state the node was handed: the attempt's output, and
+        // the same value every arm was given. Computing each delta against it
+        // is what makes the fold order-independent.
+        let Some(arms) = ctx.arg("arms") else {
+            return Err(Error::MalformedStepPayload { field: "arms" });
+        };
+
+        let outcomes = self
+            .arms
+            .arms()
+            .iter()
+            .map(|arm| self.outcome_of(arms, arm.name(), &state))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(ctx.advance(self.arms.merge(&state, outcomes)?))
     }
 }
