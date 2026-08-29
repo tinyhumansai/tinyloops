@@ -628,7 +628,7 @@ fn an_exhausted_budget_is_never_success() {
     state.attempts = thresholds.max_attempts;
 
     let outcome = condition
-        .evaluate(&state, &thresholds)
+        .evaluate(&state)
         .expect("a spent budget stops the run");
     assert_eq!(outcome, crate::Outcome::Exhausted);
     assert_ne!(outcome, crate::Outcome::Success);
@@ -641,7 +641,7 @@ fn a_provider_failure_reports_blocked() {
     let mut state = LoopState::new("goal");
     state.blocked = thresholds.blocked;
     assert_eq!(
-        condition.evaluate(&state, &thresholds),
+        condition.evaluate(&state),
         Some(crate::Outcome::Blocked),
     );
 }
@@ -653,24 +653,24 @@ fn conditions_compose_with_and_and_or() {
     state.expired = true;
 
     let mut either = TerminationCondition::solved() | TerminationCondition::expired();
-    assert!(either.evaluate(&state, &thresholds).is_some());
+    assert!(either.evaluate(&state).is_some());
 
     let mut both = TerminationCondition::solved() & TerminationCondition::expired();
-    assert_eq!(both.evaluate(&state, &thresholds), None);
+    assert_eq!(both.evaluate(&state), None);
 
     state.solved = true;
     let mut both = TerminationCondition::solved() & TerminationCondition::expired();
-    assert!(both.evaluate(&state, &thresholds).is_some());
+    assert!(both.evaluate(&state).is_some());
 
     // The identities of the two operators.
     let mut none_of = TerminationCondition::any(Vec::new());
     assert_eq!(none_of.evaluate(&LoopState::new("g"), &thresholds), None);
     let mut all_of = TerminationCondition::all(Vec::new());
     assert!(all_of.evaluate(&LoopState::new("g"), &thresholds).is_some());
-    assert!(all_of.expression(&thresholds).contains("true"));
+    assert!(all_of.expression().contains("true"));
     assert!(
         TerminationCondition::any(Vec::new())
-            .expression(&thresholds)
+            .expression()
             .contains("false"),
     );
 }
@@ -681,7 +681,7 @@ fn a_condition_round_trips_through_serde() {
     let mut condition = TerminationCondition::terminal() | TerminationCondition::expired();
     let mut state = LoopState::new("goal");
     state.expired = true;
-    condition.evaluate(&state, &thresholds);
+    condition.evaluate(&state);
 
     let encoded = serde_json::to_string(&condition).expect("a condition serializes");
     let decoded: TerminationCondition =
@@ -696,7 +696,7 @@ fn resetting_a_fired_condition_clears_it() {
     let mut condition = TerminationCondition::terminal() & TerminationCondition::expired();
     let mut state = LoopState::new("goal");
     state.expired = true;
-    assert!(condition.evaluate(&state, &thresholds).is_some());
+    assert!(condition.evaluate(&state).is_some());
     assert!(condition.fired().is_some());
 
     condition.reset();
@@ -720,7 +720,7 @@ fn a_composed_termination_is_what_the_head_runs() {
     let head = graph.node(NodeIds::default().loop_head).expect("the head");
     assert_eq!(
         head.config["until"],
-        json!(condition.expression(&thresholds))
+        json!(condition.expression())
     );
 }
 
@@ -732,7 +732,7 @@ fn the_termination_expression_evaluates_rather_than_yielding_null() {
     let mut state = LoopState::new("goal");
     state.expired = true;
     let condition = TerminationCondition::terminal() | TerminationCondition::solved();
-    let program = Value::String(condition.expression(&thresholds));
+    let program = Value::String(condition.expression());
     let scope = json!({ "state": serde_json::to_value(&state).expect("state encodes") });
     assert_eq!(tinyflows::expr::evaluate(&program, &scope), json!(true));
 
