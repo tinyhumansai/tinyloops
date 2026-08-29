@@ -80,8 +80,7 @@ are named below.
 
    ```rust
    pub trait AccumulatorAccess: sealed::Sealed + Send + Sync + 'static {}
-   pub struct CanWrite;
-   pub struct NoWrite;
+   pub struct CanWrite;  pub struct NoWrite;
    pub struct StepCtx<'a, A: AccumulatorAccess> { /* base, run id, pass */ }
    impl<'a> StepCtx<'a, CanWrite> { pub fn set_state(&mut self, next: LoopState); }
    ```
@@ -109,11 +108,9 @@ are named below.
        fn run(&self, ctx: &mut StepCtx<'_, CanWrite>, input: &Value) -> Result<LoopState>;
    }
    pub struct StepRegistry { /* BTreeMap<&'static str, Arc<dyn Step>> */ }
-   impl StepRegistry {
-       pub fn register(&mut self, step: Arc<dyn Step>) -> Result<()>;
-       pub fn resolve(&self, name: &str) -> Result<&Arc<dyn Step>>;
-       pub fn names(&self) -> impl Iterator<Item = &'static str>;
-   }
+   // register(&mut self, Arc<dyn Step>) -> Result<()>
+   // resolve(&self, &str) -> Result<&Arc<dyn Step>>
+   // names(&self) -> impl Iterator<Item = &'static str>
    ```
 
    `BTreeMap` rather than `HashMap`: `names()` feeds the graph builder, and the
@@ -227,14 +224,11 @@ are named below.
 
    ```rust
    pub struct ArmSet { arms: Vec<Arc<dyn Arm>>, fold: Arc<dyn ArmFold> }
-   impl ArmSet {
-       pub fn new(arms: Vec<Arc<dyn Arm>>, fold: Arc<dyn ArmFold>) -> Result<Self>;
-       pub fn ids(&self) -> Vec<&'static str>;
-       pub fn fan_out_edges(&self, from: &str) -> Vec<Edge>;
-       pub fn merge_edges(&self, to: &str) -> Vec<Edge>;
-       pub fn merge_inputs(&self) -> Vec<String>;
-       pub fn fold(&self, base: &LoopState, results: &[(&str, LoopState)]) -> Result<LoopState>;
-   }
+   // new(Vec<Arc<dyn Arm>>, Arc<dyn ArmFold>) -> Result<Self>
+   // ids() -> Vec<&'static str>
+   // fan_out_edges(from: &str) -> Vec<Edge>   merge_edges(to: &str) -> Vec<Edge>
+   // merge_inputs() -> Vec<String>
+   // fold(&LoopState, &[(&str, LoopState)]) -> Result<LoopState>
    ```
 
    There is **no** constructor taking two lists. "Every arm converges" and
@@ -304,11 +298,8 @@ are named below.
 
    ```rust
    pub struct LoopBuilder { /* thresholds, autonomy, arms, steps, ids */ }
-   impl LoopBuilder {
-       pub fn new(thresholds: Thresholds, arms: ArmSet, steps: StepRegistry) -> Self;
-       pub fn autonomy(self, autonomy: Autonomy) -> Self;
-       pub fn build(self) -> Result<WorkflowGraph>;
-   }
+   // new(Thresholds, ArmSet, StepRegistry) -> Self
+   // autonomy(self, Autonomy) -> Self      build(self) -> Result<WorkflowGraph>
    ```
 
    The head carries `config.state.init`, `config.state.update`,
