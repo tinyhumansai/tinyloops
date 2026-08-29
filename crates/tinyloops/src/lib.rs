@@ -50,12 +50,14 @@
 //!
 //! [TinyFlows]: https://github.com/tinyhumansai/tinyflows
 
+mod arm;
 mod budget;
 mod error;
 mod greeting;
 mod observe;
 mod policy;
 mod state;
+mod step;
 mod tinybus_module;
 
 // The limits every run carries, and the events it emits while spending them.
@@ -76,6 +78,16 @@ pub use policy::{
     expr_scope, is_terminal, ladder, route, terminal_condition,
 };
 pub use state::{Contribution, Delta, LoopState};
+
+// The loop body: the arms a pass fans out to, and the closed set of steps their
+// nodes are. `arm` owns the one list both arm edge sets are derived from and the
+// merge that folds them; `step` owns the single tool a node body is.
+pub use arm::{Arm, ArmOutcome, ArmSet, Edge, upstream_address};
+pub use step::{
+    AccumulatorAccess, Advanced, CanWrite, NoWrite, Observer, RUN_LOOP_STEP, RegisteredStep,
+    STEP_ATTEMPT, STEP_JUDGE, STEP_NAMES, STEP_PASS, STEP_PLAN, STEP_REFLECT, STEP_REPORT,
+    STEP_RESEARCH, Step, StepContext, StepRegistry, run_loop_step,
+};
 
 // The wire contract, re-exported by module rather than by item so every path
 // through this crate resolves to the same definitions the contract crate
