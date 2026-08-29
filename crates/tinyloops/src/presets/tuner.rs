@@ -168,8 +168,8 @@ impl Rules {
     /// A judge returning the same score for a window of passes is a judge whose
     /// score is carrying no information, and the run is paying for it every
     /// pass. Muting it is not a claim that it was wrong.
-    fn on_silence(state: &LoopState) -> Option<Change> {
-        if !Self::scores_are_flat(state) || state.profile.is_muted(STEP_JUDGE) {
+    fn on_silence(&self, state: &LoopState) -> Option<Change> {
+        if !self.scores_are_flat(state) || state.profile.is_muted(STEP_JUDGE) {
             return None;
         }
         Some(Change::MuteArm {
@@ -178,7 +178,7 @@ impl Rules {
     }
 
     /// The reason line that travels with `change`.
-    fn because(state: &LoopState, change: &Change) -> String {
+    fn because(&self, state: &LoopState, change: &Change) -> String {
         match change {
             Change::Cap { .. } => format!(
                 "{} consecutive blocked passes; the machinery is failing, not the work",
@@ -189,8 +189,9 @@ impl Rules {
                 state.unproductive, state.profile.thresholds.stuck
             ),
             Change::MuteArm { arm } => format!(
-                "{arm} has scored {:?} for {SILENT_SCORES} passes and is carrying no signal",
-                state.scores.last().copied().unwrap_or_default()
+                "{arm} has scored {:?} for {} passes and is carrying no signal",
+                state.scores.last().copied().unwrap_or_default(),
+                self.window
             ),
             Change::UnmuteArm { arm } => format!("{arm} is wanted again"),
         }
