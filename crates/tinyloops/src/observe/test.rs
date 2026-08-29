@@ -857,6 +857,8 @@ fn only_the_spine_events_are_spine_events() {
                 | "routed"
                 | "bound_tripped"
                 | "loop_finished"
+                | "amended"
+                | "amendment_refused"
         );
         assert_eq!(event.is_spine(), expected, "{}", event.kind());
     }
