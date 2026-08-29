@@ -18,7 +18,7 @@
 use serde_json::json;
 
 use super::*;
-use crate::policy::Judgement;
+use crate::policy::{Judgement, Thresholds};
 
 /// A step that stamps the pass number it was handed onto `attempts`.
 ///
@@ -368,4 +368,17 @@ fn debug_rendering_names_the_registered_steps() {
 
     assert!(rendered.contains("attempt"));
     assert!(format!("{:?}", registry.get(STEP_ATTEMPT).unwrap()).contains("advances: true"));
+}
+
+#[test]
+fn a_step_is_handed_the_thresholds_its_state_carries() {
+    // The seam reads the thresholds off the state rather than from a caller:
+    // a body handed a threshold set the run is not using would route on
+    // numbers nobody configured, and nothing would report it.
+    let registry = registry();
+    let state = LoopState::with_profile("goal", crate::LoopProfile::of(crate::Preset::Persistent));
+
+    let returned = registry.run(STEP_ATTEMPT, state).unwrap();
+
+    assert_eq!(returned.profile.thresholds.stuck, 4);
 }
