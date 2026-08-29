@@ -63,17 +63,15 @@ fn each_preset_deviates_from_the_default_in_the_field_its_bet_is_about() {
 fn the_persistence_bet_and_the_variation_bet_route_the_same_state_differently() {
     // The same run, one pass into a stall, read by two presets. This is the bet
     // made visible: exploratory diversifies, persistent keeps revising.
-    let mut state = LoopState::new("goal");
-    state.unproductive = 1;
+    let mut exploratory =
+        LoopState::with_profile("goal", crate::policy::LoopProfile::of(Preset::Exploratory));
+    exploratory.unproductive = 1;
+    let mut persistent =
+        LoopState::with_profile("goal", crate::policy::LoopProfile::of(Preset::Persistent));
+    persistent.unproductive = 1;
 
-    assert_eq!(
-        crate::policy::route(&state, &Preset::Exploratory.thresholds()),
-        Route::Diversify
-    );
-    assert_eq!(
-        crate::policy::route(&state, &Preset::Persistent.thresholds()),
-        Route::Retry
-    );
+    assert_eq!(crate::policy::route(&exploratory), Route::Diversify);
+    assert_eq!(crate::policy::route(&persistent), Route::Retry);
 }
 
 #[test]
@@ -97,11 +95,10 @@ fn the_presets_are_the_set_the_parity_sweep_reads() {
     assert_eq!(Preset::ALL.len(), 4);
     for preset in Preset::ALL {
         let thresholds = preset.thresholds();
-        let mut state = LoopState::new("goal");
+        let mut state = LoopState::with_profile("goal", crate::policy::LoopProfile::of(preset));
         state.blocked = thresholds.blocked;
 
-        let rendered =
-            evaluate_ladder(&state, "loop", &thresholds).expect("the generated ladder evaluates");
+        let rendered = evaluate_ladder(&state, "loop").expect("the generated ladder evaluates");
         assert_eq!(
             rendered,
             Route::Blocked,
@@ -134,7 +131,7 @@ fn an_assembled_loop_carries_its_preset_thresholds_and_budget() {
     let assembled = assembled(Preset::Cautious).expect("assembles");
 
     assert_eq!(assembled.preset(), Preset::Cautious);
-    assert_eq!(assembled.thresholds().unverified, 1);
+    assert_eq!(assembled.profile().thresholds.unverified, 1);
     assert_eq!(assembled.budget().caps(), Caps::default());
 }
 

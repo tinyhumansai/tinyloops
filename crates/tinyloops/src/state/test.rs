@@ -42,6 +42,7 @@ fn populated() -> LoopState {
         scores: vec![7, 9],
         judged: Judgement::Steer,
         board: board(),
+        profile: crate::policy::LoopProfile::of(crate::presets::Preset::Cautious),
         answer: "the bound holds".to_string(),
     }
 }
