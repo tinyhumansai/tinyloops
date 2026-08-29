@@ -56,12 +56,18 @@ then what the run is paying for and not reading. At most one proposal a pass.
 |---|---|---|
 | blocked | `blocked` reaches one below its threshold | half the model-call allowance |
 | patience | `unproductive` is strictly past `stuck` — a diversify already happened and the pass after it was unproductive too | `stuck + 1`, once |
-| silence | the judge has returned the same score for `SILENT_SCORES` passes | mute the judge |
+| silence | the judge has returned the same score for the assembled `Bounds::muting_window` passes (`SILENT_SCORES` by default) | mute the judge |
 
 It is rule-based rather than model-based because a model asked mid-run whether
 its own configuration is wrong has no ground truth to answer from and every
 incentive to answer yes. A model tuner implements the same `Tuner` trait and is
 bounded by the same `Bounds`.
+
+**The silence rule's window is configured, not hardcoded.** `Rules::new`
+takes the window explicitly; `research_loop` and `tuned_research_loop` wire it
+from the assembled `Bounds::muting_window` so the rule and the fold agree on
+the same cadence. `Rules::default` falls back to `SILENT_SCORES`, the shipped
+presets' declared window, for a caller that wires the tuner up directly.
 
 The muting rule fires on **silence**, never on "scored worse". Eliminating the
 weakest arm needs a measured reward per arm, and this loop has none — an arm
