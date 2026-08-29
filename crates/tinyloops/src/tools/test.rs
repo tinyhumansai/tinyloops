@@ -423,12 +423,14 @@ fn the_names_of_the_vocabulary_are_the_wire_names() {
         serde_json::from_str::<Recovery>("\"salvage\"").unwrap(),
         Recovery::Salvage
     );
+    assert_eq!(
+        serde_json::to_string(&ToolGrant::read_only()).unwrap(),
+        r#"["read","search"]"#
+    );
     assert!(
-        serde_json::from_str::<ToolGrant>(
-            r#"{"read":true,"search":false,"edit":false,"execute":true}"#
-        )
-        .unwrap()
-        .execute
+        serde_json::from_str::<ToolGrant>(r#"["execute"]"#)
+            .unwrap()
+            .holds(ToolGroup::Execute)
     );
     assert_eq!(
         serde_json::from_str::<ToolGroup>("\"read\"").unwrap(),
