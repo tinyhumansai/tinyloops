@@ -1456,3 +1456,47 @@ fn a_plain_run_proposes_nothing_and_says_nothing_about_revisions() {
     assert_eq!(driven.profile.revision, 0);
     assert!(!driven.answer().contains("Revised itself"));
 }
+
+#[test]
+fn a_run_the_machinery_keeps_failing_spends_less_rather_than_more() {
+    // The end-to-end version of the blocked rule, asserted rather than left to
+    // the "if it proposed anything" branch above: a run whose specialist never
+    // starts should reach for a smaller model-call allowance, not more
+    // attempts.
+    let tuned = tuned_research_loop(
+        "bound the error term",
+        Preset::Balanced,
+        delegates(),
+        plan(),
+        Arc::new(Inline::of(
+            delegates(),
+            [(
+                "prover".to_owned(),
+                std::iter::repeat_with(|| Scripted::Fails {
+                    reason: "the sandbox would not start".to_owned(),
+                })
+                .take(12)
+                .collect(),
+            )],
+        )),
+    )
+    .expect("the tuned preset assembles");
+
+    let driven = tuned
+        .drive(&Recorder::new("run", Arc::new(LineSink::new(std::io::sink()))))
+        .expect("a tuned run drives");
+
+    assert!(
+        driven.profile.history.iter().any(|recorded| matches!(
+            recorded.amendment.change,
+            crate::policy::Change::Cap {
+                field: crate::policy::CapField::MaxModelCalls,
+                ..
+            }
+        )),
+        "a blocked run proposed nothing about its spend: {:?}",
+        driven.profile.history,
+    );
+    assert!(driven.profile.applied() > 0);
+    assert!(driven.profile.caps.max_model_calls < crate::budget::Caps::default().max_model_calls);
+}
