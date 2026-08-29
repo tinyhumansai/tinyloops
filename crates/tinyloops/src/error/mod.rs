@@ -103,6 +103,98 @@ pub enum Error {
         /// The cap that was meant to stop the run.
         shadowed: crate::Bound,
     },
+
+    /// A graph node named a step the registry does not hold.
+    ///
+    /// The step set is closed, and this variant is what closes it. An
+    /// unrecognised name must never be a no-op: the node would run green,
+    /// change nothing, and leave the loop to route on a state nobody advanced.
+    #[error("no step named {name} is registered")]
+    UnknownStep {
+        /// The name the node asked for.
+        name: String,
+    },
+
+    /// A step was registered under a name that was already taken.
+    ///
+    /// A name in a closed set has exactly one meaning. Replacing a body
+    /// silently would make which one runs depend on registration order.
+    #[error("a step named {name} is already registered")]
+    DuplicateStep {
+        /// The contested name.
+        name: String,
+    },
+
+    /// A `run_loop_step` payload was missing a field or held the wrong shape.
+    ///
+    /// Reading a default step name or a default accumulator instead would route
+    /// the run on something nobody computed, which is the failure the closed
+    /// step set exists to prevent arriving by another door.
+    #[error("step payload field {field} is missing or malformed")]
+    MalformedStepPayload {
+        /// The field that could not be read.
+        field: &'static str,
+    },
+
+    /// The accumulator a step returned could not be serialized.
+    ///
+    /// Unreachable for the accumulator as it stands — every field serializes
+    /// infallibly — but the failure is reported rather than unwrapped, because
+    /// a panic inside a graph node is far worse than an error the run can route
+    /// on.
+    #[error("could not encode the returned accumulator")]
+    StateEncoding,
+
+    /// A loop was declared with no evaluation arms.
+    ///
+    /// A loop nothing evaluates has no evidence to route on and no arm able to
+    /// conclude, so it can only run to its iteration cap and report nothing
+    /// about why.
+    #[error("a loop must declare at least one evaluation arm")]
+    EmptyArmSet,
+
+    /// Two evaluation arms were declared under the same name.
+    ///
+    /// The name is a node id, a step name, and a fold key at once, so a
+    /// duplicate silently replaces the other arm in all three.
+    #[error("an arm named {name} is already declared")]
+    DuplicateArm {
+        /// The contested name.
+        name: String,
+    },
+
+    /// More than one arm declared itself able to end the run.
+    ///
+    /// Exactly one arm may conclude. Two means the run's outcome depends on
+    /// which of them finished first — the arrival-order dependence every other
+    /// rule here exists to remove, arriving through the one door left open.
+    #[error("both {first} and {second} may conclude the run")]
+    AmbiguousConclusion {
+        /// The arm that declared it first.
+        first: &'static str,
+        /// The arm that also declared it.
+        second: &'static str,
+    },
+
+    /// A merge was handed an outcome from an arm the set does not declare.
+    ///
+    /// Folding it would credit the run with evidence no declared arm produced.
+    #[error("no arm named {name} is declared")]
+    UnknownArm {
+        /// The undeclared arm.
+        name: &'static str,
+    },
+
+    /// A declared arm produced no outcome for a merge.
+    ///
+    /// Invariant 6 checked at the barrier as well as at the edges: the point of
+    /// deriving both edge sets from one list is that an arm cannot run, cost
+    /// its budget, and then go unfolded.
+    #[error("arm {name} was declared but not folded")]
+    ArmNotFolded {
+        /// The arm missing from the fold.
+        name: &'static str,
+    },
 }
 
 /// The crate's standard result type.
