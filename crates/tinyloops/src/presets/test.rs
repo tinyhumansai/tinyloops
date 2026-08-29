@@ -844,8 +844,12 @@ fn the_merge_step_folds_every_arms_counters_by_delta() {
     restarted.unproductive = 2;
     restarted.restarts = 1;
 
-    let merged = merge_of(&base, &[("reflect", &productive), ("judge", &restarted)], &thresholds)
-        .expect("the merge folds");
+    let merged = merge_of(
+        &base,
+        &[("reflect", &productive), ("judge", &restarted)],
+        &thresholds,
+    )
+    .expect("the merge folds");
 
     // 1 + (-1) + (+1). Both movements land, which is the point: a merge that
     // took the last writer would give 2, and one that added the arms' absolute
@@ -965,10 +969,7 @@ fn an_arm_whose_output_is_null_is_an_error_rather_than_a_smaller_fold() {
         }
     });
 
-    let refused = Converge::new(arms).run(
-        base,
-        StepContext::advancing_with(0, &thresholds, &args),
-    );
+    let refused = Converge::new(arms).run(base, StepContext::advancing_with(0, &thresholds, &args));
 
     assert!(matches!(
         refused,
@@ -981,10 +982,7 @@ fn a_merge_invoked_with_no_arguments_at_all_is_an_error() {
     let thresholds = Thresholds::default();
     let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
 
-    let refused = Converge::new(arms).run(
-        LoopState::new("goal"),
-        advancing(0, &thresholds),
-    );
+    let refused = Converge::new(arms).run(LoopState::new("goal"), advancing(0, &thresholds));
 
     assert!(matches!(
         refused,
@@ -1021,7 +1019,10 @@ fn applying_a_contribution_and_reading_it_back_is_the_identity() {
     let mut candidate = base.clone();
     claimed.apply_to(&mut candidate);
 
-    assert_eq!(Contribution::claimed_from("reflect", &base, &candidate), claimed);
+    assert_eq!(
+        Contribution::claimed_from("reflect", &base, &candidate),
+        claimed
+    );
 }
 
 #[test]

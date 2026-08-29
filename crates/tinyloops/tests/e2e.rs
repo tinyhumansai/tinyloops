@@ -55,7 +55,11 @@ fn delegates() -> DelegateSet {
 fn plan() -> Arc<FixedPlan> {
     Arc::new(FixedPlan::of([
         ("bound", "bound the error term", "a proved bound on disk"),
-        ("edge", "check the n = 0 edge case", "a proof or a counterexample"),
+        (
+            "edge",
+            "check the n = 0 edge case",
+            "a proof or a counterexample",
+        ),
     ]))
 }
 
@@ -227,7 +231,9 @@ async fn the_merge_node_is_handed_every_arm_and_folds_them() {
     assert!(!merges.is_empty(), "the merge node never ran");
 
     for (args, _) in &merges {
-        let arms = args.get("arms").expect("the merge is addressed with `arms`");
+        let arms = args
+            .get("arms")
+            .expect("the merge is addressed with `arms`");
         // Both arms, and neither of them null. Under this engine a binding that
         // failed to resolve yields `null`, which is why the assertion is about
         // the value rather than about the key existing.
@@ -254,7 +260,10 @@ async fn the_merge_carries_the_judges_verdict_into_the_accumulator() {
 
     let merged = steps.state_after("merge", 0);
 
-    assert!(!merged.scores.is_empty(), "the judge's score did not survive the merge");
+    assert!(
+        !merged.scores.is_empty(),
+        "the judge's score did not survive the merge"
+    );
     assert_eq!(merged.scores.len(), 1, "one pass, one score");
 }
 
@@ -269,7 +278,10 @@ async fn the_merge_folds_the_reflections_verdict_rather_than_dropping_it() {
     // both that flag and the judge's score out of the same superstep.
     let merged = steps.state_after("merge", 1);
 
-    assert!(merged.solved, "the reflection's conclusion did not survive the merge");
+    assert!(
+        merged.solved,
+        "the reflection's conclusion did not survive the merge"
+    );
     assert_eq!(merged.banked, 1);
     // One score per pass, accumulating: `scores` is the history the report
     // renders, so a second pass adds to it rather than replacing it. A merge
@@ -310,9 +322,15 @@ async fn every_node_runs_and_no_expression_resolves_to_null() {
     assert!(
         trace.failed().is_empty(),
         "nodes failed: {:?}",
-        trace.failed().iter().map(|s| &s.node_id).collect::<Vec<_>>()
+        trace
+            .failed()
+            .iter()
+            .map(|s| &s.node_id)
+            .collect::<Vec<_>>()
     );
-    for step in ["plan", "research", "attempt", "reflect", "judge", "merge", "pass", "report"] {
+    for step in [
+        "plan", "research", "attempt", "reflect", "judge", "merge", "pass", "report",
+    ] {
         assert!(steps.calls_for(step).len() > 0, "{step} never ran");
     }
 }
@@ -324,7 +342,11 @@ async fn research_runs_once_and_the_arms_run_once_per_pass() {
     run(&graph, &steps).await;
 
     let passes = steps.calls_for("pass").len();
-    assert_eq!(steps.calls_for("research").len(), 1, "research is not per-pass");
+    assert_eq!(
+        steps.calls_for("research").len(),
+        1,
+        "research is not per-pass"
+    );
     assert_eq!(steps.calls_for("attempt").len(), passes);
     assert_eq!(steps.calls_for("reflect").len(), passes);
     assert_eq!(steps.calls_for("judge").len(), passes);
@@ -354,8 +376,7 @@ async fn every_arm_reads_the_attempt_and_never_the_accumulator() {
         .into_iter()
         .nth(1)
         .expect("a second pass reflected");
-    let reflected: LoopState =
-        serde_json::from_value(reflect_on_second).expect("an accumulator");
+    let reflected: LoopState = serde_json::from_value(reflect_on_second).expect("an accumulator");
     assert_eq!(
         reflected.last_attempt, second.last_attempt,
         "the arm read a stale attempt"
@@ -380,8 +401,18 @@ async fn a_run_whose_specialists_never_answer_stops_without_claiming_success() {
     let (graph, thresholds, registry) = assembled(
         Preset::Balanced,
         vec![
-            ("prover", vec![Scripted::NeverCompletes { artifacts: Vec::new() }]),
-            ("refuter", vec![Scripted::NeverCompletes { artifacts: Vec::new() }]),
+            (
+                "prover",
+                vec![Scripted::NeverCompletes {
+                    artifacts: Vec::new(),
+                }],
+            ),
+            (
+                "refuter",
+                vec![Scripted::NeverCompletes {
+                    artifacts: Vec::new(),
+                }],
+            ),
         ],
     );
     let steps = Arc::new(Steps::new(registry, thresholds));
@@ -391,7 +422,10 @@ async fn a_run_whose_specialists_never_answer_stops_without_claiming_success() {
 
     assert!(!final_state.solved);
     assert_eq!(final_state.banked, 0);
-    assert!(final_state.unproductive > 0, "an empty pass moved no counter");
+    assert!(
+        final_state.unproductive > 0,
+        "an empty pass moved no counter"
+    );
 }
 
 #[tokio::test]
@@ -401,8 +435,18 @@ async fn a_run_whose_machinery_never_starts_is_blocked_rather_than_stalled() {
     let (graph, thresholds, registry) = assembled(
         Preset::Balanced,
         vec![
-            ("prover", vec![Scripted::Fails { reason: "no sandbox".to_owned() }]),
-            ("refuter", vec![Scripted::Fails { reason: "no sandbox".to_owned() }]),
+            (
+                "prover",
+                vec![Scripted::Fails {
+                    reason: "no sandbox".to_owned(),
+                }],
+            ),
+            (
+                "refuter",
+                vec![Scripted::Fails {
+                    reason: "no sandbox".to_owned(),
+                }],
+            ),
         ],
     );
     let steps = Arc::new(Steps::new(registry, thresholds));
@@ -455,7 +499,12 @@ async fn a_salvaged_specialist_still_counts_as_work() {
                     artifacts: vec![Artifact::new("partial.md", "as far as it got")],
                 }],
             ),
-            ("refuter", vec![Scripted::NeverCompletes { artifacts: Vec::new() }]),
+            (
+                "refuter",
+                vec![Scripted::NeverCompletes {
+                    artifacts: Vec::new(),
+                }],
+            ),
         ],
     );
     let steps = Arc::new(Steps::new(registry, thresholds));
@@ -464,7 +513,10 @@ async fn a_salvaged_specialist_still_counts_as_work() {
     let final_state = steps.state_after("report", 0);
 
     assert_eq!(final_state.unproductive, 0, "salvaged work read as a stall");
-    assert!(final_state.established > 0, "the artifacts were not counted");
+    assert!(
+        final_state.established > 0,
+        "the artifacts were not counted"
+    );
 }
 
 // ------------------------------------------- the engine and the driver agree
@@ -495,7 +547,10 @@ async fn driving_the_loop_reaches_the_same_verdict_as_running_the_graph() {
         )),
     )
     .expect("assembles")
-    .drive(&Recorder::new("run", Arc::new(LineSink::new(std::io::sink()))))
+    .drive(&Recorder::new(
+        "run",
+        Arc::new(LineSink::new(std::io::sink())),
+    ))
     .expect("the loop drives");
 
     assert_eq!(through_engine.solved, driven.state.solved);
@@ -515,9 +570,17 @@ async fn every_preset_runs_the_same_graph_to_a_terminal_state() {
         assert!(
             trace.failed().is_empty(),
             "{preset} failed: {:?}",
-            trace.failed().iter().map(|s| &s.node_id).collect::<Vec<_>>()
+            trace
+                .failed()
+                .iter()
+                .map(|s| &s.node_id)
+                .collect::<Vec<_>>()
         );
-        assert_eq!(steps.calls_for("report").len(), 1, "{preset} wrote no report");
+        assert_eq!(
+            steps.calls_for("report").len(),
+            1,
+            "{preset} wrote no report"
+        );
     }
 }
 

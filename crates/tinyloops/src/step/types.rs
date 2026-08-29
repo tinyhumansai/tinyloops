@@ -122,9 +122,7 @@ impl<'a, A: AccumulatorAccess> StepContext<'a, A> {
     /// should not pretend to: a null argument is a missing argument.
     #[must_use]
     pub fn arg(&self, name: &str) -> Option<&'a serde_json::Value> {
-        self.args
-            .get(name)
-            .filter(|value| !value.is_null())
+        self.args.get(name).filter(|value| !value.is_null())
     }
 }
 

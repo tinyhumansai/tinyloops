@@ -205,7 +205,12 @@ impl std::fmt::Debug for Converge {
         f.debug_struct("Converge")
             .field(
                 "arms",
-                &self.arms.arms().iter().map(|arm| arm.name()).collect::<Vec<_>>(),
+                &self
+                    .arms
+                    .arms()
+                    .iter()
+                    .map(|arm| arm.name())
+                    .collect::<Vec<_>>(),
             )
             .finish()
     }
@@ -224,7 +229,12 @@ impl Converge {
     }
 
     /// Decodes one arm's returned accumulator out of the `arms` argument.
-    fn outcome_of(&self, arms: &serde_json::Value, arm: &'static str, base: &LoopState) -> Result<ArmOutcome> {
+    fn outcome_of(
+        &self,
+        arms: &serde_json::Value,
+        arm: &'static str,
+        base: &LoopState,
+    ) -> Result<ArmOutcome> {
         let returned = arms
             .get(arm)
             .filter(|value| !value.is_null())
