@@ -58,6 +58,51 @@ pub enum Error {
         /// The arm that also tried to write it.
         also: &'static str,
     },
+
+    /// A budget cap was zero, which is a scope with no bound at all.
+    ///
+    /// Raised by [`RunBudget::new`](crate::RunBudget::new). Zero is not spelled
+    /// "unlimited" here: a run whose scope is unbounded is the run that ends
+    /// when something external kills it, and that is the one ending which
+    /// produces no report.
+    #[error("budget cap {} must not be zero", bound.as_str())]
+    UnboundedCap {
+        /// The cap that was zero.
+        bound: crate::Bound,
+    },
+
+    /// An inner timeout was not strictly shorter than the one containing it.
+    ///
+    /// Raised by [`RunBudget::new`](crate::RunBudget::new) for
+    /// `tool_timeout >= run_timeout` and for `request_timeout >= tool_timeout`.
+    /// The ordering is a correctness property rather than a preference: an
+    /// expired tool call returns its captured output with a timeout status and
+    /// the run carries on, while an expired run loses its context and its
+    /// report. If the outer clock can expire first, the inner scope's graceful
+    /// path is unreachable.
+    #[error("{} must expire before {}", inner.as_str(), outer.as_str())]
+    NestedTimeout {
+        /// The bound that must expire first.
+        inner: crate::Bound,
+        /// The bound that must expire second.
+        outer: crate::Bound,
+    },
+
+    /// Two caps within one scope could each be the first to trip.
+    ///
+    /// Raised by [`RunBudget::new`](crate::RunBudget::new). Exactly one cap in
+    /// a scope may be reachable, and it must be the one whose overrun path
+    /// preserves partial results. A configuration in which the tool-call cap
+    /// can be reached before the model-call cap puts the run on the overrun
+    /// path that reports nothing, so it is rejected naming both caps rather
+    /// than silently preferred.
+    #[error("{} is reachable before {}", reachable.as_str(), shadowed.as_str())]
+    ContendedCaps {
+        /// The cap the run would reach first.
+        reachable: crate::Bound,
+        /// The cap that was meant to stop the run.
+        shadowed: crate::Bound,
+    },
 }
 
 /// The crate's standard result type.
