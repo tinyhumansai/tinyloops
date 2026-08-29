@@ -113,7 +113,7 @@ impl ArmSet {
     pub fn fold_inputs(&self) -> Vec<String> {
         self.names()
             .into_iter()
-            .map(|arm| upstream_address(arm))
+            .map(upstream_address)
             .collect()
     }
 
