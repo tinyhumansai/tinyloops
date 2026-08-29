@@ -14,8 +14,7 @@ use std::sync::Arc;
 use serde_json::{Value, json};
 
 use super::{
-    AssembledLoop, Judge, Preset, Reflect, Rules, SOLVED_MARKER, research_loop,
-    tuned_research_loop,
+    AssembledLoop, Judge, Preset, Reflect, Rules, SOLVED_MARKER, research_loop, tuned_research_loop,
 };
 use crate::arm::{Arm, ArmSet};
 use crate::budget::{Bound, Caps, RunBudget};
@@ -1273,10 +1272,7 @@ fn the_rule_tuner_proposes_on_exactly_these_passes() {
     })
     .collect();
 
-    assert_eq!(
-        sequence,
-        vec![None, None, None, Some("stuck"), Some("cap")],
-    );
+    assert_eq!(sequence, vec![None, None, None, Some("stuck"), Some("cap")],);
 }
 
 #[test]
@@ -1329,7 +1325,10 @@ fn a_muted_arm_still_runs_its_node_and_still_converges() {
     let mut state = tuned_state(Preset::Balanced, |state| {
         state.last_attempt = String::new();
     });
-    state.profile.muted.insert(crate::step::STEP_JUDGE.to_owned());
+    state
+        .profile
+        .muted
+        .insert(crate::step::STEP_JUDGE.to_owned());
 
     let step = ArmStep::new(std::sync::Arc::new(Judge));
     let returned = step
@@ -1344,7 +1343,9 @@ fn a_muted_arm_still_runs_its_node_and_still_converges() {
     // nothing, which is what the merge needs from it.
     assert_eq!(returned, state);
     assert_eq!(returned.delta_from(&state), crate::Delta::default());
-    assert!(crate::Contribution::claimed_from(crate::step::STEP_JUDGE, &state, &returned).is_empty());
+    assert!(
+        crate::Contribution::claimed_from(crate::step::STEP_JUDGE, &state, &returned).is_empty()
+    );
 }
 
 #[test]
@@ -1436,7 +1437,9 @@ fn a_tuned_run_reports_every_revision_and_every_refusal() {
         assert!(driven.answer().contains("Revised itself"));
         for recorded in &driven.profile.history {
             assert!(
-                driven.answer().contains(&recorded.amendment.change.to_string()),
+                driven
+                    .answer()
+                    .contains(&recorded.amendment.change.to_string()),
                 "the report omits {recorded}",
             );
         }
@@ -1449,7 +1452,10 @@ fn a_plain_run_proposes_nothing_and_says_nothing_about_revisions() {
     // reports no section about it.
     let driven = assembled(Preset::Balanced)
         .expect("the preset assembles")
-        .drive(&Recorder::new("run", Arc::new(LineSink::new(std::io::sink()))))
+        .drive(&Recorder::new(
+            "run",
+            Arc::new(LineSink::new(std::io::sink())),
+        ))
         .expect("a plain run drives");
 
     assert!(driven.profile.history.is_empty());
@@ -1483,7 +1489,10 @@ fn a_run_the_machinery_keeps_failing_spends_less_rather_than_more() {
     .expect("the tuned preset assembles");
 
     let driven = tuned
-        .drive(&Recorder::new("run", Arc::new(LineSink::new(std::io::sink()))))
+        .drive(&Recorder::new(
+            "run",
+            Arc::new(LineSink::new(std::io::sink())),
+        ))
         .expect("a tuned run drives");
 
     assert!(

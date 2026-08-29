@@ -962,10 +962,17 @@ fn narrowing_only_ever_tightens() {
     let narrowed = preset.narrow(&deployment);
 
     // Intersected where both spoke.
-    assert_eq!(narrowed.thresholds[&ThresholdField::Stuck], Range::new(2, 3));
+    assert_eq!(
+        narrowed.thresholds[&ThresholdField::Stuck],
+        Range::new(2, 3)
+    );
     assert_eq!(narrowed.caps[&CapField::MaxTokens], Range::new(1, 1_000));
     // Dropped where only one did: silence is not permission.
-    assert!(!narrowed.thresholds.contains_key(&ThresholdField::MaxAttempts));
+    assert!(
+        !narrowed
+            .thresholds
+            .contains_key(&ThresholdField::MaxAttempts)
+    );
     assert_eq!(narrowed.mutable_arms.len(), 1);
     // A deployment cannot buy the run more amendments, or a shorter window
     // before an arm may be retired.
@@ -1016,14 +1023,20 @@ fn a_run_at_its_amendment_budget_refuses_the_next_and_carries_on() {
     for value in [3, 4] {
         assert!(
             profile
-                .fold(Amendment::new("tune", 1, stuck_to(value), "because"), &bounds)
+                .fold(
+                    Amendment::new("tune", 1, stuck_to(value), "because"),
+                    &bounds
+                )
                 .applied()
         );
     }
     let third = profile.fold(Amendment::new("tune", 2, stuck_to(5), "because"), &bounds);
 
     assert!(!third.applied());
-    assert_eq!(profile.thresholds.stuck, 4, "the profile stopped at the budget");
+    assert_eq!(
+        profile.thresholds.stuck, 4,
+        "the profile stopped at the budget"
+    );
     assert_eq!(profile.revision, 2);
     assert_eq!(profile.history.len(), 3);
 }
@@ -1065,13 +1078,19 @@ fn every_preset_states_its_bounds_and_none_of_them_permits_everything() {
     for preset in crate::presets::Preset::ALL {
         let bounds = preset.bounds();
         assert!(bounds.max_amendments > 0, "{preset} cannot revise itself");
-        assert!(!bounds.thresholds.is_empty(), "{preset} bounds no threshold");
+        assert!(
+            !bounds.thresholds.is_empty(),
+            "{preset} bounds no threshold"
+        );
         // No preset may tune its way out of the ceiling that stops a run: the
         // attempt cap can never be raised past the head's runaway backstop, or
         // the amendment folds, reads back as raised, and buys nothing.
         let backstop = u64::from(crate::budget::Caps::default().max_iterations);
         if let Some(range) = bounds.thresholds.get(&ThresholdField::MaxAttempts) {
-            assert!(range.high <= backstop, "{preset} may amend past the backstop");
+            assert!(
+                range.high <= backstop,
+                "{preset} may amend past the backstop"
+            );
         }
     }
 }

@@ -503,9 +503,10 @@ impl crate::arm::Tuner for Fixed {
         _report: &Value,
         ctx: StepContext<'_, NoWrite>,
     ) -> Result<Option<crate::policy::Amendment>> {
-        Ok(self.change.clone().map(|change| {
-            crate::policy::Amendment::new(self.name, ctx.pass(), change, "because")
-        }))
+        Ok(self
+            .change
+            .clone()
+            .map(|change| crate::policy::Amendment::new(self.name, ctx.pass(), change, "because")))
     }
 }
 
@@ -518,11 +519,8 @@ fn two_tuners_in_one_arm_set_are_refused_by_name() {
     // The same shape as the second concluding arm, and for the same reason:
     // two proposers means the profile a pass folds depends on which finished
     // first, which is arrival order deciding the run's configuration.
-    let error = ArmSet::new(vec![
-        tuner("tune", None),
-        tuner("also_tune", None),
-    ])
-    .expect_err("two tuners are refused");
+    let error = ArmSet::new(vec![tuner("tune", None), tuner("also_tune", None)])
+        .expect_err("two tuners are refused");
 
     assert_eq!(
         error,

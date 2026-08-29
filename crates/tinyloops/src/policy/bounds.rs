@@ -189,9 +189,7 @@ impl Bounds {
                 if self.mutable_arms.contains(arm) {
                     Ok(())
                 } else {
-                    Err(Error::UnboundedAmendment {
-                        field: arm.clone(),
-                    })
+                    Err(Error::UnboundedAmendment { field: arm.clone() })
                 }
             }
         }

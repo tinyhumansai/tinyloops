@@ -226,8 +226,11 @@ impl LoopBuilder {
     /// - [`Error::InvalidLoopGraph`] when the emitted graph does not pass the
     ///   engine's own structural validation.
     pub fn build(self) -> Result<WorkflowGraph> {
-        let seed = serde_json::to_value(LoopState::with_profile(self.goal.clone(), self.profile.clone()))
-            .map_err(|_| Error::StateEncoding)?;
+        let seed = serde_json::to_value(LoopState::with_profile(
+            self.goal.clone(),
+            self.profile.clone(),
+        ))
+        .map_err(|_| Error::StateEncoding)?;
 
         let (nodes, edges) = if self.autonomy == Autonomy::Report {
             self.dry_run_shape(&seed)

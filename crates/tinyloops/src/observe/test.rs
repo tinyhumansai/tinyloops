@@ -787,8 +787,7 @@ fn the_fixture_holds_one_of_every_event() {
     // somebody notices the fixture entry is missing.
     assert_eq!(every_event().len(), 23);
 
-    let kinds: std::collections::BTreeSet<&str> =
-        every_event().iter().map(Event::kind).collect();
+    let kinds: std::collections::BTreeSet<&str> = every_event().iter().map(Event::kind).collect();
     assert_eq!(kinds.len(), every_event().len(), "a kind appears twice");
 }
 

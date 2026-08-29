@@ -34,11 +34,11 @@ mod ladder;
 mod profile;
 mod types;
 
+pub use amendment::{Amendment, CapField, Change, Muted, Recorded, ThresholdField, Verdict};
+pub use bounds::{Bounds, DEFAULT_MAX_AMENDMENTS, DEFAULT_MUTING_WINDOW, Range};
 pub use ladder::{
     evaluate_ladder, evaluate_terminal_condition, expr_scope, ladder, terminal_condition,
 };
-pub use amendment::{Amendment, CapField, Change, Muted, Recorded, ThresholdField, Verdict};
-pub use bounds::{Bounds, DEFAULT_MAX_AMENDMENTS, DEFAULT_MUTING_WINDOW, Range};
 pub use profile::LoopProfile;
 pub use types::{Autonomy, Judgement, Outcome, Route, Thresholds};
 
