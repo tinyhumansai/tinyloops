@@ -321,6 +321,80 @@ pub enum Error {
         /// The arm missing from the fold.
         name: &'static str,
     },
+
+    /// A role was declared with no caps of its own.
+    ///
+    /// Raised by [`RoleRegistry::declare`](crate::RoleRegistry::declare). A
+    /// role with no caps runs on whatever budget it is handed, and the failure
+    /// that produces is specific rather than abstract: a role that reads a
+    /// report and answers in four lines, given an investigation's budget,
+    /// investigates, because it has the calls.
+    #[error("role {role} was declared without caps")]
+    RoleWithoutCaps {
+        /// The role that was missing them.
+        role: String,
+    },
+
+    /// Two roles were declared under the same name.
+    ///
+    /// A role name is what a call site says instead of a model configuration,
+    /// so it has exactly one meaning. Replacing one silently would make which
+    /// prompt, grant, and budget ran depend on declaration order.
+    #[error("a role named {role} is already declared")]
+    DuplicateRole {
+        /// The contested name.
+        role: String,
+    },
+
+    /// A call named a role the registry does not hold.
+    ///
+    /// Never a fallback to a default role: the run would proceed on a prompt, a
+    /// grant, and a budget nobody chose, and none of the three is visible from
+    /// outside the process.
+    #[error("no role named {role} is declared")]
+    UnknownRole {
+        /// The name the caller asked for.
+        role: String,
+    },
+
+    /// A delegation handle was not issued by the harness it was presented to.
+    ///
+    /// A ticket is the only thing tying a caller to work in flight. Treating an
+    /// unrecognised one as "not finished yet" would leave the caller polling
+    /// something that does not exist.
+    #[error("no delegation is held for ticket {ticket}")]
+    UnknownTicket {
+        /// The handle that resolved to nothing.
+        ticket: String,
+    },
+
+    /// The harness declined to start a delegation.
+    ///
+    /// Distinct from a delegation that started and failed: nothing ran, so
+    /// there is nothing to salvage, and the pass must decide what to do
+    /// instead rather than read an outcome.
+    #[error("spawn of {role} refused: {reason}")]
+    SpawnRefused {
+        /// The role that was not started.
+        role: String,
+        /// Why the harness declined.
+        reason: String,
+    },
+
+    /// A write was acknowledged by the store but could not be read back.
+    ///
+    /// Raised by [`Memory::remember`](crate::Memory::remember) when its
+    /// verification probe fails. "The store accepted it" and "the store has it"
+    /// are different observations, and only the second is a write: one
+    /// production run logged 193 successful `remember` calls and stored zero
+    /// documents, because the backend answered `200 {"status":"running"}` and
+    /// dropped the work. Every one of those calls was reported as a success by
+    /// the only signal available.
+    #[error("write to scope {scope} was acknowledged but not retained")]
+    WriteNotDurable {
+        /// The scope whose read-back came back empty or wrong.
+        scope: String,
+    },
 }
 
 /// The crate's standard result type.

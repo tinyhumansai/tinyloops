@@ -248,6 +248,7 @@ impl Brief {
 /// Opaque and cheap to clone. It identifies a delegation without holding it, so
 /// the loop can start several, take its next step, and come back to them.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Ticket {
     id: String,
 }

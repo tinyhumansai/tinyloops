@@ -589,7 +589,7 @@ fn a_brief_and_its_outcome_round_trip_as_json() {
     let back: DelegationOutcome = serde_json::from_str(&json).unwrap();
     assert_eq!(back, outcome);
 
-    let ticket: Ticket = serde_json::from_str(r#""judge#0""#).unwrap_or(Ticket::new("judge#0"));
+    let ticket: Ticket = serde_json::from_str(r#""judge#0""#).unwrap();
     assert_eq!(ticket.id(), "judge#0");
     assert_eq!(
         serde_json::to_string(&RoleGrant::of(["read"])).unwrap(),
