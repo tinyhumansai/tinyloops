@@ -145,9 +145,8 @@ fn first_disagreement(
 ) -> Option<(LoopState, String, String)> {
     let compiled = Value::String(program.to_string());
     let profile = LoopProfile {
-        revision: 0,
         thresholds: *thresholds,
-        origin: Preset::Balanced,
+        ..LoopProfile::of(Preset::Balanced)
     };
     for attempts in 0..=thresholds.max_attempts + 1 {
         for blocked in 0..=thresholds.blocked + 1 {
@@ -295,9 +294,8 @@ fn the_sweep_reaches_past_every_threshold() {
         let mut state = LoopState::with_profile(
             "goal",
             LoopProfile {
-                revision: 0,
                 thresholds,
-                origin: Preset::Balanced,
+                ..LoopProfile::of(Preset::Balanced)
             },
         );
         state.attempts = thresholds.max_attempts + 1;
