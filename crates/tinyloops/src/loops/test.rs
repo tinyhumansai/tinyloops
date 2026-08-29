@@ -19,7 +19,7 @@ use super::builder::STEP_MERGE;
 use super::types::mentions;
 use super::{GraphSignature, LoopBuilder, NodeIds, TerminationCondition, verify_resume};
 use crate::arm::{Arm, ArmOutcome, ArmSet};
-use crate::policy::{Autonomy, Route, Thresholds};
+use crate::policy::{Autonomy, LoopProfile, Route, Thresholds};
 use crate::state::LoopState;
 use crate::step::{
     Advanced, CanWrite, NoWrite, STEP_ATTEMPT, STEP_JUDGE, STEP_PASS, STEP_PLAN, STEP_REFLECT,
