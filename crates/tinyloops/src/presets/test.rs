@@ -1509,3 +1509,40 @@ fn a_run_the_machinery_keeps_failing_spends_less_rather_than_more() {
     assert!(driven.profile.applied() > 0);
     assert!(driven.profile.caps.max_model_calls < crate::budget::Caps::default().max_model_calls);
 }
+
+#[test]
+fn a_raised_attempt_ceiling_buys_passes() {
+    // The claim the backstop exists to keep honest. Raising `max_attempts` is
+    // only a real amendment if the head will actually run the extra passes;
+    // left capped at the starting ceiling it would fold, read back as raised,
+    // and buy nothing.
+    let bounds = Preset::Balanced.bounds();
+    let mut profile = crate::policy::LoopProfile::of(Preset::Balanced);
+    let ceiling = crate::budget::Caps::default().max_iterations;
+
+    profile.fold(
+        crate::policy::Amendment::new(
+            "tune",
+            1,
+            crate::policy::Change::Threshold {
+                field: crate::policy::ThresholdField::MaxAttempts,
+                to: ceiling,
+            },
+            "the run is close and out of attempts",
+        ),
+        &bounds,
+    );
+
+    assert_eq!(profile.thresholds.max_attempts, ceiling);
+
+    // A state one short of the raised ceiling still routes onward, where the
+    // starting ceiling would have stopped it.
+    let mut state = LoopState::with_profile("goal", profile);
+    state.attempts = ceiling - 1;
+    assert_eq!(crate::policy::route(&state), Route::Retry);
+
+    let mut unamended =
+        LoopState::with_profile("goal", crate::policy::LoopProfile::of(Preset::Balanced));
+    unamended.attempts = ceiling - 1;
+    assert_eq!(crate::policy::route(&unamended), Route::Solved);
+}
