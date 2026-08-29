@@ -505,6 +505,20 @@ impl Compose for Summarize {
                 let _ = writeln!(out, "- {lesson}");
             }
         }
+        // Refusals are rendered beside acceptances. A report that showed only
+        // the revisions that landed would read as a run that was tuned exactly
+        // as much as it needed to be, whatever its tuner actually did.
+        if !state.profile.history.is_empty() {
+            let _ = write!(
+                out,
+                "\nRevised itself {} time(s), at r{}:\n",
+                state.profile.applied(),
+                state.profile.revision,
+            );
+            for recorded in &state.profile.history {
+                let _ = writeln!(out, "- {recorded}");
+            }
+        }
         Ok(out)
     }
 }
