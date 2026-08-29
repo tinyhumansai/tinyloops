@@ -157,7 +157,8 @@ Supporting commands:
 - `cargo fmt --all` — format before committing.
 - `cargo test <filter>` — run a focused subset while iterating.
 - `cargo test -p tinyloops-bus` — run one crate's suite.
-- `cargo run -p tinyloops --example simple_loop` — run the loop template.
+- `cargo run -p tinyloops --example simple_loop` — run the loop in plain Rust:
+  compile a step once, run it per turn, stop on a judge or a budget.
 - `cargo run -p tinyloops --features tinyagents --example tinyagents_harness` —
   run the same loop under the durable harness. The example declares
   `required-features`, so a default build skips it rather than failing.
