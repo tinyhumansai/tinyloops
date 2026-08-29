@@ -56,6 +56,15 @@ use super::types::Preset;
 pub struct Driven {
     /// The accumulator as the last pass left it.
     pub state: LoopState,
+    /// The profile the run finished on, with every amendment it proposed and
+    /// what became of each.
+    ///
+    /// A copy of `state.profile`, surfaced because it is an *output*: it is
+    /// what a cross-run layer would score, and burying the run's account of
+    /// what it changed about itself one field deeper than its answer would
+    /// misstate how much it matters. Nothing in this crate scores it — that
+    /// boundary is ADR 0003.
+    pub profile: LoopProfile,
     /// How the run is classified.
     pub outcome: Outcome,
     /// The route each pass took, oldest first.
@@ -345,6 +354,7 @@ impl AssembledLoop {
         });
 
         Ok(Driven {
+            profile: state.profile.clone(),
             state,
             outcome,
             routes,
