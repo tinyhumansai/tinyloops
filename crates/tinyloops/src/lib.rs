@@ -90,7 +90,7 @@ pub use state::{Contribution, Delta, LoopState};
 // operation is separate on purpose — nothing here both starts and settles work.
 pub use harness::{
     Artifact, Brief, DEFAULT_MAILBOX_CAPACITY, Delegate, DelegationOutcome, DropObserver, Ending,
-    Mailbox, Note, Posted, Role, RoleGrant, SinkDrops, RoleRegistry, Scripted, ScriptedDelegate, Settling,
+    Mailbox, Note, Posted, Role, RoleGrant, RoleRegistry, Scripted, ScriptedDelegate, Settling, SinkDrops,
     Status, Ticket, Tier, salvage,
 };
 // The memory seam: recall and remember over an explicit scope, a write that is

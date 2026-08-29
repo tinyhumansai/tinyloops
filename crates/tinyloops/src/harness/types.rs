@@ -497,10 +497,19 @@ pub trait DropObserver: std::fmt::Debug + Send + Sync {
 ///
 /// The pass is supplied rather than read, because a mailbox outlives any one
 /// pass and the loop is what knows which pass is current.
-#[derive(Debug)]
 pub struct SinkDrops {
     sink: std::sync::Arc<dyn crate::observe::Sink>,
     pass: std::sync::atomic::AtomicU32,
+}
+
+impl std::fmt::Debug for SinkDrops {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // A sink is not renderable and `DropObserver` requires `Debug`, so what
+        // is rendered is the pass a drop would be attributed to.
+        f.debug_struct("SinkDrops")
+            .field("pass", &self.pass.load(std::sync::atomic::Ordering::Relaxed))
+            .finish_non_exhaustive()
+    }
 }
 
 impl SinkDrops {
