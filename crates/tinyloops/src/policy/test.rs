@@ -259,43 +259,90 @@ fn the_terminal_condition_agrees_with_is_terminal_on_every_combination() {
 }
 
 #[test]
-fn the_ladder_interpolates_thresholds_rather_than_hard_coding_them() {
-    let thresholds = Thresholds {
-        blocked: 41,
-        max_attempts: 42,
-        unverified: 43,
-        stuck: 44,
-        computational: 45,
-        ..Thresholds::default()
-    };
-    let program = ladder(&thresholds);
+fn the_ladder_addresses_thresholds_rather_than_rendering_them() {
+    // The guard this replaces asserted the opposite — that every threshold was
+    // interpolated into the program. It is still the same class of failure
+    // being guarded against, a second copy of a constant free to drift, and the
+    // answer is now one address rather than one render.
+    let program = ladder();
 
-    for number in [41, 42, 43, 44, 45] {
+    for field in [
+        "blocked",
+        "max_attempts",
+        "unverified",
+        "stuck",
+        "computational",
+    ] {
         assert!(
-            program.contains(&format!(">= {number}")),
-            "{number} missing from {program}"
+            program.contains(&format!("$t | .{field}")),
+            "{field} is not read out of the profile: {program}"
         );
     }
-    assert!(!ladder(&Thresholds::default()).contains(">= 41"));
+    assert!(program.contains(".profile.thresholds"), "{program}");
+    for rendered in [">= 8", ">= 2", ">= 1", ">= 4", ">= 12"] {
+        assert!(!program.contains(rendered), "{rendered} rendered: {program}");
+    }
 }
 
 #[test]
-fn the_terminal_condition_interpolates_thresholds() {
-    let thresholds = Thresholds {
-        max_restarts: 51,
-        max_attempts: 52,
-        blocked: 53,
-        unverified: 54,
-        ..Thresholds::default()
-    };
-    let program = terminal_condition(&thresholds);
+fn the_terminal_condition_addresses_thresholds_rather_than_rendering_them() {
+    let program = terminal_condition();
 
-    for number in [51, 52, 53, 54] {
+    for field in ["max_restarts", "max_attempts", "blocked", "unverified"] {
         assert!(
-            program.contains(&format!(">= {number}")),
-            "{number} missing from {program}"
+            program.contains(&format!("$t | .{field}")),
+            "{field} is not read out of the profile: {program}"
         );
     }
+    for rendered in [">= 8", ">= 2", ">= 1", ">= 4", ">= 12"] {
+        assert!(!program.contains(rendered), "{rendered} rendered: {program}");
+    }
+}
+
+#[test]
+fn a_ladder_reads_the_thresholds_out_of_the_accumulator() {
+    // Two states differing only in a threshold route differently through the
+    // *same* program. This is the whole change, stated as one assertion.
+    let mut state = LoopState::new("goal");
+    state.unproductive = 2;
+
+    let patient = under(state.clone(), Thresholds {
+        stuck: 4,
+        ..Thresholds::default()
+    });
+    let impatient = under(state, Thresholds {
+        stuck: 1,
+        ..Thresholds::default()
+    });
+
+    let program = Value::String(ladder());
+    assert_eq!(
+        expr::evaluate(&program, &expr_scope(&patient, LOOP_ID)).as_str(),
+        Some("retry")
+    );
+    assert_eq!(
+        expr::evaluate(&program, &expr_scope(&impatient, LOOP_ID)).as_str(),
+        Some("diversify")
+    );
+}
+
+#[test]
+fn a_state_with_no_profile_routes_retry() {
+    // A missing key is `null`, `null` sorts below every number in jq, and
+    // `0 >= null` is *true* — so an unguarded read would fire the first rung
+    // and route `blocked` on a state that simply had no profile. The sentinel
+    // is what points the default at the cheap outcome instead.
+    let evaluated = expr::evaluate(
+        &Value::String(ladder()),
+        &serde_json::json!({ "item": { "blocked": 0, "attempts": 0 } }),
+    );
+    assert_eq!(evaluated.as_str(), Some("retry"));
+
+    let terminal = expr::evaluate(
+        &Value::String(terminal_condition()),
+        &serde_json::json!({ "item": { "blocked": 0, "attempts": 0 } }),
+    );
+    assert_eq!(terminal.as_bool(), Some(false));
 }
 
 #[test]
@@ -309,7 +356,7 @@ fn a_ladder_reads_the_accumulator_from_the_loop_head_state() {
     };
     let scope = serde_json::json!({ "state": serde_json::to_value(&state).unwrap() });
 
-    let evaluated = expr::evaluate(&Value::String(ladder(&thresholds)), &scope);
+    let evaluated = expr::evaluate(&Value::String(ladder()), &scope);
     assert_eq!(evaluated.as_str(), Some("blocked"));
 }
 
@@ -323,7 +370,7 @@ fn a_ladder_reads_the_accumulator_from_the_previous_step() {
     };
     let scope = serde_json::json!({ "item": serde_json::to_value(&state).unwrap() });
 
-    let evaluated = expr::evaluate(&Value::String(ladder(&thresholds)), &scope);
+    let evaluated = expr::evaluate(&Value::String(ladder()), &scope);
     assert_eq!(evaluated.as_str(), Some("reported"));
 }
 
@@ -332,7 +379,7 @@ fn an_empty_accumulator_still_routes() {
     // A loop whose accumulator has not been seeded yet must produce the cheap
     // route rather than null.
     let evaluated = expr::evaluate(
-        &Value::String(ladder(&Thresholds::default())),
+        &Value::String(ladder()),
         &serde_json::json!({ "item": {} }),
     );
     assert_eq!(evaluated.as_str(), Some("retry"));
@@ -341,7 +388,7 @@ fn an_empty_accumulator_still_routes() {
 #[test]
 fn retries_a_run_that_has_done_nothing_notable() {
     let state = LoopState::new("goal");
-    assert_eq!(route(&state, &Thresholds::default()), Route::Retry);
+    assert_eq!(route(&state), Route::Retry);
 }
 
 #[test]
@@ -350,7 +397,7 @@ fn diversifies_after_two_unproductive_passes() {
         unproductive: 2,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Diversify);
+    assert_eq!(route(&state), Route::Diversify);
 }
 
 #[test]
@@ -359,7 +406,7 @@ fn diversifies_after_two_computational_passes() {
         computational: 2,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Diversify);
+    assert_eq!(route(&state), Route::Diversify);
 }
 
 #[test]
@@ -368,7 +415,7 @@ fn reports_an_answer_only_one_route_reached() {
         unverified: 2,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Reported);
+    assert_eq!(route(&state), Route::Reported);
 }
 
 #[test]
@@ -377,7 +424,7 @@ fn solves_a_run_that_reached_an_answer() {
         solved: true,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Solved);
+    assert_eq!(route(&state), Route::Solved);
 }
 
 #[test]
@@ -386,7 +433,7 @@ fn solves_a_run_that_spent_its_attempts() {
         attempts: 8,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Solved);
+    assert_eq!(route(&state), Route::Solved);
 }
 
 #[test]
@@ -395,7 +442,7 @@ fn blocks_a_run_whose_machinery_kept_failing() {
         blocked: 2,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Blocked);
+    assert_eq!(route(&state), Route::Blocked);
 }
 
 #[test]
@@ -406,7 +453,7 @@ fn blocked_outranks_solved() {
         attempts: 8,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Blocked);
+    assert_eq!(route(&state), Route::Blocked);
 }
 
 #[test]
@@ -417,7 +464,7 @@ fn reported_outranks_both_diversify_triggers() {
         computational: 2,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Reported);
+    assert_eq!(route(&state), Route::Reported);
 }
 
 #[test]
@@ -427,7 +474,7 @@ fn solved_outranks_reported() {
         unverified: 2,
         ..LoopState::new("goal")
     };
-    assert_eq!(route(&state, &Thresholds::default()), Route::Solved);
+    assert_eq!(route(&state), Route::Solved);
 }
 
 #[test]
