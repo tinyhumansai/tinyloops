@@ -388,8 +388,6 @@ fn building_twice_emits_byte_identical_json() {
 
 #[test]
 fn a_step_absent_from_the_registry_is_a_build_error() {
-    let mut sparse = registry();
-    let _ = sparse; // the full registry builds; the sparse one below must not.
     let mut missing = StepRegistry::new();
     for name in [STEP_PLAN, STEP_RESEARCH, STEP_ATTEMPT, STEP_PASS, STEP_REPORT] {
         missing
