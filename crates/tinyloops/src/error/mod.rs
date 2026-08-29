@@ -395,6 +395,33 @@ pub enum Error {
         /// The scope whose read-back came back empty or wrong.
         scope: String,
     },
+
+    /// A checkpoint was resumed against a graph it was not taken from.
+    ///
+    /// The loop graph is generated *from* the thresholds, so changing a
+    /// constant changes the topology. Restoring an old checkpoint onto the new
+    /// shape puts state into slots that no longer mean what they meant, which
+    /// is silent corruption rather than a crash. Both signatures are named so
+    /// the difference can be found rather than guessed at.
+    #[error("checkpoint signature {recorded} does not match the current graph {current}")]
+    GraphSignatureMismatch {
+        /// The signature the checkpoint recorded.
+        recorded: String,
+        /// The signature of the graph being resumed onto.
+        current: String,
+    },
+
+    /// The emitted loop graph did not pass the engine's structural validation.
+    ///
+    /// Carries the engine's own message rather than a re-classification of it:
+    /// the validator names the node and the reason, and restating that as a
+    /// closed set of variants here would go stale the first time the engine
+    /// learns a new check.
+    #[error("the emitted loop graph is not valid: {reason}")]
+    InvalidLoopGraph {
+        /// The engine's validation message.
+        reason: String,
+    },
 }
 
 /// The crate's standard result type.
