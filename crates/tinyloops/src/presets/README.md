@@ -1,110 +1,87 @@
-# `presets/`
+# `presets`
 
-The batteries: threshold sets that say what they are betting, two evaluation
-arms that keep a verdict mechanical, and a loop with every seam filled in.
+Assembled loops, ready to build or to drive, and the one shipped tuner.
 
-## Why the module exists
+## What is here
 
-Everything else in this crate is a part. A consumer handed only traits has to
-make the two most consequential decisions in the design again, alone, and both
-have a wrong answer that looks fine in a demo.
+- [`research_loop`] — an orchestrator, two evaluation arms, and a preset. The
+  loop most callers should meet first.
+- [`tuned_research_loop`] — the same loop with a third arm that may revise the
+  run's own configuration.
+- `Preset` — the four shipped threshold sets, each stating the bet it makes and
+  the room it gives a run to revise that bet.
+- `Rules` — the shipped tuner, a pure function of the counters.
+- The node bodies the kernel graph reaches that are not the orchestrator's:
+  `Gather`, `ArmStep`, `Converge`, `Advance`.
 
-## The public surface
+## The two loops are different loops
 
-| Item | What it is |
-| --- | --- |
-| `Preset` | A named threshold set, with its bet in rustdoc. `Preset::ALL` is what the parity sweep iterates |
-| `Reflect` | *Is the answer right?* The only arm that may end the run |
-| `Judge` | *Was the pass conducted acceptably?* It corrects; it never concludes |
-| `AssembledLoop`, `research_loop` | A loop that emits a graph and drives itself |
-| `Driven` | How a driven run came out: the final accumulator, the outcome, the routes, the bound |
-| `Gather`, `ArmStep`, `Advance`, `Converge` | The node bodies for the kernel nodes that are not the orchestrator's. `Converge` is the fold |
+`tuned_research_loop` is a separate function rather than a flag, because it
+emits a third arm's node, a third pair of edges, and a different graph
+signature. A run that can revise itself and a run that cannot should not be
+told apart by an argument nobody reads in a diff.
 
-## Design
+A loop assembled without a tuner costs nothing for the absent arm and proposes
+nothing, and its report has no section about revisions.
 
-### The two anti-confabulation rules
+## What a run may revise, and what it may not
 
-**A `solved` verdict needs three things at once**: the literal `SOLVED_MARKER`
-in a reply, at least one artifact from the pass, and internal consistency — the
-specialist that claimed it is the one that left something behind. Any one alone
-is a claim. The conjunction is evidence.
+The tuner proposes; `Preset::bounds` decides what may be proposed; the `pass`
+step folds. Three constraints are worth stating operationally, because each is
+the answer to a failure that is otherwise silent.
 
-This is the one control a loop has over a verifier that is itself a model, whose
-self-preference and position bias *grow* as the quality gap narrows, which is
-precisely the regime a converging run is in. The third condition is the one a
-naive "marker AND artifact" check misses, and it is tested separately for that
-reason.
+**The bounds live outside the proposer.** Swapping the rule tuner for a model
+one cannot widen what a run may do to itself. That is the whole reason
+`Bounds` is a value on the preset rather than a property of the tuner.
 
-**An unreadable verdict is the cheap outcome.** A judge that cannot parse the
-report returns `Judgement::Proceed`, never `Restart`. The asymmetry is the whole
-rule: reading a serialization slip as a restart throws away a run's work, which
-is a far worse failure than one wasted pass.
+**A deployment may narrow, never widen.** `Bounds::narrow` clamps field by
+field — the same operation `RunBudget::narrow` performs on caps — so a host
+that distrusts a preset can tighten it and cannot loosen one, whatever it
+passes. A field neither side mentions cannot be moved at all: silence is not
+permission.
 
-### Why the question is split in two
+**An amendment is refused, never clamped.** A clamped proposal reads as
+accepted at the proposer and as a no-op in the state, and nothing joins the
+two. Every refusal is recorded in `LoopProfile::history` and emitted as
+`Event::AmendmentRefused`, so a tuner proposing forty impossible changes is
+visible rather than merely ineffective.
 
-`Reflect` answers whether the answer is right; `Judge` answers whether the pass
-was conducted acceptably. An arm that can say "good work" and an arm that can
-say "we are done" answering the same prompt is one arm with two names, and
-`ArmSet` refuses a second concluding arm at construction for the same reason.
+## The shipped tuner's rules
 
-Both arms read the typed `AttemptReport` as *input*, never as their own prior
-assistant turn. Relabelling an identical erroneous claim away from the assistant
-role raises the explicit correction rate by 23 to 93 percentage points across
-most model and domain pairs. The fan-out shape makes that natural, and it must
-not be optimised into a follow-up turn.
+Ordered, and the order is the policy: infrastructure first, because a run the
+machinery is failing has learned nothing about its own patience; then patience;
+then what the run is paying for and not reading. At most one proposal a pass.
 
-### A preset carries its bet
+| Rule | Fires when | Proposes |
+|---|---|---|
+| blocked | `blocked` reaches one below its threshold | half the model-call allowance |
+| patience | `unproductive` is strictly past `stuck` — a diversify already happened and the pass after it was unproductive too | `stuck + 1`, once |
+| silence | the judge has returned the same score for `SILENT_SCORES` passes | mute the judge |
 
-`stuck` is an estimator of the point where sequential revision stops beating
-parallel sampling, and where that point sits depends entirely on how accurate a
-domain's feedback is. `Persistent` bets that feedback is accurate enough to keep
-revising; `Exploratory` bets it is not. A number with no rationale beside it is
-a number nobody can argue with, revise, or tune per domain.
+It is rule-based rather than model-based because a model asked mid-run whether
+its own configuration is wrong has no ground truth to answer from and every
+incentive to answer yes. A model tuner implements the same `Tuner` trait and is
+bounded by the same `Bounds`.
 
-`Preset::ALL` is the list `src/policy/test.rs` sweeps, so a preset cannot be
-added without its generated jq ladder being proved against the Rust `route`
-exhaustively over the bounded counter space.
-
-### Two ways to run, one routing
-
-`AssembledLoop::graph` emits the `WorkflowGraph` an engine runs.
-`AssembledLoop::drive` runs the same loop in this process. They are not two
-implementations of anything: `drive` invokes the registered steps with the
-arguments the emitted nodes are addressed with, so both paths execute the same
-bodies over the same values. The routing likewise resolves to `route` on both
-sides, and the graph's ladder is generated from the same constants and proved
-against that function. What differs is what owns the concurrency and the
-durability. `tests/e2e.rs` asserts the two reach the same verdict.
-
-`drive` exists because the engine's mock capabilities are a dev-only dependency
-here, so the shipped library cannot start a graph run, and because a loop you
-can call from a test with no runtime, no scheduler, and no provider is the loop
-most people should meet first.
+The muting rule fires on **silence**, never on "scored worse". Eliminating the
+weakest arm needs a measured reward per arm, and this loop has none — an arm
+contributes a delta and a narrative, not a score of its own.
 
 ## Operational constraints
 
-- **The merge folds in the graph.** The emitted `merge` node is addressed with
-  `state` (the attempt's output, the shared base) and `arms` (each arm's whole
-  returned accumulator, keyed by name), and `StepContext::arg` is how a body
-  reaches them. `Converge` calls `ArmSet::merge` — the same function `drive`
-  calls — so there is one fold, not two.
-- An arm's narrative claim rides through the graph *as state*: `ArmStep` applies
-  the `Contribution` to the accumulator it returns and `Converge` reads it back
-  with `Contribution::claimed_from`. The two are inverses and are tested as
-  such. If they stop being inverses, a lesson or a steer silently stops reaching
-  the accumulator.
-- An arm's output that is missing or `null` at the merge is an error, never a
-  smaller fold. Under this engine an expression that failed to resolve yields
-  `null`, so shrugging at it would turn a broken binding into a route taken on
-  evidence nobody gathered.
-- A run stopped by a bound is never `Outcome::Success`, whatever its last pass
-  claimed. The classification is adjusted after the bound is known, which keeps
-  that rule in one place.
-- `Advance` sets `passes` by assignment, never by increment: the fold is
-  at-least-once, so a replayed activation after a resume applies the update
-  twice.
-- A threshold change changes the emitted topology and therefore the graph
-  signature, so an old checkpoint refuses to resume onto a retuned loop.
+- **A muted arm still runs its node and still converges**, returning unchanged.
+  Dropping its convergence edge would leave the merge barrier waiting on an arm
+  nothing will activate — a hung pass rather than a saved one.
+- **An amendment never takes effect in the pass that proposed it.** The fold is
+  in `Advance`, the `pass` step, which is the loop's single exit and the only
+  node closing the cycle. That position is what makes the timing structural
+  rather than a rule someone remembers.
+- **No preset may amend its attempt ceiling past the loop head's backstop.**
+  Above `Caps::max_iterations` the amendment folds, reads back as raised, and
+  buys nothing. `src/policy/test.rs` asserts the relationship.
+- **The final profile is an output and nothing here scores it.** `Driven`
+  carries it with its full history. Scoring an amendment against outcomes spans
+  runs, and that is `tinyflows-adaptive`'s — see ADR 0003.
 
-See [`docs/specs/routing-and-policy.md`](../../../../docs/specs/routing-and-policy.md)
-and [`docs/plans/observability-and-budget.md`](../../../../docs/plans/observability-and-budget.md).
+[`research_loop`]: https://docs.rs/tinyloops
+[`tuned_research_loop`]: https://docs.rs/tinyloops
