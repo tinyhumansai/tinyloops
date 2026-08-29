@@ -88,7 +88,7 @@ fn main() -> Result<(), Error> {
     )?;
 
     println!("preset:    {}", assembled.preset());
-    println!("stuck at:  {}", assembled.thresholds().stuck);
+    println!("stuck at:  {}", assembled.profile().thresholds.stuck);
     println!("signature: {}\n", assembled.signature()?.as_str());
 
     // A recorder over the console sink: one line per event, in one ordered
