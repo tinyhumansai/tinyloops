@@ -682,3 +682,168 @@ fn stalling() -> crate::error::Result<AssembledLoop> {
         )),
     )
 }
+
+// ------------------------------------------------------ the other node bodies
+
+use super::{Advance, ArmStep, Converge, Gather};
+use crate::step::{CanWrite, Step};
+
+fn advancing(pass: u32, thresholds: &Thresholds) -> StepContext<'_, CanWrite> {
+    StepContext::advancing(pass, thresholds)
+}
+
+fn dispatcher(script: Vec<Scripted>) -> Arc<Inline> {
+    Arc::new(Inline::of(delegates(), [("prover".to_owned(), script)]))
+}
+
+#[test]
+fn research_appends_what_it_found_to_the_lessons_and_moves_no_counter() {
+    // Research is not an attempt at the goal. Letting it reset `unproductive`
+    // would let a run stay out of the diversify branch by looking things up.
+    let thresholds = Thresholds::default();
+    let gather = Gather::new(
+        delegates(),
+        dispatcher(vec![Scripted::Answers {
+            reply: "the second term is the hard one".to_owned(),
+            artifacts: Vec::new(),
+        }]),
+    );
+    let mut before = LoopState::new("goal");
+    before.unproductive = 2;
+
+    let after = gather
+        .run(before, advancing(0, &thresholds))
+        .expect("research runs")
+        .into_state();
+
+    assert_eq!(after.lessons.len(), 1);
+    assert!(after.lessons[0].contains("from research: the second term"));
+    assert_eq!(after.unproductive, 2);
+    assert_eq!(after.attempts, 0);
+    assert_eq!(after.established, 0);
+    assert_eq!(gather.name(), crate::step::STEP_RESEARCH);
+}
+
+#[test]
+fn research_that_could_not_start_records_nothing_rather_than_a_stack_trace() {
+    let thresholds = Thresholds::default();
+    let gather = Gather::new(
+        delegates(),
+        dispatcher(vec![Scripted::Fails {
+            reason: "the sandbox would not start".to_owned(),
+        }]),
+    );
+
+    let after = gather
+        .run(LoopState::new("goal"), advancing(0, &thresholds))
+        .expect("research survives it")
+        .into_state();
+
+    assert!(after.lessons.is_empty());
+}
+
+#[test]
+fn research_with_no_declared_delegate_is_an_error_rather_than_a_silent_skip() {
+    let thresholds = Thresholds::default();
+    let gather = Gather::new(DelegateSet::default(), dispatcher(Vec::new()));
+
+    let refused = gather.run(LoopState::new("goal"), advancing(0, &thresholds));
+
+    assert!(matches!(refused, Err(Error::EmptyDelegateSet)));
+}
+
+#[test]
+fn an_arm_step_runs_its_arm_over_the_one_attempt_report() {
+    let thresholds = Thresholds::default();
+    let step = ArmStep::new(Arc::new(Reflect));
+    let mut state = LoopState::new("goal");
+    state.last_attempt = serde_json::to_string(&report_with(vec![(
+        &format!("{SOLVED_MARKER}: done"),
+        vec![Artifact::new("bound.md", "the proof")],
+    )]))
+    .expect("a report");
+
+    let after = step
+        .run(state, advancing(0, &thresholds))
+        .expect("the arm step runs")
+        .into_state();
+
+    assert!(after.solved);
+    assert_eq!(step.name(), crate::step::STEP_REFLECT);
+    assert!(format!("{step:?}").contains("reflect"));
+}
+
+#[test]
+fn an_arm_step_with_no_report_yet_hands_the_arm_a_null_rather_than_a_stale_one() {
+    // Invariant 3, at the step boundary: an arm reads the attempt, and before
+    // the first attempt there is nothing to read. Reaching for the accumulator
+    // instead would route the first pass on a value nobody produced.
+    let thresholds = Thresholds::default();
+    let step = ArmStep::new(Arc::new(Judge));
+
+    let after = step
+        .run(LoopState::new("goal"), advancing(0, &thresholds))
+        .expect("the arm step runs")
+        .into_state();
+
+    assert!(!after.solved);
+}
+
+#[test]
+fn an_arm_step_survives_an_unparseable_report() {
+    let thresholds = Thresholds::default();
+    let step = ArmStep::new(Arc::new(Reflect));
+    let mut state = LoopState::new("goal");
+    state.last_attempt = "{ not json".to_owned();
+
+    let after = step
+        .run(state, advancing(0, &thresholds))
+        .expect("the arm step runs")
+        .into_state();
+
+    assert!(!after.solved);
+}
+
+#[test]
+fn the_pass_step_counts_the_pass_by_assignment_and_consumes_the_steer() {
+    // Assignment, not increment: the fold is at-least-once, so a replayed
+    // activation after a resume applies the update twice and only an assignment
+    // is unchanged by that.
+    let thresholds = Thresholds::default();
+    let mut state = LoopState::new("goal");
+    state.steer = "narrow the claim".to_owned();
+
+    let once = Advance
+        .run(state, advancing(4, &thresholds))
+        .expect("pass runs")
+        .into_state();
+    let twice = Advance
+        .run(once.clone(), advancing(4, &thresholds))
+        .expect("pass runs again")
+        .into_state();
+
+    assert_eq!(once.passes, 5);
+    assert_eq!(twice, once);
+    assert!(once.steer.is_empty());
+    assert_eq!(Advance.name(), crate::step::STEP_PASS);
+}
+
+#[test]
+fn the_merge_step_answers_to_its_name_and_carries_the_state() {
+    // It carries the state through because `run_loop_step` hands a step only
+    // the decoded state, never the node's arguments, so the arm outputs the
+    // fold needs are out of reach. The fold itself is `ArmSet::merge`, which
+    // `AssembledLoop::drive` calls; this asserts the documented behavior rather
+    // than a behavior the type does not have.
+    let thresholds = Thresholds::default();
+    let mut state = LoopState::new("goal");
+    state.established = 3;
+
+    let after = Converge
+        .run(state.clone(), advancing(0, &thresholds))
+        .expect("merge runs")
+        .into_state();
+
+    assert_eq!(after, state);
+    assert_eq!(Converge.name(), crate::loops::STEP_MERGE);
+}
