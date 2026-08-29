@@ -1,6 +1,6 @@
 # Workspace and ledgers
 
-- **Status:** Draft
+- **Status:** Accepted — 2026-08-29
 - **Owner:** Maintainers
 - **Related:** [`seams.md`](seams.md), [`loop-kernel.md`](loop-kernel.md),
   [`observability.md`](observability.md)

@@ -1,6 +1,6 @@
 # Seams: harness, memory, tools, workspace
 
-- **Status:** Draft
+- **Status:** Accepted — 2026-08-29
 - **Owner:** Maintainers
 - **Related:** [`loop-kernel.md`](loop-kernel.md),
   [`workspace-and-ledgers.md`](workspace-and-ledgers.md),

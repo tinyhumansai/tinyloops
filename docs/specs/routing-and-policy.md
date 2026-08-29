@@ -1,6 +1,6 @@
 # Routing and policy
 
-- **Status:** Draft
+- **Status:** Accepted — 2026-08-29
 - **Owner:** Maintainers
 - **Related:** [`loop-kernel.md`](loop-kernel.md),
   [`orchestrator.md`](orchestrator.md),

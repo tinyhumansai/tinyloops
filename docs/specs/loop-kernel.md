@@ -1,6 +1,6 @@
 # Loop kernel
 
-- **Status:** Draft
+- **Status:** Accepted — 2026-08-29
 - **Owner:** Maintainers
 - **Related:** [`routing-and-policy.md`](routing-and-policy.md),
   [`orchestrator.md`](orchestrator.md),

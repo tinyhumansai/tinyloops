@@ -1,6 +1,6 @@
 # Observability: the events a run emits
 
-- **Status:** Draft
+- **Status:** Accepted — 2026-08-29
 - **Owner:** Maintainers
 - **Related:** [`loop-kernel.md`](loop-kernel.md), [`budget.md`](budget.md),
   [`workspace-and-ledgers.md`](workspace-and-ledgers.md), [`seams.md`](seams.md)
