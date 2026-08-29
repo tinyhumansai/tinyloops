@@ -18,11 +18,23 @@
 //! *comparison* — a `>` where the Rust reads `>=` changes when a run
 //! diversifies and fails nothing.
 //!
-//! # Why exhaustive rather than sampled
+//! # What "exhaustive" means here, exactly
 //!
-//! Both sides are pure functions of a handful of small-range integers, so the
-//! whole space is cheap. Sampling would buy nothing and could miss exactly the
-//! off-by-one the sweep exists to catch.
+//! The counter space is swept **exhaustively**, per threshold tuple, over a
+//! range that reaches one past every threshold in that tuple — so the rung that
+//! fires at the bound and the state just past it are both tested.
+//!
+//! The *threshold* space is not exhaustive, and saying so plainly matters more
+//! than the word. Since thresholds are read out of the accumulator rather than
+//! rendered into the graph, the ladder is one constant program and the set of
+//! threshold tuples a run can reach is far larger than the shipped presets.
+//! Crossing that set in full with the counter space runs to millions of
+//! evaluations, each a fresh jq compile. So the sweep covers a **declared box**:
+//! every shipped preset, every corner of `{0, 3}^5`, and the legacy tuples this
+//! harness has always carried. That is a genuine widening over sweeping four
+//! preset tuples and nothing between them, and it is chosen to contain the
+//! boundaries — an operator bug, `>` where the Rust reads `>=`, shows at a
+//! boundary or not at all. It is not a proof over the whole space.
 //!
 //! # Why it fails closed on `null`
 //!
@@ -42,8 +54,8 @@ use serde_json::{Value, json};
 use tinyflows::model::WorkflowGraph;
 
 use tinyloops::{
-    Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopState, NoWrite, Result,
-    STEP_MERGE, Step, StepContext, StepRegistry, Thresholds, route,
+    Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopProfile, LoopState,
+    NoWrite, Preset, Result, STEP_MERGE, Step, StepContext, StepRegistry, Thresholds, route,
 };
 
 /// A step body that changes nothing; only the emitted program is under test.
@@ -77,8 +89,12 @@ impl Arm for Evaluator {
     }
 }
 
-/// The graph a preset emits.
-fn graph(thresholds: Thresholds) -> WorkflowGraph {
+/// The graph the kernel emits.
+///
+/// It takes no thresholds, and that is the point: they are addressed out of the
+/// accumulator rather than rendered in, so one graph — one routing program —
+/// serves every preset and every revision of one.
+fn graph() -> WorkflowGraph {
     let mut registry = StepRegistry::new();
     for name in [
         "plan", "research", "attempt", STEP_MERGE, "pass", "report", "reflect", "judge",
@@ -93,7 +109,7 @@ fn graph(thresholds: Thresholds) -> WorkflowGraph {
     ])
     .expect("two distinct arms are a valid set");
 
-    LoopBuilder::new(thresholds, arms, registry)
+    LoopBuilder::new(arms, registry)
         .goal("ship the release")
         .autonomy(Autonomy::Unattended)
         .build()
@@ -128,13 +144,18 @@ fn first_disagreement(
     thresholds: &Thresholds,
 ) -> Option<(LoopState, String, String)> {
     let compiled = Value::String(program.to_string());
+    let profile = LoopProfile {
+        revision: 0,
+        thresholds: *thresholds,
+        origin: Preset::Balanced,
+    };
     for attempts in 0..=thresholds.max_attempts + 1 {
         for blocked in 0..=thresholds.blocked + 1 {
             for unverified in 0..=thresholds.unverified + 1 {
                 for unproductive in 0..=thresholds.stuck + 1 {
                     for computational in 0..=thresholds.computational + 1 {
                         for solved in [false, true] {
-                            let mut state = LoopState::new("goal");
+                            let mut state = LoopState::with_profile("goal", profile);
                             state.attempts = attempts;
                             state.blocked = blocked;
                             state.unverified = unverified;
@@ -142,7 +163,7 @@ fn first_disagreement(
                             state.computational = computational;
                             state.solved = solved;
 
-                            let expected = route(&state, thresholds).as_str().to_string();
+                            let expected = route(&state).as_str().to_string();
                             // Fail closed: anything that is not a string is a
                             // program that did not answer, which is a
                             // disagreement rather than a route.
