@@ -112,11 +112,16 @@ impl Rules {
         })
     }
 
-    /// The last `SILENT_SCORES` scores, when they exist and are all equal.
-    fn scores_are_flat(state: &LoopState) -> bool {
+    /// The last `self.window` scores, when they exist and are all equal.
+    ///
+    /// A zero window never reads as flat: there is no run of zero equal
+    /// scores that means anything, and treating it as "always silent" would
+    /// mute the arm on its first pass.
+    fn scores_are_flat(&self, state: &LoopState) -> bool {
         let scores = &state.scores;
-        scores.len() >= SILENT_SCORES
-            && scores[scores.len() - SILENT_SCORES..]
+        self.window > 0
+            && scores.len() >= self.window
+            && scores[scores.len() - self.window..]
                 .windows(2)
                 .all(|pair| pair[0] == pair[1])
     }
