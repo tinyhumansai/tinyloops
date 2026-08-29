@@ -95,6 +95,21 @@ pub struct LoopState {
     pub scores: Vec<u8>,
     /// The verdict the most recent pass was given.
     pub judged: Judgement,
+    /// The run's decomposition: the tasks, their criteria, and their statuses.
+    ///
+    /// The one nested field, and the exception is deliberate. The routing
+    /// ladder still reads only counters; the board is here because it has to
+    /// survive a checkpoint with the same guarantee every counter has, and
+    /// because a decomposition that lives anywhere else is a decomposition the
+    /// loop head is not the sole writer of.
+    pub board: crate::orchestrate::TaskBoard,
+    /// The run's final answer, written by the `report` step alone.
+    ///
+    /// Sole authorship is structural rather than conventional: [`Self::apply`]
+    /// carries this field through the fold untouched, and [`Delta`] and
+    /// [`Contribution`] have no slot that reaches it, so no arm can write it
+    /// however it is wired.
+    pub answer: String,
 }
 
 /// The signed movement one arm contributes to a [`LoopState`].

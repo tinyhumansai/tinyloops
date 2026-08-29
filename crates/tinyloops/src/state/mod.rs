@@ -187,6 +187,8 @@ impl LoopState {
             steer: self.steer.clone(),
             scores: self.scores.clone(),
             judged: self.judged,
+            board: self.board.clone(),
+            answer: self.answer.clone(),
         }
     }
 
