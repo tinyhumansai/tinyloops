@@ -88,13 +88,16 @@ pub struct LoopProfile {
     pub caps: Caps,
     /// Arms the `ArmSet` declares that this run is no longer paying for.
     pub muted: BTreeSet<String>,
-    /// Passes between re-plans, per `orchestrator.md`'s cadence.
-    pub replan_every: u32,
     /// Where the profile started, and every amendment since.
     pub origin: Preset,
     pub history: Vec<Amendment>,
 }
 ```
+
+There is no re-plan field, and its absence is deliberate: `Thresholds` already
+carries `plan_interval` with a `plans_on` method that `orchestrator.md`'s
+cadence is built on, so the cadence is amended as a threshold like any other. A
+second spelling of the same number would be a second thing to keep in step.
 
 `Thresholds` and `Caps` are the types that exist today, unchanged. What changes
 is where they are *read from*: the ladder's jq addresses
@@ -120,7 +123,6 @@ pub enum Change {
     Cap(CapField, u64),
     MuteArm(String),
     UnmuteArm(String),
-    ReplanEvery(u32),
 }
 ```
 
@@ -133,9 +135,16 @@ to emit one is a tuner able to write `solved`.
 Each preset ships a `Bounds` alongside its starting profile: an inclusive range
 per threshold field, a ceiling per cap field, a set of arms that may be muted,
 `muting_window`, and `max_amendments` — the number of amendments a whole run
-may fold. An
-amendment outside its bound is **refused**, not clamped, and the refusal is an
-event.
+may fold. An amendment outside its bound is **refused**, not clamped, and the
+refusal is an event.
+
+**The preset owns its bounds, and an embedder may narrow them but never widen
+them.** As the preset's, the room a run has to revise itself is part of the
+methodological bet the preset already states, so choosing a preset is choosing
+the bet *and* the room; as a deployment's, a host that distrusts a preset can
+tighten it without forking one. Narrowing clamps field by field, the same
+operation `RunBudget::narrow` already performs on caps, and a `Bounds` a
+deployment forgot to supply is the preset's, never an open one.
 
 Refusing rather than clamping is the difference between a tuner that is wrong
 and a tuner that is wrong *and looks effective*: a clamped proposal reads as
