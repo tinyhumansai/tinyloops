@@ -254,7 +254,8 @@ impl AssembledLoop {
             });
         }
 
-        state = self.run_step(STEP_REPORT, state, state.passes, recorder)?;
+        let last = state.passes;
+        state = self.run_step(STEP_REPORT, state, last, recorder)?;
 
         // A run stopped by a bound is never `Success`, whatever its last pass
         // claimed. `classify` reads `expired` and the attempt cap; an iteration
