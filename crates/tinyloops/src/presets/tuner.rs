@@ -35,25 +35,57 @@ use crate::state::LoopState;
 use crate::step::{NoWrite, StepContext};
 use crate::{Result, step::STEP_JUDGE};
 
-/// How many identical scores in a row read as a judge carrying no signal.
+/// How many identical scores in a row read as a judge carrying no signal,
+/// when nothing says otherwise.
 ///
-/// Three, matching the default muting window. Two is a coincidence; three is a
-/// pattern cheap enough to act on and cheap enough to be wrong about, since the
-/// only cost of a wrong mute is one arm's work on a run that was going to spend
-/// it anyway.
+/// Three, matching [`DEFAULT_MUTING_WINDOW`](crate::DEFAULT_MUTING_WINDOW).
+/// Two is a coincidence; three is a pattern cheap enough to act on and cheap
+/// enough to be wrong about, since the only cost of a wrong mute is one arm's
+/// work on a run that was going to spend it anyway.
 pub const SILENT_SCORES: usize = 3;
 
 /// The rule-based tuner.
 ///
-/// Stateless. Everything it needs is in the accumulator, which is what makes it
-/// safe to run under a replay: proposing twice from the same state proposes the
-/// same thing, and the `pass` step folds one proposal once.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Rules;
+/// Carries the muting window a deployment's [`Bounds`](crate::Bounds)
+/// configured, and nothing else it needs from the accumulator: everything is
+/// in the state handed to [`Tuner::propose`], which is what makes it safe to
+/// run under a replay — proposing twice from the same state proposes the same
+/// thing, and the `pass` step folds one proposal once.
+#[derive(Debug, Clone, Copy)]
+pub struct Rules {
+    window: usize,
+}
+
+impl Default for Rules {
+    /// A tuner that mutes on [`SILENT_SCORES`] consecutive identical scores —
+    /// the shipped presets' declared window, matched here so a caller who
+    /// wires up [`Rules::default`] directly sees the same behavior the
+    /// presets do.
+    fn default() -> Self {
+        Self {
+            window: SILENT_SCORES,
+        }
+    }
+}
 
 impl Rules {
     /// The arm's name, and the id of its node.
     pub const NAME: &'static str = "tune";
+
+    /// A tuner that mutes an arm after `window` consecutive identical judge
+    /// scores, rather than the default [`SILENT_SCORES`].
+    ///
+    /// `window` should come from the same [`Bounds::muting_window`] the
+    /// assembled loop folds amendments within — otherwise the tuner proposes
+    /// on a cadence the bounds were never asked about.
+    ///
+    /// [`Bounds::muting_window`]: crate::Bounds::muting_window
+    #[must_use]
+    pub fn new(window: u32) -> Self {
+        Self {
+            window: usize::try_from(window).unwrap_or(usize::MAX),
+        }
+    }
 
     /// Whether `profile` has already been asked to move `field`.
     ///
