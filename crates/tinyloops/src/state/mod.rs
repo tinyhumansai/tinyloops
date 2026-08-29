@@ -199,7 +199,7 @@ impl LoopState {
     ///
     /// # Errors
     ///
-    /// [`Error::ContestedField`] when two arms write the same narrative field.
+    /// [`crate::Error::ContestedField`] when two arms write the same narrative field.
     /// That is a wiring mistake with no correct resolution — picking a winner
     /// would be arrival-order dependence wearing a merge's clothes — so it is
     /// reported with both arms named rather than resolved.
