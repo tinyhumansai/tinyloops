@@ -349,7 +349,6 @@ fn a_state_with_no_profile_routes_retry() {
 fn a_ladder_reads_the_accumulator_from_the_loop_head_state() {
     // The `until` position: the engine adds the post-fold accumulator as
     // `state`, and there is no `item`.
-    let thresholds = Thresholds::default();
     let state = LoopState {
         blocked: 2,
         ..LoopState::new("goal")
@@ -363,7 +362,6 @@ fn a_ladder_reads_the_accumulator_from_the_loop_head_state() {
 #[test]
 fn a_ladder_reads_the_accumulator_from_the_previous_step() {
     // The downstream position: the accumulator arrives as the node's input.
-    let thresholds = Thresholds::default();
     let state = LoopState {
         unverified: 2,
         ..LoopState::new("goal")

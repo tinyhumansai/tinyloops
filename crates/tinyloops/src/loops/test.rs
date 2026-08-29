@@ -648,7 +648,6 @@ fn a_provider_failure_reports_blocked() {
 
 #[test]
 fn conditions_compose_with_and_and_or() {
-    let thresholds = Thresholds::default();
     let mut state = LoopState::new("goal");
     state.expired = true;
 
@@ -677,7 +676,6 @@ fn conditions_compose_with_and_and_or() {
 
 #[test]
 fn a_condition_round_trips_through_serde() {
-    let thresholds = Thresholds::default();
     let mut condition = TerminationCondition::terminal() | TerminationCondition::expired();
     let mut state = LoopState::new("goal");
     state.expired = true;
@@ -692,7 +690,6 @@ fn a_condition_round_trips_through_serde() {
 
 #[test]
 fn resetting_a_fired_condition_clears_it() {
-    let thresholds = Thresholds::default();
     let mut condition = TerminationCondition::terminal() & TerminationCondition::expired();
     let mut state = LoopState::new("goal");
     state.expired = true;
@@ -727,7 +724,6 @@ fn a_composed_termination_is_what_the_head_runs() {
 fn the_termination_expression_evaluates_rather_than_yielding_null() {
     // Under this engine a program that fails to compile yields `null`, and
     // `null` is falsey — so "it produced a boolean" is itself the assertion.
-    let thresholds = Thresholds::default();
     let mut state = LoopState::new("goal");
     state.expired = true;
     let condition = TerminationCondition::terminal() | TerminationCondition::solved();
