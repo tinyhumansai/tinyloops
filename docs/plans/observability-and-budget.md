@@ -116,7 +116,7 @@ spec's letter is visible rather than discovered.
      result carries the work completed, the tripped bound's identity, and the
      accumulated cost. It is never a bare error: the loop stops, reports what
      it has, and says which bound stopped it.
-   - `an_expired_tool_timeout_returns_its_captured_output_and_the_run_goes_on`.
+   - `an_expired_tool_timeout_returns_its_output_and_the_run_goes_on`.
    - `ten_passes_with_signal_and_ten_without_differ_on_effective_feedback`,
      reaching the same raw-compute total, and the report shows both. A loop that counts only turns cannot
      distinguish ten productive passes from ten that each learned nothing, and

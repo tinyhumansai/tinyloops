@@ -177,7 +177,7 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
      Invariant 5's reason for existing, and the test last-writer-wins fails.
    - `a_list_folds_by_what_each_arm_appended`, and
      `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
-     `Error::ArmCollision { field, first, second }` naming both arms.
+     `Error::ArmCollision { field, first, second }` and naming both arms.
    - `folding_is_commutative_over_every_permutation` — four arm outputs, all 24
      permutations, one expected result — and
      `folding_is_associative_over_every_grouping`, the same four folded as
