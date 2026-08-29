@@ -114,10 +114,10 @@ fn assert_terminal_parity(state: &LoopState, thresholds: &Thresholds) {
 /// The sweep is tens of thousands of jq compilations; splitting the outermost
 /// dimension keeps it a few seconds rather than a minute, and every case is
 /// independent so there is nothing to synchronize but the counter.
-fn in_parallel(outer: std::ops::RangeInclusive<u32>, body: impl Fn(u32) + Sync) {
+fn in_parallel(outer: std::ops::RangeInclusive<u32>, body: &(impl Fn(u32) + Sync)) {
     std::thread::scope(|scope| {
         for value in outer {
-            scope.spawn(|| body(value));
+            scope.spawn(move || body(value));
         }
     });
 }
@@ -126,7 +126,7 @@ fn in_parallel(outer: std::ops::RangeInclusive<u32>, body: impl Fn(u32) + Sync) 
 fn the_ladder_agrees_with_route_on_every_combination() {
     let cases = AtomicUsize::new(0);
     for thresholds in threshold_sets() {
-        in_parallel(upto(thresholds.blocked), |blocked| {
+        in_parallel(upto(thresholds.blocked), &|blocked| {
             let mut swept = 0;
             for solved in [false, true] {
                 for attempts in upto(thresholds.max_attempts) {
@@ -162,7 +162,7 @@ fn the_ladder_agrees_with_route_on_every_combination() {
 fn the_terminal_condition_agrees_with_is_terminal_on_every_combination() {
     let cases = AtomicUsize::new(0);
     for thresholds in threshold_sets() {
-        in_parallel(upto(thresholds.blocked), |blocked| {
+        in_parallel(upto(thresholds.blocked), &|blocked| {
             let mut swept = 0;
             for expired in [false, true] {
                 for solved in [false, true] {
