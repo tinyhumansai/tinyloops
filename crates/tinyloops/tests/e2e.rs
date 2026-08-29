@@ -93,15 +93,25 @@ fn answers(reply: &str, artifacts: Vec<Artifact>) -> Scripted {
 }
 
 /// A run that solves on its second attempt, with the artifact to back it.
+///
+/// The prover's queue has **three** entries and the run has two passes, because
+/// `research` briefs the first declared specialist once before the loop starts
+/// and consumes an entry doing it. Spelling that out here rather than letting
+/// the cursor land where it lands is the difference between a fixture that says
+/// what it means and one that happens to work.
 fn solving_script() -> Vec<(&'static str, Vec<Scripted>)> {
     vec![
         (
             "prover",
             vec![
+                // Consumed by `research`, before the first attempt.
+                answers("the second term is the hard one", Vec::new()),
+                // Pass 0: work, and an artifact, but no claim.
                 answers(
                     "no bound yet",
                     vec![Artifact::new("attempt-1.md", "the failed approach")],
                 ),
+                // Pass 1: the claim, with the artifact that makes it evidence.
                 answers(
                     &format!("{SOLVED_MARKER}: the bound holds"),
                     vec![Artifact::new("bound.md", "the proof")],
@@ -525,22 +535,4 @@ async fn a_step_the_registry_does_not_hold_is_an_error_rather_than_a_no_op() {
     );
 
     assert!(matches!(refused, Err(Error::UnknownStep { ref name }) if name == "invented"));
-}
-#[tokio::test]
-async fn probe() {
-    let (graph, thresholds, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
-    run(&graph, &steps).await;
-    for s in ["plan","research","attempt","reflect","judge","merge","pass","report"] {
-        eprintln!("{s}: {}", steps.calls_for(s).len());
-    }
-    for (i,(_,a)) in steps.calls_for("merge").into_iter().enumerate() {
-        let st: LoopState = serde_json::from_value(a).unwrap();
-        eprintln!("merge {i}: passes={} attempts={} unproductive={} solved={} scores={:?}", st.passes, st.attempts, st.unproductive, st.solved, st.scores);
-    }
-    for (i,(_,a)) in steps.calls_for("pass").into_iter().enumerate() {
-        let st: LoopState = serde_json::from_value(a).unwrap();
-        eprintln!("pass {i}: passes={} attempts={}", st.passes, st.attempts);
-    }
-    panic!("probe");
 }
