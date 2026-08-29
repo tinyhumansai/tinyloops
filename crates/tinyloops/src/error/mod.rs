@@ -185,6 +185,132 @@ pub enum Error {
         name: &'static str,
     },
 
+    /// A call named a tool the set does not hold.
+    ///
+    /// This is also what a withheld tool group looks like from the call site: a
+    /// grant is resolved in `ToolSet::new`, so a tool the attempt may not use
+    /// was never registered and there is nothing here to reach.
+    #[error("no tool named {name} is registered")]
+    UnknownTool {
+        /// The name the call asked for.
+        name: String,
+    },
+
+    /// A tool failed with the one recovery that ends a step.
+    ///
+    /// `Recovery::Requery` and `Recovery::Salvage` never arrive here: they
+    /// become model-readable results and a line in the tool history. Only
+    /// `Recovery::Fatal` terminates anything.
+    #[error("tool {tool} failed fatally: {message}")]
+    ToolFatal {
+        /// The tool that failed.
+        tool: String,
+        /// What it reported.
+        message: String,
+    },
+
+    /// One tool's failures were fed back more times than the bound allows.
+    ///
+    /// The bound is the point of the requery path. Without it a single broken
+    /// tool spends the run's entire budget on the same question and the run
+    /// reports nothing, because it never got anywhere else.
+    #[error("tool {tool} exhausted its {limit} requeries")]
+    RequeriesExhausted {
+        /// The tool that kept failing.
+        tool: String,
+        /// The bound it passed.
+        limit: u32,
+    },
+
+    /// A write named a kind the layout does not list.
+    ///
+    /// The allowlist is what makes "where could this run have written?" a
+    /// question answered by reading the layout rather than by scanning a disk,
+    /// so an unlisted kind lands no bytes at all.
+    #[error("no location is listed for write kind {kind}")]
+    UnlistedWriteKind {
+        /// The kind that was refused.
+        kind: crate::WriteKind,
+    },
+
+    /// A path held a traversal segment.
+    ///
+    /// Rejected before any file system call, because a path that has already
+    /// been opened has already left the workspace.
+    #[error("path {path} holds a traversal segment")]
+    PathTraversal {
+        /// The path that was refused.
+        path: String,
+    },
+
+    /// A path was absolute.
+    ///
+    /// A workspace decides where a write lands; an absolute path is a caller
+    /// deciding instead, and the layout can no longer answer for it.
+    #[error("path {path} is absolute")]
+    AbsolutePath {
+        /// The path that was refused.
+        path: String,
+    },
+
+    /// A write was aimed inside a derived folder.
+    ///
+    /// Ledgers are derived state: rendering is the only way bytes enter them.
+    /// The refusal is by folder rather than by filename, so a file the
+    /// implementation has never seen does not escape it by being new.
+    #[error("path {path} is inside a derived folder")]
+    DerivedWrite {
+        /// The path that was refused.
+        path: String,
+    },
+
+    /// A path's canonical parent left the workspace between the two checks.
+    ///
+    /// Validation and the write are different moments. A symlink swapped
+    /// between them is exactly the gap the first check appears to close and
+    /// does not, so the canonical parent is re-verified immediately before the
+    /// bytes land.
+    #[error("the canonical parent of {path} left the workspace")]
+    ParentEscaped {
+        /// The path whose parent moved.
+        path: String,
+    },
+
+    /// A read named a path the workspace does not hold.
+    #[error("the workspace holds nothing at {path}")]
+    UnknownPath {
+        /// The path that was read.
+        path: String,
+    },
+
+    /// An operation named a ledger entry that does not exist.
+    ///
+    /// Entries are created by merging an event, never implicitly, so this is a
+    /// caller reading an identity nothing recorded.
+    #[error("no ledger entry named {id} exists")]
+    UnknownEntry {
+        /// The identity that was asked for.
+        id: String,
+    },
+
+    /// An operation named a completion criterion the run spec does not hold.
+    #[error("no criterion named {id} exists")]
+    UnknownCriterion {
+        /// The identity that was asked for.
+        id: String,
+    },
+
+    /// A criterion was asked to pass on evidence nothing had recorded.
+    ///
+    /// A criterion moves to `true` only through evidence recorded against it.
+    /// Assignment is what an agent with a preference does; this variant is the
+    /// difference between the two.
+    #[error("criterion {id} has no recorded evidence")]
+    EvidenceNotRecorded {
+        /// The criterion that was not satisfied.
+        id: String,
+    },
+
     /// A declared arm produced no outcome for a merge.
     ///
     /// Invariant 6 checked at the barrier as well as at the edges: the point of
