@@ -594,7 +594,8 @@ fn the_jsonl_sink_writes_one_line_per_event() {
         outcome: Outcome::Success,
     });
 
-    let lines: Vec<&str> = buffer.contents().lines().collect();
+    let contents = buffer.contents();
+    let lines: Vec<&str> = contents.lines().collect();
     assert_eq!(lines.len(), 2);
     assert_eq!(
         serde_json::from_str::<Event>(lines[0]).unwrap(),
