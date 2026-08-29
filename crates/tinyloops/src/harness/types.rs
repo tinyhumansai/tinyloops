@@ -598,11 +598,10 @@ impl Mailbox {
     }
 }
 
-/// Refuses a spawn, naming the role and the reason.
+/// Builds the refusal a spawn returns, naming the role and the reason.
 ///
-/// # Errors
-///
-/// Always. It exists so the refusal is spelled one way everywhere.
+/// One spelling of the refusal, so every path that declines to start work
+/// declines it the same way.
 pub(super) fn refuse(role: &str, reason: &'static str) -> Error {
     Error::SpawnRefused {
         role: role.to_owned(),
