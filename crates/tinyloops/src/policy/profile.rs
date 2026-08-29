@@ -182,6 +182,10 @@ impl LoopProfile {
             Verdict::Refused {
                 reason: error.to_string(),
             }
+        } else if let Err(error) = Self::would_break_budget(self.caps, &amendment.change) {
+            Verdict::Refused {
+                reason: error.to_string(),
+            }
         } else {
             amendment.change.apply_to(self);
             self.revision = self.revision.saturating_add(1);
@@ -193,5 +197,25 @@ impl LoopProfile {
             verdict: verdict.clone(),
         });
         verdict
+    }
+
+    /// Whether folding `change` onto `caps` would leave a `Caps` that
+    /// [`RunBudget::new`] refuses.
+    ///
+    /// [`Bounds::check`] validates one field against its own declared range,
+    /// which proves the moved number is in bounds and nothing about the
+    /// *combination*. A bound that permits `MaxToolCalls` down to 1 while
+    /// leaving `max_model_calls` untouched can accept a proposal that reads
+    /// back as applied and then makes `drive`'s next `RunBudget::narrow` fail
+    /// with [`Error::ContendedCaps`](crate::Error::ContendedCaps) instead of
+    /// refusing the proposal that caused it. Only a `Cap` change can break
+    /// this; every other variant leaves caps untouched, so it always passes.
+    fn would_break_budget(caps: Caps, change: &Change) -> crate::Result<()> {
+        if let Change::Cap { field, to } = change {
+            let mut candidate = caps;
+            field.write(&mut candidate, *to);
+            RunBudget::new(candidate)?;
+        }
+        Ok(())
     }
 }
