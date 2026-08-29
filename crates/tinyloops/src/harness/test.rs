@@ -687,7 +687,9 @@ fn a_dropped_note_reaches_the_runs_own_event_stream() {
     }
 
     let collector = Arc::new(Collector::default());
-    let drops = Arc::new(SinkDrops::new(Arc::clone(&collector) as Arc<dyn crate::Sink>));
+    let drops = Arc::new(SinkDrops::new(
+        Arc::clone(&collector) as Arc<dyn crate::Sink>
+    ));
     drops.at_pass(4);
 
     let mailbox = Mailbox::observed(1, Arc::clone(&drops) as Arc<dyn DropObserver>);
@@ -704,6 +706,8 @@ fn a_dropped_note_reaches_the_runs_own_event_stream() {
             capacity: 1,
         }
     );
-    assert_eq!(crate::render(&seen[0]),
-        "pass 4 note from librarian dropped, mailbox full at 1");
+    assert_eq!(
+        crate::render(&seen[0]),
+        "pass 4 note from librarian dropped, mailbox full at 1"
+    );
 }
