@@ -1011,3 +1011,9 @@ fn a_nonsense_node_duration_saturates_rather_than_panicking_the_run() {
         other => panic!("expected a node finish, got {other:?}"),
     }
 }
+
+#[test]
+fn probe_nan() {
+    println!("to_string {:?}", serde_json::to_string(&f64::NAN));
+    println!("to_value {:?}", serde_json::to_value(f64::NAN));
+}
