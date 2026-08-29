@@ -274,10 +274,10 @@ letter is visible rather than discovered.
 
 ## Task E1: the `research_loop` example
 
-**Files:** `crates/tinyloops/examples/research_loop.rs`, `README.md` is **not**
-edited here — the example is discovered from `examples/` and built by
-`cargo test`, and the command below belongs in the crate docs the loop modules
-already own.
+**Files:** `crates/tinyloops/examples/research_loop.rs`,
+`crates/tinyloops/tests/offline.rs`. No manifest entry is needed: the example is
+discovered from `examples/` and built by `cargo test`, and it declares no
+`required-features` because it runs on the reference seams alone.
 
 1. Write the example: assemble a preset over the reference harness, memory, tool
    set, workspace, and ledger; run it to a terminal state; print the `Report`.
