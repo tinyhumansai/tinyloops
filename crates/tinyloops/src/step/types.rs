@@ -164,9 +164,9 @@ impl Advanced {
 ///         "attempt"
 ///     }
 ///
-///     fn run(&self, mut state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<LoopState> {
+///     fn run(&self, mut state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced> {
 ///         state.attempts = ctx.pass() + 1; // an assignment, never `+= 1`
-///         Ok(ctx.advance(state).into_state())
+///         Ok(ctx.advance(state))
 ///     }
 /// }
 /// ```
@@ -180,13 +180,17 @@ pub trait Step: Send + Sync {
 
     /// Runs the step over `state`.
     ///
+    /// The returned [`Advanced`] can only have come from
+    /// [`StepContext::advance`], so the signature itself records that this body
+    /// was handed the capability to write.
+    ///
     /// # Errors
     ///
     /// Returns whatever [`Error`] the body raises. A step that cannot do its
     /// work must return one rather than hand back an unchanged state: a route
     /// taken on a state nobody advanced is the silent failure the closed step
     /// set exists to prevent.
-    fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<LoopState>;
+    fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced>;
 }
 
 /// A node body that may only look at the run.
@@ -285,7 +289,9 @@ impl RegisteredStep {
     /// Returns whatever [`Error`] the body raises.
     pub fn run(&self, state: LoopState, pass: u32, thresholds: &Thresholds) -> Result<LoopState> {
         match self {
-            Self::Advancing(step) => step.run(state, StepContext::advancing(pass, thresholds)),
+            Self::Advancing(step) => step
+                .run(state, StepContext::advancing(pass, thresholds))
+                .map(Advanced::into_state),
             Self::Observing(observer) => {
                 observer.observe(&state, StepContext::observing(pass, thresholds))?;
                 Ok(state)
