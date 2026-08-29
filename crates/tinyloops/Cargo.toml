@@ -45,8 +45,6 @@ tinyagents = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
-# The GitHub release verifier passes an explicit empty module configuration.
-serde_json = { workspace = true }
 # `mock` is a dev-only addition on top of the dependency above: it supplies the
 # in-memory capability implementations the loop examples run on, which is what
 # keeps them offline and deterministic. A shipped module brings its own
