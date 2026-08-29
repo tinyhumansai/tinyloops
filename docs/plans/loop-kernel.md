@@ -173,9 +173,8 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 
 1. Failing tests, all against one base state and hand-built arm outputs:
    - `a_reset_and_an_increment_compose_from_the_same_base` — one arm returns a
-     counter of 0 from a base of 3, another returns 4; the fold yields 1. This
-     is invariant 5's reason for existing, and the test a last-writer-wins fold
-     fails.
+     counter of 0 from a base of 3, another returns 4; the fold yields 1.
+     Invariant 5's reason for existing, and the test last-writer-wins fails.
    - `a_list_folds_by_what_each_arm_appended`, and
      `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
      `Error::ArmCollision { field, first, second }` naming both arms.
@@ -256,10 +255,10 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
    salvage of a timed-out attempt, and the arms opened beside the loop.
 3. `side_arms` (`Spawn`) and `stand_down` (`Gate`) are this plan's reading of
    "the arms opened beside the loop are started at a named node, at a place a
-   checkpoint can land". `Spawn` needs no `TaskRunner` to be correct — with
-   none injected the work runs inline and the ticket returns already settled
-   (`vendor/tinyflows/src/model/node_kind.rs`) — so a host without a scheduler
-   computes the same answer. Record that in the module docs.
+   checkpoint can land". `Spawn` needs no `TaskRunner`: with none injected the
+   work runs inline and the ticket returns already settled
+   (`vendor/tinyflows/src/model/node_kind.rs`), so a host without a scheduler
+   computes the same answer. Say so in the module docs.
 
 ## Task C2: rendering the ladder from `Thresholds`
 
