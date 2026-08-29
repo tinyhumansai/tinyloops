@@ -13,6 +13,8 @@
 //! raw string it emitted is preserved so it can be handed back as an error
 //! result and retried.
 
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -56,50 +58,47 @@ impl ToolGroup {
 /// A grant is read once, in [`ToolSet::new`](super::ToolSet::new). It is not
 /// carried into a handler, because a handler that can ask whether it is allowed
 /// to run is a handler some call path can reach anyway.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+///
+/// A set rather than four flags: a grant is the list of groups that exist for
+/// this attempt, and reading it as a list is what keeps "withheld" and "absent"
+/// the same word.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ToolGrant {
-    /// Whether the read group is registered.
-    pub read: bool,
-    /// Whether the search group is registered.
-    pub search: bool,
-    /// Whether the edit group is registered.
-    pub edit: bool,
-    /// Whether the execute group is registered.
-    pub execute: bool,
+    groups: BTreeSet<ToolGroup>,
 }
 
 impl ToolGrant {
+    /// A grant of exactly the named groups.
+    #[must_use]
+    pub fn of(groups: &[ToolGroup]) -> Self {
+        Self {
+            groups: groups.iter().copied().collect(),
+        }
+    }
+
     /// A grant of every group.
     #[must_use]
-    pub const fn all() -> Self {
-        Self {
-            read: true,
-            search: true,
-            edit: true,
-            execute: true,
-        }
+    pub fn all() -> Self {
+        Self::of(&ToolGroup::ALL)
     }
 
     /// A grant that may look but not touch.
     #[must_use]
-    pub const fn read_only() -> Self {
-        Self {
-            read: true,
-            search: true,
-            edit: false,
-            execute: false,
-        }
+    pub fn read_only() -> Self {
+        Self::of(&[ToolGroup::Read, ToolGroup::Search])
     }
 
     /// Whether `group` is granted.
     #[must_use]
-    pub const fn holds(self, group: ToolGroup) -> bool {
-        match group {
-            ToolGroup::Read => self.read,
-            ToolGroup::Search => self.search,
-            ToolGroup::Edit => self.edit,
-            ToolGroup::Execute => self.execute,
-        }
+    pub fn holds(&self, group: ToolGroup) -> bool {
+        self.groups.contains(&group)
+    }
+
+    /// The granted groups, in order.
+    #[must_use]
+    pub fn groups(&self) -> Vec<ToolGroup> {
+        self.groups.iter().copied().collect()
     }
 }
 

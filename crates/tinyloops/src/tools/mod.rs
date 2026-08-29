@@ -225,8 +225,8 @@ impl ToolSet {
 
     /// The grant this set was constructed from.
     #[must_use]
-    pub const fn grant(&self) -> ToolGrant {
-        self.grant
+    pub const fn grant(&self) -> &ToolGrant {
+        &self.grant
     }
 
     /// Replaces the requery bound, for a deployment that wants a tighter one.
