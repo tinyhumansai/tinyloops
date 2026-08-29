@@ -107,6 +107,17 @@ pub trait Arm: Send + Sync {
         false
     }
 
+    /// Whether this arm may propose an amendment to the run's own profile.
+    ///
+    /// `false` for every arm but [`TunerArm`], and an implementor outside this
+    /// crate answering `true` gains nothing by it: the slot a proposal travels
+    /// in is crate-private, so the claim is unbacked. It is declared here so
+    /// [`ArmSet::new`] can refuse a second proposer by the same route it
+    /// already refuses a second concluding arm.
+    fn may_tune(&self) -> bool {
+        false
+    }
+
     /// Evaluates the pass.
     ///
     /// `report` is the output of the node immediately upstream — the attempt's
@@ -206,6 +217,7 @@ impl ArmSet {
         }
 
         let mut concluding: Option<&'static str> = None;
+        let mut tuning: Option<&'static str> = None;
         for (index, arm) in arms.iter().enumerate() {
             if arms[..index].iter().any(|prior| prior.name() == arm.name()) {
                 return Err(Error::DuplicateArm {
@@ -221,6 +233,16 @@ impl ArmSet {
                     });
                 }
                 concluding = Some(arm.name());
+            }
+
+            if arm.may_tune() {
+                if let Some(first) = tuning {
+                    return Err(Error::AmbiguousTuning {
+                        first,
+                        second: arm.name(),
+                    });
+                }
+                tuning = Some(arm.name());
             }
         }
 
@@ -265,6 +287,109 @@ impl ArmSet {
             .iter()
             .find(|arm| arm.may_conclude())
             .map(|arm| arm.name())
+    }
+
+    /// The arm allowed to propose an amendment, if one was declared.
+    #[must_use]
+    pub fn tuning(&self) -> Option<&'static str> {
+        self.arms
+            .iter()
+            .find(|arm| arm.may_tune())
+            .map(|arm| arm.name())
+    }
+}
+
+/// What proposes a change to the run's own configuration.
+///
+/// A trait of its own rather than a capability on [`Arm`], and the reason is
+/// mechanical: `Arm::evaluate` takes a concrete `StepContext<'_, NoWrite>` and
+/// an [`ArmSet`] holds `Arc<dyn Arm>`, so making the context generic over a
+/// third capability marker would cost object safety. Wrapping a `Tuner` in
+/// [`TunerArm`] buys the same guarantee for no change to the arm surface: the
+/// adapter is the only code that can fill the crate-private slot a proposal
+/// travels in, so an `impl Arm` has no way to propose one.
+///
+/// # What a tuner should and should not be
+///
+/// The shipped one is a pure function of the counters. A model asked mid-run
+/// whether its own configuration is wrong has no ground truth to answer from
+/// and every incentive to answer yes — the same pressure that makes a model
+/// claim the goal is met on the eighth pass. A model tuner is permitted here,
+/// and is bounded by exactly the same [`Bounds`](crate::Bounds), which is the
+/// point of putting the bounds outside the proposer.
+pub trait Tuner: Send + Sync {
+    /// The arm's name, and the id of its node.
+    fn name(&self) -> &'static str;
+
+    /// Proposes at most one amendment for the *next* pass.
+    ///
+    /// `base` is the accumulator every arm in this superstep was handed, and
+    /// `report` is the attempt's report — the same two inputs every other arm
+    /// reads, for the same reason.
+    ///
+    /// Returning `None` is the ordinary answer. A tuner that proposes on every
+    /// pass is a tuner that has mistaken its own budget for a target.
+    ///
+    /// # Errors
+    ///
+    /// Whatever the implementation raises. A tuner that cannot decide should
+    /// return `Ok(None)` rather than an error: failing the pass over a
+    /// configuration question is a worse outcome than not tuning.
+    fn propose(
+        &self,
+        base: &LoopState,
+        report: &Value,
+        ctx: StepContext<'_, NoWrite>,
+    ) -> Result<Option<Amendment>>;
+}
+
+/// The adapter that runs a [`Tuner`] as an evaluation arm.
+///
+/// The only writer of the proposal slot in the whole crate. Everything else
+/// about it is an ordinary arm: it fans out from the attempt, converges on the
+/// barrier, and folds as a zero delta with one narrative claim.
+pub struct TunerArm {
+    tuner: Arc<dyn Tuner>,
+}
+
+impl std::fmt::Debug for TunerArm {
+    /// Renders the tuner's name; the body is a trait object.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TunerArm")
+            .field("tuner", &self.tuner.name())
+            .finish()
+    }
+}
+
+impl TunerArm {
+    /// Wraps `tuner` as an arm.
+    #[must_use]
+    pub fn new(tuner: Arc<dyn Tuner>) -> Self {
+        Self { tuner }
+    }
+}
+
+impl Arm for TunerArm {
+    fn name(&self) -> &'static str {
+        self.tuner.name()
+    }
+
+    fn may_tune(&self) -> bool {
+        true
+    }
+
+    fn evaluate(
+        &self,
+        base: &LoopState,
+        report: &Value,
+        ctx: StepContext<'_, NoWrite>,
+    ) -> Result<ArmOutcome> {
+        let mut outcome = ArmOutcome::unchanged(Arm::name(self), base);
+        if let Some(amendment) = self.tuner.propose(base, report, ctx)? {
+            outcome.contribution.amendment = Some(amendment.clone());
+            outcome.state.proposed = Some(amendment);
+        }
+        Ok(outcome)
     }
 }
 
