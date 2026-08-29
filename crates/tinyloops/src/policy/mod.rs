@@ -27,7 +27,7 @@ mod ladder;
 mod types;
 
 pub use ladder::{
-    evaluate_ladder, evaluate_terminal_condition, ladder, loop_id_scope, terminal_condition,
+    evaluate_ladder, evaluate_terminal_condition, expr_scope, ladder, terminal_condition,
 };
 pub use types::{Autonomy, Judgement, Outcome, Route, Thresholds};
 
