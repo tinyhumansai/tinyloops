@@ -75,11 +75,18 @@ impl Step for Gather {
 /// reads the pass's one attempt report out of [`LoopState::last_attempt`],
 /// hands it to the arm, and returns the candidate state the arm computed.
 ///
-/// It does **not** apply the arm's [`Contribution`](crate::Contribution). Those
-/// are folded by [`ArmSet::merge`](crate::ArmSet::merge) across every arm at
-/// once, because a lesson and a steer written by two arms have to be checked
-/// for collision, and an arm that applied its own would have made that check
-/// impossible before it ran.
+/// It **does** apply the arm's [`Contribution`](crate::Contribution) to the
+/// state it returns, and that is load-bearing rather than a convenience. A
+/// node returns one accumulator; there is nowhere else for a lesson or a steer
+/// to ride. [`Converge`] reads the claims back out with
+/// [`Contribution::claimed_from`](crate::Contribution::claimed_from) — a field
+/// that differs from the shared base is a field this arm claimed — so two arms
+/// writing the same one is still [`Error::ContestedField`] at the merge rather
+/// than a winner picked by arrival order.
+///
+/// The two halves are inverses and are tested as such. If they ever stop being
+/// inverses, an arm's contribution silently stops reaching the accumulator,
+/// which is exactly the class of failure this crate is built to refuse.
 pub struct ArmStep {
     arm: Arc<dyn Arm>,
 }
@@ -121,7 +128,10 @@ impl Step for ArmStep {
 
         let observing = StepContext::observing(ctx.pass(), ctx.thresholds());
         let outcome = self.arm.evaluate(&state, &report, observing)?;
-        Ok(ctx.advance(outcome.state))
+
+        let mut advanced = outcome.state;
+        outcome.contribution.apply_to(&mut advanced);
+        Ok(ctx.advance(advanced))
     }
 }
 
