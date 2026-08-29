@@ -3,7 +3,7 @@
 //! The scaffolding for building agentic loops that run a workflow, judge what
 //! came back, and decide whether to go round again. The pieces it is assembled
 //! from are vendored rather than reimplemented: [TinyFlows] executes one graph
-//! and decides nothing, TinyAgents is the optional durable harness, and TinyBus
+//! and decides nothing, `TinyAgents` is the optional durable harness, and `TinyBus`
 //! is how a loop is reached from outside the process.
 //!
 //! The layering this crate occupies is worth stating, because it is what keeps
