@@ -526,3 +526,21 @@ async fn a_step_the_registry_does_not_hold_is_an_error_rather_than_a_no_op() {
 
     assert!(matches!(refused, Err(Error::UnknownStep { ref name }) if name == "invented"));
 }
+#[tokio::test]
+async fn probe() {
+    let (graph, thresholds, registry) = assembled(Preset::Balanced, solving_script());
+    let steps = Arc::new(Steps::new(registry, thresholds));
+    run(&graph, &steps).await;
+    for s in ["plan","research","attempt","reflect","judge","merge","pass","report"] {
+        eprintln!("{s}: {}", steps.calls_for(s).len());
+    }
+    for (i,(_,a)) in steps.calls_for("merge").into_iter().enumerate() {
+        let st: LoopState = serde_json::from_value(a).unwrap();
+        eprintln!("merge {i}: passes={} attempts={} unproductive={} solved={} scores={:?}", st.passes, st.attempts, st.unproductive, st.solved, st.scores);
+    }
+    for (i,(_,a)) in steps.calls_for("pass").into_iter().enumerate() {
+        let st: LoopState = serde_json::from_value(a).unwrap();
+        eprintln!("pass {i}: passes={} attempts={}", st.passes, st.attempts);
+    }
+    panic!("probe");
+}
