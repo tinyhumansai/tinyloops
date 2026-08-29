@@ -303,6 +303,11 @@ them on a single sample, which is the failure that makes a tuner confident.
 
 ### Constraints
 
+- **The loop head's iteration cap is not a threshold.** It is the run budget's
+  `Caps::max_iterations`, a runaway backstop rendered into the graph once.
+  Leaving it as `max_attempts` would make raising `max_attempts` mid-run
+  silently inert — the amendment folds, the profile says twelve, and the head
+  still stops at the number it was built with.
 - `LoopProfile` and `Amendment` are `serde` types with pinned representations,
   per the house rule for anything that crosses a checkpoint.
 - `LoopProfile` carries `#[serde(default)]` at the container level, so an
