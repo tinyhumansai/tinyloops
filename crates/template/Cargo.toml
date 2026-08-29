@@ -48,14 +48,10 @@ default = []
 # it exists to give an example a real harness instead of a hand-rolled stand-in.
 tinyagents = ["dep:tinyagents"]
 
-# `simple_loop` needs only the engine, which arrives as a dev-dependency, so it
-# builds on a bare `cargo test`. The harness example additionally needs the
-# optional crate above, and `required-features` is what keeps a default build
-# from trying to compile it without one.
-[[example]]
-name = "simple_loop"
-path = "examples/simple_loop.rs"
-
+# Every other example is discovered from `examples/` and builds on a bare
+# `cargo test`. This one additionally needs the optional crate above, and
+# `required-features` is what keeps a default build from trying to compile it
+# without one.
 [[example]]
 name = "tinyagents_harness"
 path = "examples/tinyagents_harness.rs"
