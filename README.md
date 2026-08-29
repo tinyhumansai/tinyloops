@@ -242,6 +242,7 @@ root `Cargo.toml`.
 ## Documentation
 
 - [`AGENTS.md`](AGENTS.md) — repository guidelines for humans and agents
+- [`ROADMAP.md`](ROADMAP.md) — what is built, what is next, what is not
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to propose a change
 - [`docs/specs/`](docs/specs/README.md) — behavior and architecture specs
 - [`docs/plans/`](docs/plans/README.md) — test-first implementation plans
