@@ -176,8 +176,7 @@ ends with `cargo test -p tinyloops <module>` and a clippy run over
      Invariant 5's reason for existing, and the test last-writer-wins fails.
    - `a_list_folds_by_what_each_arm_appended`, and
      `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
-     `Error::ContestedField` — `state` already arbitrates, in
-     `LoopState::merge(&[Delta], &[Contribution])`; add no second variant.
+     `Error::ContestedField` — `LoopState::merge` arbitrates; add no variant.
    - `folding_is_commutative_over_every_permutation` — four arm outputs, all 24
      permutations, one expected result — and
      `folding_is_associative_over_every_grouping`, the same four folded as
@@ -193,7 +192,7 @@ ends with `cargo test -p tinyloops <module>` and a clippy run over
        /// (`vendor/tinyflows/src/graph/reducer/mod.rs`) — reproducible, not
        /// order-independent. A reducer that reads arrival order returns a
        /// different answer after an unrelated arm rename, and nothing reports it.
-       // Delegates to `LoopState::merge`: a `Delta` per arm, plus its `Contribution`.
+       /// Delegates to `LoopState::merge`: a `Delta` per arm, plus its `Contribution`.
        fn fold(&self, base: &LoopState, arms: &[ArmOutcome]) -> Result<LoopState>;
    }
    pub struct DeltaFold;
