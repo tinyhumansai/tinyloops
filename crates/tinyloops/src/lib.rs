@@ -61,6 +61,7 @@ mod memory;
 mod observe;
 mod orchestrate;
 mod policy;
+mod presets;
 mod state;
 mod step;
 mod tinybus_module;
@@ -121,6 +122,12 @@ pub use arm::{Arm, ArmOutcome, ArmSet, Edge, upstream_address};
 pub use loops::{
     GraphSignature, LoopBuilder, NodeIds, STEP_MERGE, TerminalState, TerminationCondition,
     verify_resume,
+};
+// The batteries: a preset's thresholds with the bet each one makes written
+// down, the two evaluation arms that keep a verdict mechanical, and a loop with
+// every seam already filled in.
+pub use presets::{
+    AssembledLoop, Driven, Judge, Preset, Reflect, SOLVED_MARKER, research_loop,
 };
 pub use step::{
     AccumulatorAccess, Advanced, CanWrite, NoWrite, Observer, RUN_LOOP_STEP, RegisteredStep,

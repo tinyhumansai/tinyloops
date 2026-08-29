@@ -392,11 +392,3 @@ pub fn research_loop(
     let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)])?;
     AssembledLoop::new(goal, preset, arms, registry, RunBudget::default())
 }
-
-/// Silences an unused-import warning for a trait the drive path needs in scope.
-const _: fn(&dyn Step, LoopState, StepContext<'_, CanWrite>) = |step, state, ctx| {
-    let _ = step.run(state, ctx);
-};
-
-/// Silences an unused-import warning for the verdict type the arms produce.
-const _: Judgement = Judgement::Proceed;
