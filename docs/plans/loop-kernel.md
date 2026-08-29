@@ -42,12 +42,10 @@ impl Route { pub fn as_str(self) -> &'static str; }   // "solved" | "reported" |
 
 Groups are **strictly ordered**: A (`step/`) → B (`arm/`) → C (`loops/`) → D
 (`orchestrate/`). B needs A's write-marker types, C needs B's one-list edge
-derivation, D binds a role to the three nodes C emits.
-
-**Parallel within a group:** A1 and A2 are one file each; A3 joins them, and A4
-needs only A1 so it can run alongside all of B. B1 and B2 are independent and
-merge at B3. C1 and C2 are independent; C3 joins them. D1 and D2 are
-independent.
+derivation, D binds a role to the three nodes C emits. **Parallel within a
+group:** A1 and A2 are one file each and A3 joins them, while A4 needs only A1
+so it can run alongside all of B; B1 and B2 are independent and merge at B3; C1
+and C2 are independent and C3 joins them; D1 and D2 are independent.
 
 Every task ends with `cargo test -p tinyloops <module>` and
 `cargo clippy --all-targets --all-features -- -D warnings`; only the exceptions
@@ -127,9 +125,8 @@ are named below.
 `src/lib.rs`
 
 1. Failing tests: `runs_the_named_step_and_returns_its_state`;
-   `an_unknown_step_name_is_a_node_error`, asserting an
-   `EngineError::Capability` whose message names the step;
-   `an_unknown_tool_slug_is_a_node_error`; and
+   `an_unknown_step_name_is_a_node_error`, asserting an `EngineError::Capability`
+   whose message names the step; `an_unknown_tool_slug_is_a_node_error`; and
    `a_missing_step_argument_is_a_node_error`. The second is the acceptance
    criterion that an unknown step name does not advance the run — a no-op there
    is the failure `assert_no_null_bindings` catches one layer too late.
@@ -224,10 +221,10 @@ Depends only on A1, so it may run alongside group B.
 
 1. Failing tests: `fan_out_and_merge_edges_name_the_same_arms`;
    `removing_an_arm_removes_it_from_both_edge_sets_and_the_fold` — build three,
-   drop one, assert all three derived views lost it, which is invariant 6's
-   acceptance criterion that an arm in the fan-out but not the fold runs, costs
-   its budget, and changes nothing; `an_empty_arm_set_is_a_construction_error`,
-   because a loop with no evaluation cannot end; and
+   drop one, assert all three derived views lost it, invariant 6's acceptance
+   criterion that an arm in the fan-out but not the fold runs, costs its budget,
+   and changes nothing; `an_empty_arm_set_is_a_construction_error`, because a
+   loop with no evaluation cannot end; and
    `duplicate_arm_ids_are_a_construction_error`.
 2. Implement:
 
@@ -329,12 +326,12 @@ Depends only on A1, so it may run alongside group B.
 **Files:** `crates/tinyloops/src/loops/termination.rs`, `src/loops/test.rs`
 
 1. Failing tests: `an_exhausted_budget_is_never_success`, asserting `Exhausted`
-   and asserting it is not `Success` — the natural
+   and that it is not `Success` — the natural
    `if done_or_out_of_attempts { answer }` violates this by construction, which
    is why it is a test rather than a comment;
    `a_provider_failure_reports_blocked`; `conditions_compose_with_and_and_or`;
-   `a_condition_round_trips_through_serde`, so it survives a checkpoint with the
-   rest of the state; and `resetting_a_fired_condition_clears_it`.
+   `a_condition_round_trips_through_serde`, so it survives a checkpoint; and
+   `resetting_a_fired_condition_clears_it`.
 2. Implement `TerminalState { Success, CleanNoOp, Blocked, Stalled, Exhausted }`
    and `TerminationCondition` with `evaluate`, `reset`, serde, and `BitAnd` /
    `BitOr` over boxed conditions.
@@ -362,8 +359,7 @@ Depends only on A1, so it may run alongside group B.
 **Files:** `crates/tinyloops/tests/routing_parity.rs`
 
 The load-bearing test of this plan, and an integration test because it must read
-only the public surface — the rendered ladder and `policy::route` — the way a
-reviewer would.
+only the public surface the way a reviewer would.
 
 1. `the_rendered_ladder_and_the_rust_router_agree_for_every_preset`: for every
    shipped `Thresholds` preset, sweep the cartesian product of `blocked`,
@@ -446,13 +442,12 @@ All through `tinyflows::testkit::TestHarness`.
 `src/error/mod.rs`
 
 1. Failing tests: `a_shell_tool_in_the_orchestrators_set_fails_construction`,
-   asserting the message names the offending tool, and the same for a code
-   runner and a file-write tool, one test each;
+   asserting the message names the offending tool, and the same for a code runner
+   and a file-write tool, one test each;
    `spawning_a_delegate_outside_the_declared_set_is_an_error`;
-   `it_does_not_fall_back_to_the_host_registry`, where the host registry holds
-   the name, the declared set does not, and the spawn still fails; and
-   `the_declared_delegate_set_is_checked_against_the_step_registry`, so a role
-   and a registry cannot diverge quietly.
+   `it_does_not_fall_back_to_the_host_registry`, where the host registry holds the
+   name, the declared set does not, and the spawn still fails; and
+   `the_declared_delegate_set_is_checked_against_the_step_registry`.
 2. Implement `Orchestrator::new(tools: ToolGrant, delegates: DelegateSet)
    -> Result<Self>`, rejecting execution capabilities at construction. Both sets
    are fixed there and have no extend method: a driver that *can* run the
@@ -494,10 +489,9 @@ All through `tinyflows::testkit::TestHarness`.
    `TerminationCondition`, `TaskBoard`, and `Orchestrator`.
 2. Add `loops/README.md` covering the emitted shape, the eleven invariants it
    keeps, and the operational constraint that a threshold change invalidates
-   every outstanding checkpoint.
-3. Extend `tests/public_api.rs` with a build-validate-compile walkthrough using
-   only the public surface.
-4. `cargo test --doc` and
+   every outstanding checkpoint. Extend `tests/public_api.rs` with a
+   build-validate-compile walkthrough using only the public surface.
+3. `cargo test --doc` and
    `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features`.
 
 ## Verification
