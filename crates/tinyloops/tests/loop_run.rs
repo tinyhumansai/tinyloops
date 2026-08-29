@@ -77,10 +77,13 @@ impl Arm for Evaluator {
 }
 
 /// Three attempts is enough to tell "current" from "one pass behind".
-fn thresholds() -> Thresholds {
-    Thresholds {
-        max_attempts: 3,
-        ..Thresholds::default()
+fn profile() -> LoopProfile {
+    LoopProfile {
+        thresholds: Thresholds {
+            max_attempts: 3,
+            ..Thresholds::default()
+        },
+        ..LoopProfile::default()
     }
 }
 
@@ -100,8 +103,9 @@ fn graph() -> WorkflowGraph {
     ])
     .expect("two distinct arms are a valid set");
 
-    LoopBuilder::new(thresholds(), arms, registry)
+    LoopBuilder::new(arms, registry)
         .goal("ship the release")
+        .profile(profile())
         .autonomy(Autonomy::Unattended)
         .build()
         .expect("the fixture builds a valid graph")
@@ -109,7 +113,7 @@ fn graph() -> WorkflowGraph {
 
 /// A `LoopState` as JSON, with `edit` applied.
 fn state_with(edit: impl FnOnce(&mut LoopState)) -> Value {
-    let mut state = LoopState::new("ship the release");
+    let mut state = LoopState::with_profile("ship the release", profile());
     edit(&mut state);
     serde_json::to_value(state).expect("a state encodes")
 }
