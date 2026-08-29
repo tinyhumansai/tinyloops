@@ -64,8 +64,8 @@ crates/
     ├── tests/          # integration tests against the public API only
     └── examples/       # runnable, compiled-in-CI usage examples
 vendor/
-├── tinybus/         # pinned TinyBus host types and module SDK
-└── tinyflows/       # pinned workflow engine and its adaptive loop
+├── tinybus/           # pinned TinyBus host types and module SDK
+└── tinyflows/         # pinned workflow engine and its adaptive loop
 docs/
 ├── specs/              # behavior and architecture specifications
 ├── plans/              # test-first implementation plans
