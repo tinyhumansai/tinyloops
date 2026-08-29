@@ -12,7 +12,7 @@
 //! Run it with:
 //!
 //! ```sh
-//! cargo run -p template --example simple_loop
+//! cargo run -p tinyloops --example simple_loop
 //! ```
 
 use std::error::Error;

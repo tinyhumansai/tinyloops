@@ -16,9 +16,9 @@ use crate::{Error, Result};
 /// # Examples
 ///
 /// ```
-/// # use template::greet;
+/// # use tinyloops::greet;
 /// assert_eq!(greet("  Ferris  ")?, "Hello, Ferris!");
-/// # Ok::<(), template::Error>(())
+/// # Ok::<(), tinyloops::Error>(())
 /// ```
 ///
 /// # Errors

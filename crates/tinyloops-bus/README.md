@@ -1,10 +1,10 @@
-# template-bus
+# tinyloops-bus
 
 Every type that crosses the template module's `TinyBus` boundary, and the names
 of the members that carry them.
 
 The template ships as a loadable module so a host does not compile the
-implementation: `crates/template` is built as a `cdylib` and exports one object.
+implementation: `crates/tinyloops` is built as a `cdylib` and exports one object.
 A host can load that binary but cannot `use` anything out of it, so the payload
 vocabulary has to be published as an ordinary library. This is it.
 
@@ -16,9 +16,9 @@ vocabulary has to be published as an ordinary library. This is it.
 
 Two dependencies, both pure Rust: `serde` and `serde_json`.
 
-## This crate sits underneath `template`
+## This crate sits underneath `tinyloops`
 
-`template` **depends on this crate and re-exports all of it**. That direction
+`tinyloops` **depends on this crate and re-exports all of it**. That direction
 matters, and it is the opposite of the obvious one.
 
 A *host* needs the payload types and needs nothing else: it loads the module and
@@ -31,16 +31,16 @@ The alternative, a parallel set of payload types for hosts, is worse: a
 `GreetRequest` defined twice is two distinct types, with a conversion at every
 call site that nothing checks. One definition, here, at the bottom.
 
-Because the re-export is by module as well as by item, `template::GreetRequest`,
-`template::names::OBJECT_PATH`, and `template_bus::greeting::GreetRequest` all
+Because the re-export is by module as well as by item, `tinyloops::GreetRequest`,
+`tinyloops::names::OBJECT_PATH`, and `tinyloops_bus::greeting::GreetRequest` all
 resolve to the same items, not twins.
 
-So: a module author depends on `template` and gets behavior and vocabulary. A
-host depends on `template-bus` and gets vocabulary alone.
+So: a module author depends on `tinyloops` and gets behavior and vocabulary. A
+host depends on `tinyloops-bus` and gets vocabulary alone.
 
 ## What is deliberately absent
 
-**No behavior.** `greet` lives in `crates/template`. A payload type describes
+**No behavior.** `greet` lives in `crates/tinyloops`. A payload type describes
 what a frame carries, not what the module does with it. The split is readable
 off the path: a name here is data, a name there is an obligation.
 
@@ -60,7 +60,7 @@ Arguments travel as a positional JSON array — `#[tinybus::interface]` decodes
 them into a tuple — and the member name comes from `names`:
 
 ```rust,ignore
-use template_bus::{names, GreetRequest, GreetResponse};
+use tinyloops_bus::{names, GreetRequest, GreetResponse};
 
 let proxy = connection.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
 let reply: GreetResponse = proxy
@@ -75,7 +75,7 @@ path, or a member is therefore a compile error in every consumer rather than an
 
 ## Staying in step with the module
 
-`names::METHODS` lists every member in dispatch order. `crates/template` asserts
+`names::METHODS` lists every member in dispatch order. `crates/tinyloops` asserts
 its served members against that list, so a method added to the interface without
 an entry here fails that crate's tests rather than surfacing in a host.
 

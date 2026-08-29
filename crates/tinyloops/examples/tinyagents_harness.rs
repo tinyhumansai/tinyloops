@@ -16,7 +16,7 @@
 //! `TinyAgents` is an optional dependency, so this example is gated:
 //!
 //! ```sh
-//! cargo run -p template --features tinyagents --example tinyagents_harness
+//! cargo run -p tinyloops --features tinyagents --example tinyagents_harness
 //! ```
 
 use std::error::Error;
