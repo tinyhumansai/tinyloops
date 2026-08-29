@@ -41,7 +41,25 @@ fn populated() -> LoopState {
         steer: "narrow the change".to_string(),
         scores: vec![7, 9],
         judged: Judgement::Steer,
+        board: board(),
+        answer: "the bound holds".to_string(),
     }
+}
+
+/// A one-task board, so the pinned wire form covers the nested field rather
+/// than only its empty default.
+fn board() -> crate::orchestrate::TaskBoard {
+    let mut board = crate::orchestrate::TaskBoard::new();
+    board
+        .add(crate::orchestrate::Task::new(
+            crate::orchestrate::TaskId::new("bound-the-error").unwrap(),
+            "bound the error term",
+            "a proved bound",
+            2,
+        ))
+        .unwrap();
+    board.planned(2);
+    board
 }
 
 #[test]
@@ -66,6 +84,17 @@ fn the_wire_form_is_pinned() {
             "steer": "narrow the change",
             "scores": [7, 9],
             "judged": "steer",
+            "board": {
+                "tasks": [{
+                    "id": "bound-the-error",
+                    "statement": "bound the error term",
+                    "criterion": "a proved bound",
+                    "status": "open",
+                    "touched": 2,
+                }],
+                "planned_at": 2,
+            },
+            "answer": "the bound holds",
         })
     );
 }
