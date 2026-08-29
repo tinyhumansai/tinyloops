@@ -247,7 +247,7 @@ impl RunBudget {
     /// assert_eq!(budget.reachable(), Bound::ModelCalls);
     ///
     /// let inverted = Caps {
-    ///     tool_timeout: Duration::from_secs(600),
+    ///     tool_timeout: Duration::from_secs(3_600),
     ///     ..Caps::default()
     /// };
     /// assert_eq!(
