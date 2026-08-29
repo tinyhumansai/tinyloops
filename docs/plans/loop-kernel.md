@@ -175,8 +175,12 @@ ends with `cargo test -p tinyloops <module>` and a clippy run over
      counter of 0 from a base of 3, another returns 4; the fold yields 1.
      Invariant 5's reason for existing, and the test last-writer-wins fails.
    - `a_list_folds_by_what_each_arm_appended`, and
-     `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting an
-     `Error::ArmCollision` that names both arms.
+     `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting the
+     existing `Error::ContestedField { field, held_by, also }`, which already
+     names both arms. Do **not** add a second variant for this: `state` landed
+     the arbitration in `LoopState::merge(&[Delta], &[Contribution])`, where
+     counters merge by addition and narrative merges by exclusive ownership, and
+     a parallel error type would be a second place for one rule to be wrong.
    - `folding_is_commutative_over_every_permutation` — four arm outputs, all 24
      permutations, one expected result — and
      `folding_is_associative_over_every_grouping`, the same four folded as
@@ -192,7 +196,9 @@ ends with `cargo test -p tinyloops <module>` and a clippy run over
        /// (`vendor/tinyflows/src/graph/reducer/mod.rs`) — reproducible, not
        /// order-independent. A reducer that reads arrival order returns a
        /// different answer after an unrelated arm rename, and nothing reports it.
-       fn fold(&self, base: &LoopState, arms: &[(&str, LoopState)]) -> Result<LoopState>;
+       fn fold(&self, base: &LoopState, arms: &[ArmOutcome]) -> Result<LoopState>;
+       // Delegates to `LoopState::merge`; an arm contributes a `Delta` for the
+       // counters and a `Contribution` for the fields it owns.
    }
    pub struct DeltaFold;
    ```
