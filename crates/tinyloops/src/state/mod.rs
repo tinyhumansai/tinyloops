@@ -165,6 +165,29 @@ impl LoopState {
     /// assert_eq!(merged.unproductive, 1); // -1 and +1, both applied
     /// assert_eq!(merged.restarts, 1);
     /// ```
+    #[must_use]
+    pub fn apply(&self, deltas: &[Delta]) -> Self {
+        Self {
+            passes: shift(self.passes, total(deltas, |d| d.passes)),
+            attempts: shift(self.attempts, total(deltas, |d| d.attempts)),
+            unproductive: shift(self.unproductive, total(deltas, |d| d.unproductive)),
+            blocked: shift(self.blocked, total(deltas, |d| d.blocked)),
+            computational: shift(self.computational, total(deltas, |d| d.computational)),
+            unverified: shift(self.unverified, total(deltas, |d| d.unverified)),
+            restarts: shift(self.restarts, total(deltas, |d| d.restarts)),
+            established: shift(self.established, total(deltas, |d| d.established)),
+            banked: shift(self.banked, total(deltas, |d| d.banked)),
+            solved: latch(self.solved, deltas, |d| d.solved),
+            expired: latch(self.expired, deltas, |d| d.expired),
+            goal: self.goal.clone(),
+            last_attempt: self.last_attempt.clone(),
+            lessons: self.lessons.clone(),
+            steer: self.steer.clone(),
+            scores: self.scores.clone(),
+            judged: self.judged,
+        }
+    }
+
     /// Folds both merge laws in one call: counters by addition, narrative by
     /// exclusive ownership.
     ///
@@ -238,29 +261,6 @@ impl LoopState {
         }
 
         Ok(merged)
-    }
-
-    #[must_use]
-    pub fn apply(&self, deltas: &[Delta]) -> Self {
-        Self {
-            passes: shift(self.passes, total(deltas, |d| d.passes)),
-            attempts: shift(self.attempts, total(deltas, |d| d.attempts)),
-            unproductive: shift(self.unproductive, total(deltas, |d| d.unproductive)),
-            blocked: shift(self.blocked, total(deltas, |d| d.blocked)),
-            computational: shift(self.computational, total(deltas, |d| d.computational)),
-            unverified: shift(self.unverified, total(deltas, |d| d.unverified)),
-            restarts: shift(self.restarts, total(deltas, |d| d.restarts)),
-            established: shift(self.established, total(deltas, |d| d.established)),
-            banked: shift(self.banked, total(deltas, |d| d.banked)),
-            solved: latch(self.solved, deltas, |d| d.solved),
-            expired: latch(self.expired, deltas, |d| d.expired),
-            goal: self.goal.clone(),
-            last_attempt: self.last_attempt.clone(),
-            lessons: self.lessons.clone(),
-            steer: self.steer.clone(),
-            scores: self.scores.clone(),
-            judged: self.judged,
-        }
     }
 }
 
