@@ -82,17 +82,8 @@ pub fn upstream_address(node: &str) -> String {
 impl ArmSet {
     /// The edges from `from` to every arm.
     ///
-    /// One half of invariant 6, derived from the declared list.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use tinyloops::{ArmSet, Edge};
-    /// # fn set() -> ArmSet { unimplemented!() }
-    /// # fn demo(set: &ArmSet) {
-    /// assert_eq!(set.fan_out("attempt")[0], Edge::new("attempt", set.names()[0]));
-    /// # }
-    /// ```
+    /// One half of invariant 6, derived from the declared list. Its counterpart
+    /// is [`Self::converge`], derived from the same one.
     #[must_use]
     pub fn fan_out(&self, from: &str) -> Vec<Edge> {
         self.names()
