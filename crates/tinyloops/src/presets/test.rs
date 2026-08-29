@@ -571,6 +571,28 @@ fn an_iteration_cap_of_one_stops_after_one_pass() {
     assert_eq!(driven.outcome, Outcome::Exhausted);
 }
 
+#[test]
+fn a_model_call_cap_below_the_iteration_cap_stops_the_run_first() {
+    // `drive`'s `Meter` is fed from real per-pass attempts, so a `max_model_calls`
+    // well below `max_iterations` is what actually stops the run — not a
+    // number a `Cap` amendment could move and nothing would read. Without
+    // that wiring this run would go to its iteration cap instead.
+    let caps = Caps {
+        max_iterations: 100,
+        max_model_calls: 5,
+        ..Caps::default()
+    };
+    let assembled = stalling()
+        .expect("assembles")
+        .with_budget(RunBudget::new(caps).expect("legal caps"));
+
+    let driven = assembled.drive(&quiet()).expect("the loop drives");
+
+    assert_eq!(driven.routes.len(), 5, "one attempt a pass, five model calls");
+    assert_eq!(driven.bound, Some(Bound::ModelCalls));
+    assert_eq!(driven.outcome, Outcome::Exhausted);
+}
+
 // ------------------------------------------------------------------ fixtures
 
 /// A second arm that also claims it may conclude, for the refusal test.
