@@ -32,11 +32,13 @@
 mod arms;
 mod assembled;
 mod steps;
+mod tuner;
 mod types;
 
 pub use arms::{Judge, Reflect, SOLVED_MARKER};
 pub use assembled::{AssembledLoop, Driven, research_loop};
 pub use steps::{Advance, ArmStep, Converge, Gather};
+pub use tuner::{Rules, SILENT_SCORES};
 pub use types::Preset;
 
 #[cfg(test)]
