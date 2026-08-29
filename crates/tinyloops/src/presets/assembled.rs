@@ -147,6 +147,9 @@ impl AssembledLoop {
     /// should never silently move the other.
     #[must_use]
     pub fn with_budget(mut self, budget: RunBudget) -> Self {
+        // Kept in step with `Self::new`: `profile.caps` describes the budget
+        // actually in force, not the one the preset started from.
+        self.profile.caps = budget.caps();
         self.budget = budget;
         self
     }
