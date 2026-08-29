@@ -151,6 +151,17 @@ impl AssembledLoop {
         &self.thresholds
     }
 
+    /// The closed step set its nodes run.
+    ///
+    /// Exposed so a host can reach the same bodies the graph reaches: an
+    /// engine's tool invoker is handed a node's arguments and has to dispatch
+    /// them somewhere, and dispatching them anywhere but here would be a second
+    /// set of step bodies.
+    #[must_use]
+    pub fn registry(&self) -> &StepRegistry {
+        &self.registry
+    }
+
     /// The limits it carries.
     #[must_use]
     pub fn budget(&self) -> &RunBudget {
@@ -349,9 +360,9 @@ impl AssembledLoop {
                 pass,
                 arm: arm.name().to_owned(),
             });
-            let candidate =
-                self.registry
-                    .run(arm.name(), state.clone(), &self.thresholds)?;
+            let candidate = self
+                .registry
+                .run(arm.name(), state.clone(), &self.thresholds)?;
             deltas.push(candidate.delta_from(state));
             returned.insert(
                 arm.name().to_owned(),

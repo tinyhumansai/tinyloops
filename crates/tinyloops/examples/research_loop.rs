@@ -44,15 +44,22 @@ fn main() -> Result<(), Error> {
         ),
     ]));
 
-    // The specialists, scripted. The prover finds nothing on its first pass and
-    // succeeds on its second, so the run exercises a real routing decision
-    // rather than solving on pass zero.
+    // The specialists, scripted. The prover's queue has three entries and the
+    // run takes two passes, because `research` briefs the first declared
+    // specialist once before the loop starts and consumes an entry doing it.
+    // The prover then finds nothing on the first pass and succeeds on the
+    // second, so the run exercises a real routing decision rather than solving
+    // on pass zero.
     let specialists = Arc::new(Inline::of(
         delegates.clone(),
         [
             (
                 "prover".to_owned(),
                 vec![
+                    Scripted::Answers {
+                        reply: "the second term is where the difficulty is".to_owned(),
+                        artifacts: Vec::new(),
+                    },
                     Scripted::Answers {
                         reply: "no bound yet; the second term resists".to_owned(),
                         artifacts: vec![Artifact::new("attempt-1.md", "the failed approach")],

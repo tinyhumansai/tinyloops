@@ -18,7 +18,7 @@ have a wrong answer that looks fine in a demo.
 | `Judge` | *Was the pass conducted acceptably?* It corrects; it never concludes |
 | `AssembledLoop`, `research_loop` | A loop that emits a graph and drives itself |
 | `Driven` | How a driven run came out: the final accumulator, the outcome, the routes, the bound |
-| `Gather`, `ArmStep`, `Advance`, `Converge` | The node bodies for the kernel nodes that are not the orchestrator's |
+| `Gather`, `ArmStep`, `Advance`, `Converge` | The node bodies for the kernel nodes that are not the orchestrator's. `Converge` is the fold |
 
 ## Design
 
@@ -69,9 +69,12 @@ exhaustively over the bounded counter space.
 
 `AssembledLoop::graph` emits the `WorkflowGraph` an engine runs.
 `AssembledLoop::drive` runs the same loop in this process. They are not two
-implementations of the routing: both resolve to `route`, and the graph's ladder
-is generated from the same constants and proved against that function. What
-differs is what owns the concurrency and the durability.
+implementations of anything: `drive` invokes the registered steps with the
+arguments the emitted nodes are addressed with, so both paths execute the same
+bodies over the same values. The routing likewise resolves to `route` on both
+sides, and the graph's ladder is generated from the same constants and proved
+against that function. What differs is what owns the concurrency and the
+durability. `tests/e2e.rs` asserts the two reach the same verdict.
 
 `drive` exists because the engine's mock capabilities are a dev-only dependency
 here, so the shipped library cannot start a graph run, and because a loop you
@@ -80,14 +83,20 @@ most people should meet first.
 
 ## Operational constraints
 
-- **The graph-side merge does not fold yet.** The emitted `merge` node is handed
-  each arm's output through its tool arguments, but `run_loop_step` passes a
-  step only the decoded state, so `Converge` cannot reach them. The fold itself
-  is written and tested — `ArmSet::merge`, which `drive` calls — so a driven loop
-  folds correctly and an engine-run loop does not. Widening the step interface
-  is the loop kernel's decision; `Converge` is registered rather than omitted so
-  the gap is documented in one place instead of surfacing as an `UnknownStep`
-  nobody can act on. See `ROADMAP.md`.
+- **The merge folds in the graph.** The emitted `merge` node is addressed with
+  `state` (the attempt's output, the shared base) and `arms` (each arm's whole
+  returned accumulator, keyed by name), and `StepContext::arg` is how a body
+  reaches them. `Converge` calls `ArmSet::merge` — the same function `drive`
+  calls — so there is one fold, not two.
+- An arm's narrative claim rides through the graph *as state*: `ArmStep` applies
+  the `Contribution` to the accumulator it returns and `Converge` reads it back
+  with `Contribution::claimed_from`. The two are inverses and are tested as
+  such. If they stop being inverses, a lesson or a steer silently stops reaching
+  the accumulator.
+- An arm's output that is missing or `null` at the merge is an error, never a
+  smaller fold. Under this engine an expression that failed to resolve yields
+  `null`, so shrugging at it would turn a broken binding into a route taken on
+  evidence nobody gathered.
 - A run stopped by a bound is never `Outcome::Success`, whatever its last pass
   claimed. The classification is adjusted after the bound is known, which keeps
   that rule in one place.
