@@ -1014,6 +1014,41 @@ fn a_refused_amendment_leaves_the_profile_byte_identical() {
 }
 
 #[test]
+fn a_cap_amendment_that_would_contend_the_budget_is_refused_rather_than_applied() {
+    // `MaxToolCalls` alone sits inside its declared range, but driving it down
+    // to 1 while `max_model_calls` stays at its default of 60 leaves a `Caps`
+    // `RunBudget::new` refuses — the tool cap can no longer be reached before
+    // the model-call cap. A per-field range check alone would read this as
+    // fine; folding must also ask whether the *combination* still budgets.
+    let bounds = Bounds::none().cap(CapField::MaxToolCalls, Range::new(1, 600));
+    let mut profile = LoopProfile::of(crate::presets::Preset::Balanced);
+    let before = profile.clone();
+
+    let verdict = profile.fold(
+        Amendment::new(
+            "tune",
+            1,
+            Change::Cap {
+                field: CapField::MaxToolCalls,
+                to: 1,
+            },
+            "because",
+        ),
+        &bounds,
+    );
+
+    assert!(!verdict.applied());
+    assert_eq!(profile, before, "a refused cap amendment leaves caps untouched");
+    assert!(
+        profile.history[0]
+            .to_string()
+            .contains("reachable before"),
+        "{}",
+        profile.history[0]
+    );
+}
+
+#[test]
 fn a_run_at_its_amendment_budget_refuses_the_next_and_carries_on() {
     let bounds = Bounds::none()
         .threshold(ThresholdField::Stuck, Range::new(1, 9))
