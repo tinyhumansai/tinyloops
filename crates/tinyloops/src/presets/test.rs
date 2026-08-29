@@ -847,7 +847,10 @@ fn the_merge_step_folds_every_arms_counters_by_delta() {
     let merged = merge_of(&base, &[("reflect", &productive), ("judge", &restarted)], &thresholds)
         .expect("the merge folds");
 
-    assert_eq!(merged.unproductive, 2);
+    // 1 + (-1) + (+1). Both movements land, which is the point: a merge that
+    // took the last writer would give 2, and one that added the arms' absolute
+    // values would give 3. Neither is what the two arms said.
+    assert_eq!(merged.unproductive, 1);
     assert_eq!(merged.restarts, 1);
     assert_eq!(merged.established, 2);
 }
