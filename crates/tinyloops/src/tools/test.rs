@@ -394,16 +394,10 @@ fn a_grant_holds_exactly_the_groups_it_names() {
     assert!(grant.holds(ToolGroup::Search));
     assert!(!grant.holds(ToolGroup::Edit));
     assert!(!grant.holds(ToolGroup::Execute));
-    assert_eq!(ToolSet::new(grant).grant(), grant);
-    assert_eq!(
-        ToolGrant::default(),
-        ToolGrant {
-            read: false,
-            search: false,
-            edit: false,
-            execute: false,
-        }
-    );
+    assert_eq!(ToolSet::new(grant.clone()).grant(), &grant);
+    assert_eq!(grant.groups(), vec![ToolGroup::Read, ToolGroup::Search]);
+    assert_eq!(ToolGrant::default().groups(), Vec::new());
+    assert!(!ToolGrant::default().holds(ToolGroup::Read));
 }
 
 #[test]
