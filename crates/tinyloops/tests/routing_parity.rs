@@ -182,70 +182,130 @@ fn first_disagreement(
     None
 }
 
-/// The presets the sweep covers, each named so a failure says which disagreed.
-fn presets() -> Vec<(&'static str, Thresholds)> {
-    vec![
-        ("default", Thresholds::default()),
-        (
-            "impatient",
+/// The threshold tuples the sweep covers, each named so a failure says which
+/// one disagreed.
+///
+/// Three sources, and each is there for a different reason. **Every shipped
+/// preset**, because a preset nobody swept is a preset whose routing nobody
+/// proved. **Every corner of `{0, 3}^5`**, because thresholds are now values a
+/// run can move and the corners are where a comparison bug shows — a zero
+/// threshold makes its rung fire on the first pass, and both sides have to
+/// agree that it does. **The two legacy tuples**, because they were the
+/// coverage this harness shipped with and removing them would be a silent
+/// narrowing.
+fn threshold_sets() -> Vec<(String, Thresholds)> {
+    let mut sets: Vec<(String, Thresholds)> = Preset::ALL
+        .into_iter()
+        .map(|preset| (preset.to_string(), preset.thresholds()))
+        .collect();
+
+    for corner in 0..32_u32 {
+        let at = |bit: u32| if corner & (1 << bit) == 0 { 0 } else { 3 };
+        sets.push((
+            format!("corner-{corner:02}"),
             Thresholds {
-                max_attempts: 4,
-                stuck: 1,
-                blocked: 1,
-                computational: 1,
-                unverified: 1,
-                max_restarts: 1,
-                plan_interval: 2,
+                max_attempts: at(0),
+                stuck: at(1),
+                blocked: at(2),
+                computational: at(3),
+                unverified: at(4),
+                max_restarts: 2,
+                plan_interval: 3,
             },
-        ),
-        (
-            "patient",
-            Thresholds {
-                max_attempts: 6,
-                stuck: 2,
-                blocked: 2,
-                computational: 2,
-                unverified: 2,
-                max_restarts: 3,
-                plan_interval: 5,
-            },
-        ),
-    ]
+        ));
+    }
+
+    sets.push((
+        "impatient".to_string(),
+        Thresholds {
+            max_attempts: 4,
+            stuck: 1,
+            blocked: 1,
+            computational: 1,
+            unverified: 1,
+            max_restarts: 1,
+            plan_interval: 2,
+        },
+    ));
+    sets.push((
+        "patient".to_string(),
+        Thresholds {
+            max_attempts: 6,
+            stuck: 2,
+            blocked: 2,
+            computational: 2,
+            unverified: 2,
+            max_restarts: 3,
+            plan_interval: 5,
+        },
+    ));
+    sets
 }
 
 #[test]
-fn the_rendered_ladder_and_the_rust_router_agree_for_every_preset() {
-    for (name, thresholds) in presets() {
-        let program = routing_program(&graph(thresholds));
-        if let Some((state, expected, actual)) = first_disagreement(&program, &thresholds) {
-            panic!(
-                "preset {name:?} disagreed: the Rust router said {expected:?} and the emitted \
-                 graph said {actual:?} for attempts={} blocked={} unverified={} unproductive={} \
-                 computational={} solved={}",
-                state.attempts,
-                state.blocked,
-                state.unverified,
-                state.unproductive,
-                state.computational,
-                state.solved,
-            );
-        }
+fn the_sweep_covers_every_preset_and_every_corner() {
+    let swept = threshold_sets();
+    for preset in Preset::ALL {
+        assert!(
+            swept.iter().any(|(_, t)| *t == preset.thresholds()),
+            "{preset} is not in the parity sweep",
+        );
     }
+    // 4 presets + 32 corners + 2 legacy tuples. Asserted rather than counted by
+    // eye, so a corner dropped from the loop above fails here.
+    assert_eq!(swept.len(), 38);
+}
+
+#[test]
+fn the_rendered_ladder_and_the_rust_router_agree_over_the_box() {
+    let program = routing_program(&graph());
+    let sets = threshold_sets();
+
+    // One thread per tuple: every evaluation is an independent jq compile, and
+    // the box is large enough that running them in sequence would make the
+    // suite something people skip.
+    std::thread::scope(|scope| {
+        for (name, thresholds) in &sets {
+            let program = program.as_str();
+            scope.spawn(move || {
+                if let Some((state, expected, actual)) = first_disagreement(program, thresholds) {
+                    panic!(
+                        "threshold set {name:?} disagreed: the Rust router said {expected:?} and \
+                         the emitted graph said {actual:?} for attempts={} blocked={} \
+                         unverified={} unproductive={} computational={} solved={}",
+                        state.attempts,
+                        state.blocked,
+                        state.unverified,
+                        state.unproductive,
+                        state.computational,
+                        state.solved,
+                    );
+                }
+            });
+        }
+    });
 }
 
 #[test]
 fn the_sweep_reaches_past_every_threshold() {
-    // A preset with a higher cap gets a longer sweep rather than a fixed range
+    // A tuple with a higher cap gets a longer sweep rather than a fixed range
     // that stops short and calls the untested room agreement.
-    for (_, thresholds) in presets() {
-        let mut state = LoopState::new("goal");
+    let program = routing_program(&graph());
+    for (name, thresholds) in threshold_sets() {
+        let mut state = LoopState::with_profile(
+            "goal",
+            LoopProfile {
+                revision: 0,
+                thresholds,
+                origin: Preset::Balanced,
+            },
+        );
         state.attempts = thresholds.max_attempts + 1;
-        let program = routing_program(&graph(thresholds));
-        let answered = tinyflows::expr::evaluate(&Value::String(program), &scope(&state));
+        let answered = tinyflows::expr::evaluate(&Value::String(program.clone()), &scope(&state));
         assert_eq!(
             answered.as_str(),
-            Some(route(&state, &thresholds).as_str()),
-            "the state one past the cap is inside the swept range and still agrees",
+            Some(route(&state).as_str()),
+            "{name}: the state one past the cap is inside the swept range and still agrees",
         );
     }
 }
@@ -264,16 +324,32 @@ fn a_ladder_that_fails_to_compile_is_caught_by_the_sweep() {
 }
 
 #[test]
-fn the_emitted_program_is_the_generated_ladder_and_not_a_second_copy() {
-    let thresholds = Thresholds {
-        blocked: 7,
-        ..Thresholds::default()
-    };
-    let program = routing_program(&graph(thresholds));
-    // Every threshold in the emitted program came from the constant.
-    assert!(program.contains(">= 7"), "{program}");
+fn the_emitted_program_addresses_the_accumulator_and_is_not_a_second_copy() {
+    let program = routing_program(&graph());
+
+    // No threshold is rendered in. The program reads them out of the state the
+    // switch is handed, at the one address `route` reads them from.
+    assert!(program.contains(".profile.thresholds"), "{program}");
+    for rendered in [">= 8", ">= 2", ">= 12", ">= 4", ">= 1"] {
+        assert!(
+            !program.contains(rendered),
+            "the emitted program renders a threshold: {program}",
+        );
+    }
+    // The sentinel that makes a state with no profile fall through to `retry`
+    // rather than fire the first rung on `0 >= null`.
+    assert!(program.contains("4294967295"), "{program}");
     assert!(
-        program.contains(&tinyloops::ladder(&thresholds)[1..]),
+        program.contains(&tinyloops::ladder()[1..]),
         "the switch runs the generated ladder verbatim: {program}",
     );
+}
+
+#[test]
+fn one_graph_serves_every_preset() {
+    // The graph no longer varies with the thresholds, which is what lets a run
+    // that revises its own resume from a checkpoint taken before it did.
+    let first = routing_program(&graph());
+    let again = routing_program(&graph());
+    assert_eq!(first, again);
 }
