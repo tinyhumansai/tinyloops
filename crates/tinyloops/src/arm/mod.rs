@@ -60,7 +60,7 @@ pub use types::{Arm, ArmOutcome, ArmSet, Edge};
 use crate::state::LoopState;
 use crate::{Error, Result};
 
-/// The expression address of `node`'s output.
+/// The expression address of `node`'s payload.
 ///
 /// This is what an arm reads: the node immediately upstream of it. Wiring an
 /// arm to `=.nodes.<loop>.state` instead is invariant 3's bug — the head folds
@@ -68,15 +68,30 @@ use crate::{Error, Result};
 /// the body — and this function exists so that address is never typed by hand
 /// at an arm's input.
 ///
+/// Two details of the address are load-bearing, and both were paid for once.
+///
+/// It addresses `item.json` rather than `output`, because the engine's `nodes`
+/// scope projects a completed node as `{ "item": <first json>, "items": [..] }`
+/// and holds no `output` key at all (`vendor/tinyflows/src/expr.rs`). An
+/// address naming a key the scope does not have resolves to `null` **silently**
+/// — a jq compile error, a run error, non-JSON output and empty output are all
+/// `null` here — so the arm would read nothing and the run would look healthy.
+/// [`resolves_against_a_completed_node`](self) pins it.
+///
+/// It uses the simple dotted-path form, with no leading `.`, because that form
+/// is resolved by a segment walk rather than by jq, and a hyphen in a node id
+/// is then a literal key character instead of subtraction.
+///
 /// # Examples
 ///
 /// ```
 /// # use tinyloops::upstream_address;
-/// assert_eq!(upstream_address("attempt"), "=.nodes.attempt.output");
+/// assert_eq!(upstream_address("attempt"), "=nodes.attempt.item.json");
+/// assert_eq!(upstream_address("eval-judge"), "=nodes.eval-judge.item.json");
 /// ```
 #[must_use]
 pub fn upstream_address(node: &str) -> String {
-    format!("=.nodes.{node}.output")
+    format!("=nodes.{node}.item.json")
 }
 
 impl ArmSet {
