@@ -45,4 +45,12 @@ fn the_amendment_refusals_render_the_messages_a_reader_will_see() {
         .to_string(),
         "both tune and also_tune may tune the loop",
     );
+    assert_eq!(
+        Error::IneligibleMutableArm {
+            arm: "reflect".to_owned(),
+            reason: "it is the run's concluding arm",
+        }
+        .to_string(),
+        "reflect cannot be named mutable: it is the run's concluding arm",
+    );
 }
