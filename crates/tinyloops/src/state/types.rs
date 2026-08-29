@@ -102,10 +102,15 @@ pub struct LoopState {
 /// That is deliberate: counters have an order-independent merge (add them) and
 /// latches have one (a set wins), while the narrative fields — the goal, the
 /// last attempt, the lessons, the steer, the scores, the verdict — have none.
-/// Two arms writing different text can only be merged by picking one, and
-/// picking one is exactly the arrival-order dependence the fold exists to
-/// avoid. Those fields therefore keep the base's values, and the loop head
-/// stays their sole writer.
+/// Two arms writing the *same* text field can only be merged by picking one,
+/// and picking one is exactly the arrival-order dependence the fold exists to
+/// avoid. Those fields therefore keep the base's values here.
+///
+/// They still have to reach the next pass — the judge's steer and the
+/// reflection's lesson are the whole point of running those arms — so they
+/// travel as [`Contribution`]s instead, filed under the arm that produced them.
+/// Two merge laws, two types: counters merge by addition, narrative merges by
+/// exclusive ownership.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Delta {
     /// Movement in [`LoopState::passes`].
@@ -134,4 +139,60 @@ pub struct Delta {
     /// A vote on [`LoopState::expired`], resolved the same way as
     /// [`Self::solved`].
     pub expired: Option<bool>,
+}
+
+/// One arm's narrative contribution, filed under the arm that produced it.
+///
+/// The counters in [`Delta`] merge by addition and need no owner. Text does
+/// not: a lesson and a steer are written by different arms and must both
+/// survive, while two arms writing the *same* field is a wiring mistake with no
+/// correct resolution. So each field here is owned by exactly one arm, and
+/// [`LoopState::merge`] refuses a second writer rather than picking a winner —
+/// a silent pick would be arrival-order dependence wearing a merge's clothes.
+///
+/// The named-slot shape is what makes this order-independent: two arms
+/// finishing in the same superstep write different fields, so the reducer never
+/// has to choose.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Contribution {
+    /// The arm that produced it, used to name the offender when two collide.
+    pub arm: &'static str,
+    /// A lesson to append to [`LoopState::lessons`].
+    pub lesson: Option<String>,
+    /// The correction to hand the next pass, replacing [`LoopState::steer`].
+    pub steer: Option<String>,
+    /// The score to append to [`LoopState::scores`].
+    pub score: Option<u8>,
+    /// The verdict on how the pass was conducted.
+    pub judged: Option<Judgement>,
+    /// The attempt report, replacing [`LoopState::last_attempt`].
+    pub last_attempt: Option<String>,
+}
+
+impl Contribution {
+    /// An empty contribution from `arm`.
+    #[must_use]
+    pub const fn new(arm: &'static str) -> Self {
+        Self {
+            arm,
+            lesson: None,
+            steer: None,
+            score: None,
+            judged: None,
+            last_attempt: None,
+        }
+    }
+
+    /// Whether this contribution says nothing at all.
+    ///
+    /// An arm that ran and contributed nothing is ordinary — most arms only
+    /// move counters — so this is a question worth asking rather than a fault.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.lesson.is_none()
+            && self.steer.is_none()
+            && self.score.is_none()
+            && self.judged.is_none()
+            && self.last_attempt.is_none()
+    }
 }
