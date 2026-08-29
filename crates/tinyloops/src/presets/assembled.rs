@@ -613,7 +613,7 @@ fn assemble(
     }
     let arms = ArmSet::new(declared)?;
     registry.register(Arc::new(Converge::new(arms.clone())))?;
-    registry.register(Arc::new(Advance::new(preset.bounds())))?;
+    registry.register(Arc::new(Advance::new(preset.bounds(), &arms)?))?;
     registry.register(Arc::new(ReportStep::new(Arc::new(Summarize))))?;
 
     AssembledLoop::new(goal, preset, arms, registry, RunBudget::default())
