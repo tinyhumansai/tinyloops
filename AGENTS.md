@@ -4,35 +4,30 @@ This file is the single source of truth for how humans and coding agents work
 in this repository. `CLAUDE.md` is a symlink to this file, so every agent reads
 the same instructions.
 
-When you generate a new project from this template, keep this file and adapt
-the project-specific parts (crate name, module map, feature flags, commands).
-Delete guidance that no longer applies rather than leaving it to rot.
+TinyLoops is a loop engineering framework: the shape of one goal run — attempt,
+evaluate, route, budget — built on the TinyFlows engine and shipped as both a
+library and a TinyBus module.
 
-## Template Checklist
+## Where The Rest Of This Lives
 
-Do this once, in a single commit, before writing feature code:
+This file covers how to work in the repository. The design lives in
+`docs/specs/`, and a change to behavior belongs in a spec before it belongs in
+code:
 
-- [ ] Rename `crates/tinyloops` and `crates/tinyloops-bus` to the project's crate
-      names, and update `name` in each manifest plus the `tinyloops-bus` entry in
-      the root `[workspace.dependencies]`.
-- [ ] Set `description`, `keywords`, and `categories` in each manifest, and
-      `repository` in the root `[workspace.package]`.
-- [ ] Rename the crate references in `README.md`, both `src/lib.rs` files,
-      `crates/tinyloops/examples/`, and `crates/tinyloops/tests/` (search for
-      `tinyloops` and `tinyloops_bus`).
-- [ ] Replace the placeholder `greeting` module in both crates with the first
-      real feature area — payload types in the contract crate, behavior in the
-      module crate — keeping the `mod.rs` / `types.rs` / `test.rs` layout.
-- [ ] Confirm `license` and `LICENSE` match the project's intended license.
-- [ ] Update the security contact in `SECURITY.md`.
-- [ ] Rename the TinyBus interface, object path, and member constants in
-      `crates/tinyloops-bus/src/names/`, and the matching `provides` / `methods`
-      declarations in `crates/tinyloops/src/tinybus_module/`, while keeping
-      `vendor/tinybus` pinned.
-- [ ] Reset `CONTRACT_VERSION` in `crates/tinyloops-bus/src/version/` for the new
-      contract.
-- [ ] Replace `ROADMAP.md` with the real plan, or delete it.
-- [ ] Rewrite the "Project Structure" section below to describe this workspace.
+- [`loop-kernel.md`](docs/specs/loop-kernel.md) — state, steps, arms, and the
+  graph the loop compiles once and runs per turn
+- [`orchestrator.md`](docs/specs/orchestrator.md) — what drives a goal run and
+  what it delegates
+- [`routing-and-policy.md`](docs/specs/routing-and-policy.md) — how a turn's
+  outcome chooses the next turn
+- [`seams.md`](docs/specs/seams.md) — harness, memory, tools, and workspace as
+  traits the embedder implements
+- [`workspace-and-ledgers.md`](docs/specs/workspace-and-ledgers.md) — what a run
+  writes down and where
+- [`budget.md`](docs/specs/budget.md) — the limits every run carries
+- [`observability.md`](docs/specs/observability.md) — the events a run emits
+- [`prior-art.md`](docs/specs/prior-art.md) — what this borrows from, and what it
+  deliberately does not
 
 ## Project Structure
 
@@ -45,45 +40,70 @@ loadable module is `crates/tinyloops`, the same as any other member.
 Cargo.toml              # virtual workspace: members, [workspace.package],
                         # [workspace.dependencies], [workspace.lints]
 crates/
-├── tinyloops-bus/       # the wire contract: what crosses the bus, nothing else
+├── tinyloops-bus/      # the wire contract: what crosses the bus, nothing else
 │   ├── README.md       # why the contract is its own crate
 │   └── src/
 │       ├── lib.rs      # crate docs + the entire public re-export surface
 │       ├── names/      # interface, object path, one constant per member
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
-└── tinyloops/           # the module: behavior, adapter, and the cdylib
+└── tinyloops/          # the framework: behavior, adapter, and the cdylib
     ├── src/
     │   ├── lib.rs      # crate docs + public surface, re-exporting the contract
-    │   ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
-    │   ├── tinybus_module/   # TinyBus interface, ABI exports, integration tests
-    │   └── <feature>/        # one directory per feature area
-    │       ├── mod.rs        # module docs, wiring, smallest useful public API
-    │       ├── types.rs      # substantial type definitions
-    │       └── test.rs       # module-local unit tests
+    │   ├── error/      # crate-wide `Error` and `Result<T>`
+    │   ├── state/      # what one goal run carries from turn to turn
+    │   ├── policy/     # the decision a turn's outcome feeds: stop, retry, route
+    │   ├── step/       # one unit of work, compiled once and run per turn
+    │   ├── arm/        # the alternatives a route can choose between
+    │   ├── loops/      # the graph that wires state, steps, arms, and policy
+    │   ├── budget/     # turn, token, wall-clock, and cost limits
+    │   ├── observe/    # the events a run emits, and who receives them
+    │   ├── orchestrate/# what drives a goal run end to end
+    │   ├── harness/    # the seam a durable driver plugs into
+    │   ├── memory/     # the seam recall plugs into
+    │   ├── tools/      # the seam a tool provider plugs into
+    │   ├── workspace/  # the seam run artifacts are written through
+    │   ├── ledger/     # the rows a run leaves behind for the next one
+    │   ├── presets/    # assembled loops, ready to run
+    │   └── tinybus_module/   # TinyBus interface, ABI exports, integration tests
     ├── tests/          # integration tests against the public API only
     └── examples/       # runnable, compiled-in-CI usage examples
 vendor/
-├── tinybus/           # pinned TinyBus host types and module SDK
-├── tinyflows/         # pinned workflow engine and its adaptive loop
-└── tinyagents/        # pinned durable agent + graph harness (optional)
+├── tinybus/            # pinned TinyBus host types and module SDK
+├── tinyflows/          # pinned workflow engine and its adaptive loop
+└── tinyagents/         # pinned durable agent + graph harness (optional)
 docs/
 ├── specs/              # behavior and architecture specifications
 ├── plans/              # test-first implementation plans
 └── adr/                # immutable architecture decision records
 ```
 
+Each of those module directories follows the same layout described below; a
+directory that does not exist yet is the structure the work lands in, not a
+promise that something is already there.
+
+### Three layers, one of them here
+
+`vendor/tinyflows` is the engine. It executes one graph run and decides nothing.
+`crates/tinyloops` is the shape of one goal run: it decides what to attempt, how
+to judge the result, where to route next, and when the budget says stop.
+`vendor/tinyflows/crates/adaptive` is what spans runs: ledger rows, scored
+lessons, workflow selection and authoring, promotion. Its own rule states the
+boundary — the engine may know about one run, anything that spans runs lives
+there — and this crate keeps to the same line from the other side.
+
 ### The two-crate split
 
-`crates/tinyloops-bus` holds every type that crosses the bus and the names of the
-members that carry them. It has no transport, no runtime, and no behavior, and
-CI asserts it stays that way. A host that only makes calls depends on it alone.
+`crates/tinyloops-bus` holds every type that crosses the bus and the names of
+the members that carry them. It has no transport, no runtime, and no behavior,
+and CI asserts it stays that way. A host that only makes calls depends on it
+alone.
 
-`crates/tinyloops` depends on it and re-exports all of it, so
-`tinyloops::GreetRequest` and `tinyloops_bus::GreetRequest` are the *same* type
-rather than structural twins. That direction is load-bearing: a parallel set of
-payload types for hosts would mean a conversion at every call site that nothing
-checks.
+`crates/tinyloops` depends on it and re-exports all of it, so a payload type
+named in the framework and the same type named in the contract are the *same*
+type rather than structural twins. That direction is load-bearing: a parallel
+set of payload types for hosts would mean a conversion at every call site that
+nothing checks.
 
 The rule for deciding where something goes: a payload type describes what a
 frame carries and belongs in the contract; anything that answers a frame, holds
