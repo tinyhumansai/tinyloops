@@ -54,6 +54,8 @@ mod arm;
 mod budget;
 mod error;
 mod greeting;
+mod harness;
+mod memory;
 mod observe;
 mod policy;
 mod state;
@@ -79,6 +81,21 @@ pub use policy::{
     expr_scope, is_terminal, ladder, route, terminal_condition,
 };
 pub use state::{Contribution, Delta, LoopState};
+
+// The harness seam: who the loop hands work to, and how it gets it back. Every
+// operation is separate on purpose — nothing here both starts and settles work.
+pub use harness::{
+    Artifact, Brief, DEFAULT_MAILBOX_CAPACITY, Delegate, DelegationOutcome, DropObserver, Ending,
+    Mailbox, Note, Posted, Role, RoleGrant, RoleRegistry, Scripted, ScriptedDelegate, Settling,
+    Status, Ticket, Tier, salvage,
+};
+// The memory seam: recall and remember over an explicit scope, a write that is
+// not a write until a read-back said so, and compaction that records rather
+// than destroys.
+pub use memory::{
+    Available, Clock, Condensation, Condensed, History, ManualClock, MapMemory, Memory, Pins,
+    ProbeCache, Record, Scope, condense, recall_where_available, remember_where_available,
+};
 
 // The loop body: the arms a pass fans out to, and the closed set of steps their
 // nodes are. `arm` owns the one list both arm edge sets are derived from and the
