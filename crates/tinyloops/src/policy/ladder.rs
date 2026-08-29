@@ -140,19 +140,24 @@ pub fn expr_scope(state: &LoopState, loop_id: &str) -> Value {
     // `to_value` on a plain struct of strings, numbers, and vectors cannot
     // fail; `Null` is the honest fallback rather than a panic inside a node.
     let accumulator = serde_json::to_value(state).unwrap_or(Value::Null);
+    // Built by hand rather than as one `json!` literal: the loop's id is a
+    // runtime string, not a literal key.
+    let mut nodes = serde_json::Map::new();
+    nodes.insert(
+        loop_id.to_string(),
+        json!({
+            "item": accumulator.clone(),
+            "items": [accumulator.clone()],
+            "state": accumulator.clone(),
+            "iteration": state.passes,
+        }),
+    );
     json!({
-        "item": accumulator,
-        "items": [accumulator],
+        "item": accumulator.clone(),
+        "items": [accumulator.clone()],
         "run": { "inputs": Value::Null },
         "inputs": Value::Null,
-        "nodes": {
-            loop_id: {
-                "item": accumulator,
-                "items": [accumulator],
-                "state": accumulator,
-                "iteration": state.passes,
-            }
-        },
+        "nodes": Value::Object(nodes),
         "state": accumulator,
     })
 }
