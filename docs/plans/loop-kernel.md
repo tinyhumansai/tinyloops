@@ -94,9 +94,9 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 `src/step/test.rs`
 
 1. Failing tests: `resolves_a_registered_step_by_name`;
-   `rejects_an_unregistered_step_by_name`, asserting `Error::UnknownStep`
-   rather than `Ok`; and `rejects_a_second_registration_of_the_same_name`, so a
-   name in the closed set has one meaning. Implement:
+   `rejects_an_unregistered_step_by_name`, asserting `Error::UnknownStep`; and
+   `rejects_a_second_registration_of_the_same_name`, so a name in the closed
+   set has one meaning. Implement:
 
    ```rust
    pub trait Step: Send + Sync {
@@ -109,8 +109,8 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
    // names(&self) -> impl Iterator<Item = &'static str>
    ```
 
-   `BTreeMap` rather than `HashMap`: `names()` feeds the graph builder, and the
-   builder must be byte-for-byte deterministic for invariant 9's signature.
+   `BTreeMap` rather than `HashMap`: `names()` feeds the builder, which must be
+   byte-for-byte deterministic for invariant 9's signature.
 
 ## Task A3: `run_loop_step`, the one tool a node body is
 
@@ -163,8 +163,7 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
    ```
 
    `evaluate` takes the report, never the accumulator: invariant 3, enforced by
-   the type — `StepCtx<'_, NoWrite>` has no accessor for
-   `=.nodes.<loop>.state`.
+   the type — `StepCtx<'_, NoWrite>` cannot reach `=.nodes.<loop>.state`.
 
 ## Task B2: the delta fold, and its trait law
 
