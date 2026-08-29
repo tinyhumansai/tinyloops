@@ -234,19 +234,24 @@ profile. An arm that could change a threshold and have the same pass's route
 read it would make the route depend on whether the tuner finished before the
 routing node, which is arm arrival order deciding the run.
 
-### 5. The route stays a pure function, and parity stays exhaustive
+### 5. The route stays a pure function, and parity is proved over a declared box
 
-`route` reads counters and a `Thresholds` and nothing else. The parity sweep
-covers the counter space **crossed with the declared threshold space**, for every
-preset, and the second factor is finite only because invariant 3 declares its
-bounds.
+`route` reads the state and nothing else. The parity sweep covers the counter
+space **exhaustively**, and it does so against a declared set of threshold
+tuples that includes every preset and the corners of the bounds box — not
+against one tuple per preset.
 
-*Why.* Parity today is finite because presets are finite. Tunable thresholds
-make the space of ladders a run can reach unbounded unless something bounds it,
-and `Bounds` is that something. Without this pairing, "the jq and the Rust agree"
-would degrade from a proof to a sample on exactly the configurations a run
-reaches by tuning rather than by construction — the ones no preset was ever
-tested at.
+*Why.* Parity today is finite because presets are finite: four tuples, swept
+exhaustively. Tunable thresholds make the reachable set of ladders far larger,
+and crossing it in full with the counter space is not affordable — every
+evaluation is a fresh jq compile, and the product runs to millions. So the
+sweep widens where it is cheap, over the thresholds a run can actually reach by
+tuning, and the box it covers is written down rather than implied. What it
+buys over today's harness is real: the same failure that made this invariant
+worth stating — a rung comparing `>` where the Rust compares `>=` — shows up at
+a boundary, and the box is chosen to contain the boundaries. What it does not
+buy is a proof over the whole space, and the plan that implements it says so in
+those words rather than claiming one.
 
 ### 6. A muted arm still runs its node and still converges
 
@@ -320,7 +325,8 @@ them on a single sample, which is the failure that makes a tuner confident.
 - An amendment proposed at pass *n* is absent from the route computed at pass *n*
   and present in the route computed at pass *n + 1*; a test asserts both.
 - Proposing an amendment from any arm other than the tuner does not compile,
-  proved by a `trybuild`-style test.
+  proved by a `compile_fail` doctest with a pinned error code, matching the pair
+  that already proves [`loop-kernel.md`](loop-kernel.md) invariant 11.
 - Two tuners in one `ArmSet` fail at construction with an error naming both.
 - An amendment outside its bound is refused, leaves `revision` unchanged, and
   emits `AmendmentRefused` naming the bound; a test asserts the profile is
@@ -349,10 +355,6 @@ them on a single sample, which is the failure that makes a tuner confident.
 - Whether an accepted amendment should force a re-plan out of cadence. A changed
   `stuck` changes what "this task is going nowhere" means, and the board was
   decomposed under the old meaning.
-- Whether `Bounds` belongs to the preset or to the embedder. As the preset's, it
-  is part of the stated methodological bet; as the embedder's, a deployment can
-  bound a preset more tightly than its author did, and both readings are
-  defensible.
 - Whether `MuteArm` should be reversible by the tuner at all, or whether an arm
   a run stopped paying for should stay muted for the run. Unmuting gives the
   tuner a two-state oscillation the amendment budget bounds only by exhausting
