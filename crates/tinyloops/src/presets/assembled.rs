@@ -569,7 +569,7 @@ pub fn tuned_research_loop(
         delegates,
         decompose,
         specialists,
-        Some(Arc::new(Rules)),
+        Some(Arc::new(Rules::new(preset.bounds().muting_window))),
     )
 }
 
