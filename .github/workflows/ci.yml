@@ -59,26 +59,26 @@ jobs:
       # needs the feature named explicitly or cargo silently skips it.
       - name: Run the bundled examples
         run: |
-          cargo run -p template --example basic
-          cargo run -p template --example simple_loop
-          cargo run -p template --features tinyagents --example tinyagents_harness
+          cargo run -p tinyloops --example basic
+          cargo run -p tinyloops --example simple_loop
+          cargo run -p tinyloops --features tinyagents --example tinyagents_harness
 
-      # `crates/template-bus` exists so a host can name the payload types
+      # `crates/tinyloops-bus` exists so a host can name the payload types
       # without compiling the module. That promise is invisible in a diff,
       # because a forbidden dependency arrives transitively through a feature
       # someone enabled one crate away — so it is asserted rather than
       # documented.
       #
-      # The FORWARD form is required. `cargo tree -i <crate> -p template-bus`
+      # The FORWARD form is required. `cargo tree -i <crate> -p tinyloops-bus`
       # discards the `-p` scope, prints the whole-workspace inverse tree, and
       # exits 0 looking clean even when this crate is the one at fault.
       - name: Assert the contract crate stays transport-free
         run: |
           set -euo pipefail
-          forbidden="$(cargo tree -p template-bus -e normal,build --prefix none \
+          forbidden="$(cargo tree -p tinyloops-bus -e normal,build --prefix none \
             | grep -Ei 'tinybus|tokio|reqwest|ureq|hyper|rusqlite|git2' || true)"
           if [ -n "$forbidden" ]; then
-            echo "template-bus pulled in a dependency its manifest forbids:" >&2
+            echo "tinyloops-bus pulled in a dependency its manifest forbids:" >&2
             echo "$forbidden" >&2
             echo >&2
             echo "The contract is what a host compiles against. It must stay free" >&2

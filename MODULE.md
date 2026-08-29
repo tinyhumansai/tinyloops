@@ -1,14 +1,14 @@
 # Template TinyBus Module
 
-This package contains the native `template` module for TinyBus module ABI
+This package contains the native `tinyloops` module for TinyBus module ABI
 v1. Install only the archive matching the host operating system and
 architecture.
 
-The module claims `ai.tinyhumans.template.Greeting`, serves the object at
-`/ai/tinyhumans/template/Greeting`, and provides the `Greet` method. The
+The module claims `ai.tinyhumans.tinyloops.Greeting`, serves the object at
+`/ai/tinyhumans/tinyloops/Greeting`, and provides the `Greet` method. The
 method accepts a `GreetRequest` and returns a `GreetResponse` carrying
 `Hello, <name>!`; empty names are rejected. Both payload types, the interface
-name, the object path, and the member names are published as the `template-bus`
+name, the object path, and the member names are published as the `tinyloops-bus`
 crate, so a host names them from a library rather than by string literal.
 
 The archive contains one `.so`, `.dylib`, or `.dll` plus `modules.toml`. Keep
@@ -22,7 +22,7 @@ archive. Install directly from a tagged release with:
 
 ```sh
 tinybus modules load-github \
-  https://github.com/tinyhumansai/rust-template/releases/tag/v0.1.5 \
+  https://github.com/tinyhumansai/tinyloops/releases/tag/v0.1.5 \
   template-0.1.5-ubuntu-24.04-x86_64.tar.gz \
   <archive-sha256>
 ```
