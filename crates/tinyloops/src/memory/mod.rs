@@ -156,14 +156,13 @@ pub trait Memory: std::fmt::Debug + Send + Sync {
         self.store(scope, record)?;
         let now = self.clock().now();
 
-        let durable = match self.probes().verdict(scope, now) {
-            Some(cached) => cached,
-            None => {
-                let read_back = self.fetch(scope, record.id())?;
-                let verdict = read_back.is_some_and(|held| held.body() == record.body());
-                self.probes().record(scope, verdict, now);
-                verdict
-            }
+        let durable = if let Some(cached) = self.probes().verdict(scope, now) {
+            cached
+        } else {
+            let read_back = self.fetch(scope, record.id())?;
+            let verdict = read_back.is_some_and(|held| held.body() == record.body());
+            self.probes().record(scope, verdict, now);
+            verdict
         };
 
         if durable {
