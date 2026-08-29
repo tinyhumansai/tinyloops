@@ -12,7 +12,7 @@ what a loop is.
 
 The engine emits node activations: `RunObserver` reports run start, step start,
 step finish with a duration and status, per-item progress, and the assembled
-`Run` (`vendor/tinyflows/src/observability.rs:186-228`). It knows nodes, not
+`Run` (`vendor/tinyflows/src/observability.rs:189-228`). It knows nodes, not
 passes.
 
 The harness emits model and tool calls with usage, through `EventListener` and
