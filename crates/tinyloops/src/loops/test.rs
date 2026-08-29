@@ -526,62 +526,120 @@ fn the_signature_is_stable_across_two_builds() {
     assert!(verify_resume(&GraphSignature::of(&graph()), &graph()).is_ok());
 }
 
+/// The two programs a threshold used to be rendered into.
+fn programs(graph: &WorkflowGraph) -> (String, String) {
+    let ids = NodeIds::default();
+    let head = graph.node(ids.loop_head).expect("the head is emitted");
+    let route = graph.node(ids.route).expect("the switch is emitted");
+    (
+        head.config["until"]
+            .as_str()
+            .expect("`until` is a program")
+            .to_string(),
+        route.config["expression"]
+            .as_str()
+            .expect("the switch keys on a program")
+            .to_string(),
+    )
+}
+
 #[test]
-fn a_graph_is_the_same_graph_under_every_preset() {
+fn the_routing_programs_are_the_same_under_every_preset() {
     // The inverse of the assertion this replaces, and the point of the change
-    // it tests. Thresholds are addressed out of the accumulator rather than
-    // rendered into the graph, so they are not topology: one graph serves every
-    // preset, and every revision of one.
-    let baseline = GraphSignature::of(&graph());
+    // it tests. A threshold used to be rendered into both of these programs, so
+    // changing one changed the topology; now both address the accumulator and
+    // one pair of programs routes every preset.
+    let baseline = programs(&graph());
     for preset in crate::presets::Preset::ALL {
         assert_eq!(
-            GraphSignature::of(&graph_at(Autonomy::Unattended, LoopProfile::of(preset))),
+            programs(&graph_at(Autonomy::Unattended, LoopProfile::of(preset))),
             baseline,
-            "{preset} emitted a different graph",
+            "{preset} emitted a different routing program",
         );
     }
 
-    let tuned = GraphSignature::of(&graph_at(
+    let head = graph_at(
         Autonomy::Unattended,
         profile(Thresholds {
-            stuck: 5,
+            max_attempts: 41,
             ..Thresholds::default()
         }),
-    ));
-    assert_eq!(tuned, baseline);
-}
-
-#[test]
-fn a_checkpoint_taken_under_one_preset_resumes_under_another() {
-    // The property the whole addressing change exists to buy: a run that
-    // revises its own thresholds resumes from a checkpoint taken before it did.
-    let recorded = GraphSignature::of(&graph_at(
-        Autonomy::Unattended,
-        LoopProfile::of(crate::presets::Preset::Balanced),
-    ));
-    let current = graph_at(
-        Autonomy::Unattended,
-        LoopProfile::of(crate::presets::Preset::Persistent),
     );
-    assert!(verify_resume(&recorded, &current).is_ok());
+    assert_eq!(programs(&head), baseline);
+    assert_eq!(
+        head.node(NodeIds::default().loop_head).expect("the head")["max_iterations"
+            .to_string()
+            .as_str()],
+        json!(crate::budget::Caps::default().max_iterations),
+    );
 }
 
 #[test]
-fn the_emitted_graph_holds_no_threshold_literal() {
-    let encoded = serde_json::to_string(&graph()).expect("the graph serializes");
-    let defaults = Thresholds::default();
+fn revising_a_threshold_leaves_the_graph_untouched() {
+    // The property the addressing change exists to buy, stated directly. A run
+    // that revises its thresholds moves them in its *accumulator*; the graph is
+    // built once and is not a function of them, so the signature a checkpoint
+    // recorded still verifies and the resume is allowed.
+    let built = graph();
+    let recorded = GraphSignature::of(&built);
+
+    let mut revised = LoopState::new("ship the release");
+    revised.unproductive = 2;
+    assert_eq!(crate::policy::route(&revised), Route::Diversify);
+    revised.profile.thresholds.stuck = 4;
+    revised.profile.revision = 1;
+    assert_eq!(
+        crate::policy::route(&revised),
+        Route::Retry,
+        "the revision reached the router",
+    );
+
+    assert_eq!(GraphSignature::of(&graph()), recorded);
+    assert!(verify_resume(&recorded, &graph()).is_ok());
+}
+
+#[test]
+fn a_different_preset_is_a_different_run_but_not_a_different_ladder() {
+    // Worth pinning because it is the one place the change stops short of the
+    // slogan. The starting profile is seeded into the accumulator the `plan`
+    // node is handed, exactly as the goal is, so two presets do emit different
+    // graphs — they are different runs. What they no longer differ in is the
+    // routing, which is what a resume across a *revision* depends on.
+    let balanced = graph_at(Autonomy::Unattended, LoopProfile::of(crate::presets::Preset::Balanced));
+    let persistent =
+        graph_at(Autonomy::Unattended, LoopProfile::of(crate::presets::Preset::Persistent));
+
+    assert_ne!(
+        GraphSignature::of(&balanced),
+        GraphSignature::of(&persistent)
+    );
+    assert_eq!(programs(&balanced), programs(&persistent));
+}
+
+#[test]
+fn the_emitted_graph_renders_no_threshold_into_a_program() {
+    let graph = graph_at(
+        Autonomy::Unattended,
+        profile(Thresholds {
+            max_attempts: 41,
+            stuck: 37,
+            blocked: 29,
+            computational: 23,
+            unverified: 19,
+            max_restarts: 17,
+            plan_interval: 13,
+        }),
+    );
+    let (until, expression) = programs(&graph);
+
     for rendered in [
-        format!(">= {}", defaults.max_attempts),
-        format!(">= {}", defaults.stuck),
-        format!(">= {}", defaults.max_restarts),
-        format!(">= {}", defaults.plan_interval),
+        ">= 41", ">= 37", ">= 29", ">= 23", ">= 19", ">= 17", ">= 8", ">= 2",
     ] {
-        assert!(
-            !encoded.contains(&rendered),
-            "the graph renders a threshold: {rendered}",
-        );
+        assert!(!until.contains(rendered), "{rendered} in {until}");
+        assert!(!expression.contains(rendered), "{rendered} in {expression}");
     }
-    assert!(encoded.contains(".profile.thresholds"));
+    assert!(until.contains(".profile.thresholds"));
+    assert!(expression.contains(".profile.thresholds"));
 }
 
 #[test]
