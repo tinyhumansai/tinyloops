@@ -202,7 +202,7 @@ pub trait Step: Send + Sync {
 ///
 /// The two compile errors this buys, in the order a body hits them:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0599
 /// # use tinyloops::{LoopState, NoWrite, Observer, Result, StepContext};
 /// struct Sneaky;
 ///
@@ -220,7 +220,7 @@ pub trait Step: Send + Sync {
 /// }
 /// ```
 ///
-/// ```compile_fail
+/// ```compile_fail,E0308
 /// # use tinyloops::{LoopState, NoWrite, Observer, Result, StepContext};
 /// struct AlsoSneaky;
 ///
