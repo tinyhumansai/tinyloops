@@ -111,10 +111,19 @@ impl AssembledLoop {
         registry: StepRegistry,
         budget: RunBudget,
     ) -> Result<Self> {
+        // Seeded from the budget actually supplied, not from `Caps::default`:
+        // `drive` narrows this budget against `profile.caps` every pass, so a
+        // profile that started at the default would silently restrict a
+        // caller's wider budget back down, and a `Cap` amendment against a
+        // caller's narrower one would report itself applied without tightening
+        // anything.
+        let mut profile = LoopProfile::of(preset);
+        profile.caps = budget.caps();
+
         Ok(Self {
             goal: goal.into(),
             preset,
-            profile: LoopProfile::of(preset),
+            profile,
             arms,
             registry,
             budget,
