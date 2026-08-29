@@ -154,7 +154,7 @@ fn first_disagreement(
                 for unproductive in 0..=thresholds.stuck + 1 {
                     for computational in 0..=thresholds.computational + 1 {
                         for solved in [false, true] {
-                            let mut state = LoopState::with_profile("goal", profile);
+                            let mut state = LoopState::with_profile("goal", profile.clone());
                             state.attempts = attempts;
                             state.blocked = blocked;
                             state.unverified = unverified;
