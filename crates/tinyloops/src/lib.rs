@@ -59,6 +59,7 @@ mod ledger;
 mod loops;
 mod memory;
 mod observe;
+mod orchestrate;
 mod policy;
 mod state;
 mod step;
@@ -85,6 +86,14 @@ pub use policy::{
     expr_scope, is_terminal, ladder, route, terminal_condition,
 };
 pub use state::{Contribution, Delta, LoopState};
+
+// What drives a goal run. Every constraint here is a registration-time fact:
+// the grant that refuses execution, the closed delegate set, and the board that
+// makes a decomposition countable instead of readable.
+pub use orchestrate::{
+    Attempt, AttemptReport, Compose, Decompose, DelegateSet, FixedPlan, Inline, Orchestrator, Plan,
+    Report as ReportStep, Specialists, Summarize, Task, TaskBoard, TaskId, TaskStatus,
+};
 
 // The harness seam: who the loop hands work to, and how it gets it back. Every
 // operation is separate on purpose — nothing here both starts and settles work.
