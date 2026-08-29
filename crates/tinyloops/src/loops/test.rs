@@ -6,6 +6,11 @@
 //! staleness, replay idempotence — the test lives in
 //! `crates/tinyloops/tests/loop_run.rs` instead, because it needs the engine.
 
+// The workspace forbids `unwrap`/`expect`/`panic!` in library code; a test is
+// where they belong, and the same allowance every other test module in this
+// crate carries.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::sync::Arc;
 
 use serde_json::{Value, json};

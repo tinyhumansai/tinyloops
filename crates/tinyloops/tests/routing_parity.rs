@@ -31,6 +31,11 @@
 //! would pass for a program that never compiled, so a non-string answer is
 //! counted as a disagreement rather than as an absence.
 
+// The workspace forbids `unwrap`/`expect`/`panic!` in library code; a test is
+// where they belong, and the same allowance every other test module in this
+// crate carries.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::sync::Arc;
 
 use serde_json::{Value, json};

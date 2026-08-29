@@ -20,6 +20,11 @@
 //! that goes through `TestHarness` proper, for `assert_no_null_bindings`
 //! itself, and says what it had to patch to get there.
 
+// The workspace forbids `unwrap`/`expect`/`panic!` in library code; a test is
+// where they belong, and the same allowance every other test module in this
+// crate carries.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
