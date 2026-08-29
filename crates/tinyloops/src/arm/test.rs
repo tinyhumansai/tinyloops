@@ -484,3 +484,144 @@ fn debug_rendering_names_the_declared_arms() {
     assert!(rendered.contains("judge"));
     assert!(format!("{:?}", Edge::new("attempt", "judge")).contains("attempt"));
 }
+
+/// A tuner that proposes whatever it was constructed with.
+#[derive(Debug)]
+struct Fixed {
+    name: &'static str,
+    change: Option<crate::policy::Change>,
+}
+
+impl crate::arm::Tuner for Fixed {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn propose(
+        &self,
+        _base: &LoopState,
+        _report: &Value,
+        ctx: StepContext<'_, NoWrite>,
+    ) -> Result<Option<crate::policy::Amendment>> {
+        Ok(self.change.clone().map(|change| {
+            crate::policy::Amendment::new(self.name, ctx.pass(), change, "because")
+        }))
+    }
+}
+
+fn tuner(name: &'static str, change: Option<crate::policy::Change>) -> Arc<dyn Arm> {
+    Arc::new(crate::arm::TunerArm::new(Arc::new(Fixed { name, change })))
+}
+
+#[test]
+fn two_tuners_in_one_arm_set_are_refused_by_name() {
+    // The same shape as the second concluding arm, and for the same reason:
+    // two proposers means the profile a pass folds depends on which finished
+    // first, which is arrival order deciding the run's configuration.
+    let error = ArmSet::new(vec![
+        tuner("tune", None),
+        tuner("also_tune", None),
+    ])
+    .expect_err("two tuners are refused");
+
+    assert_eq!(
+        error,
+        Error::AmbiguousTuning {
+            first: "tune",
+            second: "also_tune",
+        }
+    );
+}
+
+#[test]
+fn a_set_names_its_tuner_and_a_set_without_one_names_nobody() {
+    let tuned = ArmSet::new(vec![tuner("tune", None)]).expect("one tuner is a valid set");
+    assert_eq!(tuned.tuning(), Some("tune"));
+    assert!(tuned.concluding().is_none());
+}
+
+#[test]
+fn a_tuner_that_proposes_nothing_folds_as_unchanged() {
+    let base = LoopState::new("goal");
+    let arm = tuner("tune", None);
+    let thresholds = crate::Thresholds::default();
+
+    let outcome = arm
+        .evaluate(&base, &Value::Null, StepContext::observing(0, &thresholds))
+        .expect("a tuner that declines still returns");
+
+    assert_eq!(outcome.state, base);
+    assert!(outcome.contribution.is_empty());
+    assert!(outcome.state.proposed().is_none());
+}
+
+#[test]
+fn a_tuner_that_proposes_puts_it_where_the_merge_reads_it() {
+    let base = LoopState::new("goal");
+    let change = crate::policy::Change::Threshold {
+        field: crate::policy::ThresholdField::Stuck,
+        to: 3,
+    };
+    let arm = tuner("tune", Some(change.clone()));
+    let thresholds = crate::Thresholds::default();
+
+    let outcome = arm
+        .evaluate(&base, &Value::Null, StepContext::observing(2, &thresholds))
+        .expect("a tuner proposes");
+
+    // Both halves: the claim, for the merge, and the state, for the trip
+    // through the graph. They have to agree or the proposal is dropped at the
+    // barrier with nothing to report it.
+    assert_eq!(
+        outcome.contribution.amendment().map(|a| a.change.clone()),
+        Some(change.clone())
+    );
+    assert_eq!(
+        outcome.state.proposed().map(|a| a.change.clone()),
+        Some(change)
+    );
+    assert_eq!(outcome.state.proposed().map(|a| a.pass), Some(2));
+}
+
+#[test]
+fn merge_refuses_two_arms_proposing_an_amendment() {
+    // The tuner is the only role that *can* propose, but the merge still
+    // arbitrates: exclusive ownership is a property of the fold, not a promise
+    // about who calls it.
+    let base = LoopState::new("goal");
+    let change = crate::policy::Change::Threshold {
+        field: crate::policy::ThresholdField::Stuck,
+        to: 3,
+    };
+    let thresholds = crate::Thresholds::default();
+
+    let first = tuner("tune", Some(change.clone()));
+    let second = tuner("also_tune", Some(change));
+    let outcomes = vec![
+        first
+            .evaluate(&base, &Value::Null, StepContext::observing(0, &thresholds))
+            .unwrap(),
+        second
+            .evaluate(&base, &Value::Null, StepContext::observing(0, &thresholds))
+            .unwrap(),
+    ];
+
+    let set = ArmSet::new(vec![tuner("tune", None)]).unwrap();
+    let deltas: Vec<_> = outcomes
+        .iter()
+        .map(|outcome| outcome.state.delta_from(&base))
+        .collect();
+    let contributions: Vec<_> = outcomes
+        .into_iter()
+        .map(|outcome| outcome.contribution)
+        .collect();
+    let _ = set;
+
+    assert!(matches!(
+        base.merge(&deltas, &contributions),
+        Err(Error::ContestedField {
+            field: "amendment",
+            ..
+        })
+    ));
+}
