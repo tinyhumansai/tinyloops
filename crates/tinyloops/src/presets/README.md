@@ -64,10 +64,12 @@ incentive to answer yes. A model tuner implements the same `Tuner` trait and is
 bounded by the same `Bounds`.
 
 **The silence rule's window is configured, not hardcoded.** `Rules::new`
-takes the window explicitly; `research_loop` and `tuned_research_loop` wire it
-from the assembled `Bounds::muting_window` so the rule and the fold agree on
-the same cadence. `Rules::default` falls back to `SILENT_SCORES`, the shipped
-presets' declared window, for a caller that wires the tuner up directly.
+takes the window explicitly; `tuned_research_loop` wires it from the
+preset's own `Bounds::muting_window`, so the rule that proposes a mute and the
+`Advance` step that folds it agree on the same cadence. `Rules::default`
+falls back to `SILENT_SCORES`, the shipped presets' declared window, for a
+caller that wires the tuner up directly instead of going through
+`tuned_research_loop`.
 
 The muting rule fires on **silence**, never on "scored worse". Eliminating the
 weakest arm needs a measured reward per arm, and this loop has none — an arm
