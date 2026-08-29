@@ -165,6 +165,81 @@ impl LoopState {
     /// assert_eq!(merged.unproductive, 1); // -1 and +1, both applied
     /// assert_eq!(merged.restarts, 1);
     /// ```
+    /// Folds both merge laws in one call: counters by addition, narrative by
+    /// exclusive ownership.
+    ///
+    /// This is what a pass's merge node runs. [`Self::apply`] alone would carry
+    /// the counters and silently drop the judge's steer and the reflection's
+    /// lesson, which are the reason those arms ran at all.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::ContestedField`] when two arms write the same narrative field.
+    /// That is a wiring mistake with no correct resolution — picking a winner
+    /// would be arrival-order dependence wearing a merge's clothes — so it is
+    /// reported with both arms named rather than resolved.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::{Contribution, LoopState};
+    /// let base = LoopState::new("goal");
+    ///
+    /// let mut reflection = Contribution::new("reflect");
+    /// reflection.lesson = Some("the oracle disagreed".to_owned());
+    /// let mut judge = Contribution::new("judge");
+    /// judge.score = Some(4);
+    ///
+    /// let merged = base.merge(&[], &[reflection, judge])?;
+    /// assert_eq!(merged.lessons, ["the oracle disagreed"]);
+    /// assert_eq!(merged.scores, [4]);
+    /// # Ok::<(), tinyloops::Error>(())
+    /// ```
+    pub fn merge(
+        &self,
+        deltas: &[Delta],
+        contributions: &[Contribution],
+    ) -> Result<Self, crate::Error> {
+        let mut merged = self.apply(deltas);
+
+        let mut lesson: Option<(&'static str, String)> = None;
+        let mut steer: Option<(&'static str, String)> = None;
+        let mut score: Option<(&'static str, u8)> = None;
+        let mut judged: Option<(&'static str, Judgement)> = None;
+        let mut last_attempt: Option<(&'static str, String)> = None;
+
+        for contribution in contributions {
+            claim(&mut lesson, contribution.arm, contribution.lesson.clone(), "lesson")?;
+            claim(&mut steer, contribution.arm, contribution.steer.clone(), "steer")?;
+            claim(&mut score, contribution.arm, contribution.score, "score")?;
+            claim(&mut judged, contribution.arm, contribution.judged, "judged")?;
+            claim(
+                &mut last_attempt,
+                contribution.arm,
+                contribution.last_attempt.clone(),
+                "last_attempt",
+            )?;
+        }
+
+        if let Some((_, lesson)) = lesson {
+            merged.lessons.push(lesson);
+        }
+        if let Some((_, steer)) = steer {
+            merged.steer = steer;
+        }
+        if let Some((_, score)) = score {
+            merged.scores.push(score);
+        }
+        if let Some((_, judged)) = judged {
+            merged.judged = judged;
+        }
+        if let Some((_, report)) = last_attempt {
+            merged.last_attempt = report;
+        }
+
+        Ok(merged)
+    }
+
     #[must_use]
     pub fn apply(&self, deltas: &[Delta]) -> Self {
         Self {
@@ -185,6 +260,32 @@ impl LoopState {
             steer: self.steer.clone(),
             scores: self.scores.clone(),
             judged: self.judged,
+        }
+    }
+}
+
+/// Records `value` as `arm`'s, or reports the arm that already claimed it.
+///
+/// Generic over the field type so every narrative field is arbitrated by one
+/// function: a second arbiter is a second place for the rule to be wrong.
+fn claim<T>(
+    slot: &mut Option<(&'static str, T)>,
+    arm: &'static str,
+    value: Option<T>,
+    field: &'static str,
+) -> Result<(), crate::Error> {
+    let Some(value) = value else {
+        return Ok(());
+    };
+    match slot {
+        Some((held_by, _)) => Err(crate::Error::ContestedField {
+            field,
+            held_by,
+            also: arm,
+        }),
+        None => {
+            *slot = Some((arm, value));
+            Ok(())
         }
     }
 }

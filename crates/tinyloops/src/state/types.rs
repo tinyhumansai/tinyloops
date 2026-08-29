@@ -1,9 +1,10 @@
-//! The accumulator one goal run carries from turn to turn, and the signed
-//! movement one arm contributes to it.
+//! The accumulator one goal run carries from turn to turn, and what one arm
+//! contributes to it.
 //!
-//! Both types live here rather than in the module root because they are the
+//! These types live here rather than in the module root because they are the
 //! substance of the module: [`LoopState`] is what crosses the graph, and
-//! [`Delta`] is the only thing that is ever merged into it.
+//! [`Delta`] and [`Contribution`] are the only things ever merged into it —
+//! one per merge law. Counters add; narrative is owned.
 
 use serde::{Deserialize, Serialize};
 
