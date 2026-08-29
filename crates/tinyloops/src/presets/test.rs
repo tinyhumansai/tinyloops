@@ -1143,7 +1143,7 @@ fn proposal(state: &LoopState) -> Option<crate::policy::Change> {
     use crate::arm::Tuner as _;
 
     let thresholds = state.profile.thresholds;
-    Rules
+    Rules::default()
         .propose(
             state,
             &serde_json::Value::Null,
