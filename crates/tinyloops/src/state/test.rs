@@ -95,6 +95,19 @@ fn the_wire_form_is_pinned() {
                 }],
                 "planned_at": 2,
             },
+            "profile": {
+                "revision": 0,
+                "thresholds": {
+                    "max_attempts": 8,
+                    "stuck": 2,
+                    "blocked": 2,
+                    "computational": 2,
+                    "unverified": 1,
+                    "max_restarts": 2,
+                    "plan_interval": 3,
+                },
+                "origin": "cautious",
+            },
             "answer": "the bound holds",
         })
     );
