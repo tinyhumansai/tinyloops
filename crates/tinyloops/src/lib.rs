@@ -1,9 +1,16 @@
-//! A production-ready starting point for an installable `TinyBus` module.
+//! TinyLoops: a loop engineering framework.
 //!
-//! This crate is a template. It ships the layout, lint configuration, error
-//! handling, testing, and documentation conventions described in `AGENTS.md`.
-//! The compiled `cdylib` exports `TinyBus` module ABI v1 and serves the example
-//! [`greet`] behavior over the bus.
+//! The scaffolding for building agentic loops that run a workflow, judge what
+//! came back, and decide whether to go round again. The pieces it is assembled
+//! from are vendored rather than reimplemented: [TinyFlows] executes one graph
+//! and decides nothing, TinyAgents is the optional durable harness, and TinyBus
+//! is how a loop is reached from outside the process.
+//!
+//! The layering this crate occupies is worth stating, because it is what keeps
+//! the crate small: the engine may know about one graph run; anything that
+//! spans runs belongs to `tinyflows-adaptive`; and the shape of *one goal run*
+//! — attempt, evaluate, route, budget, roles, tools, memory, workspace — is
+//! this crate.
 //!
 //! # Layout
 //!
@@ -41,8 +48,7 @@
 //! # Ok::<(), tinyloops::Error>(())
 //! ```
 //!
-//! Replace the `greeting` module with the first real feature area, keep the
-//! conventions, and update this documentation to describe the new crate.
+//! [TinyFlows]: https://github.com/tinyhumansai/tinyflows
 
 mod error;
 mod greeting;
