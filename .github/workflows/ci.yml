@@ -132,7 +132,7 @@ jobs:
         run: |
           set -euo pipefail
           msrv="$(cargo metadata --format-version 1 --no-deps \
-            | jq -r '.packages[] | select(.name == "template") | .rust_version')"
+            | jq -r '.packages[] | select(.name == "tinyloops") | .rust_version')"
           if [[ -z "$msrv" || "$msrv" == "null" ]]; then
             echo "workspace.package.rust-version is not set in Cargo.toml" >&2
             exit 1

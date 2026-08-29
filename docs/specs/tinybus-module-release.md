@@ -13,7 +13,7 @@ distributable without also shipping the TinyBus host runtime.
 - The example module provides `ai.tinyhumans.tinyloops.Greeting.Greet` at
   `/ai/tinyhumans/tinyloops/Greeting`.
 - Each release archive is named
-  `template-<version>-<platform>.<extension>` and contains only this
+  `tinyloops-<version>-<platform>.<extension>` and contains only this
   module, its SHA-256 `modules.toml`, license, and installation documentation.
 - Each GitHub release publishes a separate `checksum.toml` mapping every
   archive filename to its SHA-256 digest for TinyBus's release loader.

@@ -5,7 +5,7 @@
 - **Plan:** [`../plans/example-retry-policy.md`](../plans/example-retry-policy.md)
 
 > This demonstrates the expected specification format. Replace or remove it
-> when generating a real project from this template.
+> and is not part of the framework.
 
 ## Problem
 
@@ -29,7 +29,7 @@ and validation. The crate currently has no retry behavior.
 The public surface is deliberately small:
 
 ```rust
-use template::{RetryPolicy, Result};
+use tinyloops::{RetryPolicy, Result};
 
 fn policy() -> Result<RetryPolicy> {
     let policy = RetryPolicy::new(3)?;

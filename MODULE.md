@@ -23,7 +23,7 @@ archive. Install directly from a tagged release with:
 ```sh
 tinybus modules load-github \
   https://github.com/tinyhumansai/tinyloops/releases/tag/v0.1.5 \
-  template-0.1.5-ubuntu-24.04-x86_64.tar.gz \
+  tinyloops-0.1.5-ubuntu-24.04-x86_64.tar.gz \
   <archive-sha256>
 ```
 
