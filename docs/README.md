@@ -28,7 +28,27 @@ docs/
 Complex modules also carry a module-level `README.md` inside `src/<module>/`
 covering their design, public surface, and important constraints.
 
-The current module-release contract is in
+## The framework
+
+The loop framework is specified across seven files, and `AGENTS.md` carries the
+same list for readers who start there. Read them in this order: the shape
+([`specs/loop-kernel.md`](specs/loop-kernel.md)), what drives it
+([`specs/orchestrator.md`](specs/orchestrator.md)), how a pass chooses the next
+one ([`specs/routing-and-policy.md`](specs/routing-and-policy.md)), then the
+four seams and their supporting contracts
+([`specs/seams.md`](specs/seams.md),
+[`specs/workspace-and-ledgers.md`](specs/workspace-and-ledgers.md),
+[`specs/budget.md`](specs/budget.md),
+[`specs/observability.md`](specs/observability.md)).
+
+[`specs/prior-art.md`](specs/prior-art.md) sits beside them rather than in the
+sequence. It holds the evidence each default rests on, numbered `C-1` … `C-19`
+and pointing at the specification that implements each one, so a constant can be
+changed by someone who can see what it was chosen against. Its sources, with
+every unverified figure marked as such, are in
+[`specs/prior-art-bibliography.md`](specs/prior-art-bibliography.md).
+
+The module-release contract is separate, in
 [`specs/tinybus-module-release.md`](specs/tinybus-module-release.md), with its
 implementation sequence in
 [`plans/tinybus-module-release.md`](plans/tinybus-module-release.md).
