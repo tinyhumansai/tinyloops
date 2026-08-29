@@ -271,7 +271,10 @@ async fn the_merge_folds_the_reflections_verdict_rather_than_dropping_it() {
 
     assert!(merged.solved, "the reflection's conclusion did not survive the merge");
     assert_eq!(merged.banked, 1);
-    assert_eq!(merged.scores.len(), 1, "each pass merges its own arms only");
+    // One score per pass, accumulating: `scores` is the history the report
+    // renders, so a second pass adds to it rather than replacing it. A merge
+    // that folded its own output back in would show four here.
+    assert_eq!(merged.scores.len(), 2);
 }
 
 #[tokio::test]
