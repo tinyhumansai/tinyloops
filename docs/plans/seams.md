@@ -443,8 +443,8 @@ recording. A test in H5 asserts it for the reference implementations.
 | W2 | `workspace-and-ledgers.md`: the path check at both moments |
 | W3 | `workspace-and-ledgers.md`: bounded capture; bounded `state()` |
 | W4 | `workspace-and-ledgers.md`: a checkpoint failure never fails the write |
-| L1, L2 | `workspace-and-ledgers.md`: merge-only entries; asserted render
-  bounds; the index, never the ledger, in a prompt |
-| L3 | `workspace-and-ledgers.md`: folder refusal, `evidence_origin`, the
-  immutable spec |
+| L1 | `workspace-and-ledgers.md`: entries merge and close, never delete |
+| L2 | `workspace-and-ledgers.md`: asserted render bounds; index-in-prompt |
+| L3 | `workspace-and-ledgers.md`: the folder refusal, and `evidence_origin` |
+| L3 | `workspace-and-ledgers.md`: goals and criteria immutable for the run |
 | X1 | `seams.md`: every bundled example runs in CI with no credentials |
