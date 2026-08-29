@@ -43,8 +43,16 @@ propose a change to."
   ADR 0004's fourth bullet is amended: *no threshold literal is typed into graph
   JSON* stands, and *generated from the Rust constant* is replaced by *read from
   the same address the Rust reads*.
-- One graph therefore serves every preset, and every revision of every preset.
-  The jq is a fixed program rather than one rendered per `Thresholds` value.
+- One *ladder* therefore serves every preset, and every revision of every
+  preset. The jq is a fixed program rather than one rendered per `Thresholds`
+  value.
+- The graph still carries the run's **starting** profile, in the seed
+  accumulator the `plan` node is handed — the same place it already carries the
+  goal. Two presets are two different runs and emit two different graphs, and
+  that is correct. What matters for a resume is that the *revision* a run makes
+  to itself lands in the accumulator at checkpoint time and never in the graph,
+  so the signature a checkpoint recorded still verifies against the graph the
+  builder emits.
 - Every threshold read carries the fallback `// 4294967295`. `u32::MAX` is the
   sentinel for "no threshold", and it makes every rung of the ladder false, so a
   state with no profile falls through to `Retry`.
@@ -58,9 +66,13 @@ propose a change to."
 
 ## Consequences
 
-- A threshold change no longer changes `GraphSignature`, so a run that revises
-  its own thresholds resumes from its own checkpoint. That is the whole reason
-  for this decision.
+- A run that revises its own thresholds resumes from its own checkpoint,
+  because the revision is state and the graph is built from the starting
+  profile. That is the whole reason for this decision. `src/loops/test.rs`
+  asserts it directly rather than by implication, and asserts the narrower
+  companion fact — that two presets emit the same routing programs and
+  different seeds — so the limit of the claim is written down rather than
+  assumed away.
 - The sentinel is not a style choice. Under `jaq`, a missing key resolves to
   `null`, `null` sorts below every number, and `0 >= null` is therefore **true**
   — so an absent profile read without a fallback would fire the first rung and

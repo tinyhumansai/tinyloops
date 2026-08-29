@@ -181,9 +181,16 @@ Nine, each stated with the failure it prevents.
 ### 1. The profile is state, not topology
 
 Every threshold the ladder reads is addressed out of the accumulator. No
-threshold literal appears in graph JSON — which is the half of
+threshold is rendered into a routing program — which is the half of
 [`loop-kernel.md`](loop-kernel.md) invariant 7 this keeps — and `GraphSignature`
-hashes the profile's *addressing*, never its values.
+hashes the profile's *addressing*, never a value the ladder compares against.
+
+The graph still carries the run's **starting** profile in the seed accumulator,
+beside the goal, so two presets emit two different graphs. That is not the case
+this invariant is about: two presets are two different runs. What must not
+change the graph is a run revising *itself*, and it cannot, because the revision
+lives in the accumulator the checkpoint holds rather than in the graph the
+builder emits.
 
 *Why.* Under invariant 7 as written, the graph is generated *from* the
 thresholds, so a change of one constant is a change of topology, and invariant 9
@@ -321,10 +328,13 @@ them on a single sample, which is the failure that makes a tuner confident.
 
 ## Acceptance criteria
 
-- A graph built from two different `Thresholds` values emits the same
-  `GraphSignature`, and a checkpoint taken under one resumes under the other.
-- No emitted graph JSON contains a threshold literal; a test greps the serialized
-  graph for every default threshold value and asserts it appears nowhere.
+- A graph built from two different `Thresholds` values emits the same routing
+  programs — the switch's expression and the head's `until` — and a run that
+  revises its thresholds mid-run leaves `GraphSignature` unchanged, so its own
+  checkpoint still resumes.
+- No emitted routing program contains a threshold literal; a test asserts every
+  threshold value is absent from the switch's expression and the head's `until`,
+  and that both address `.profile.thresholds`.
 - The parity sweep runs the counter space exhaustively against every preset
   tuple and every corner of the bounds box, and reports the first disagreement
   with the tuple, the profile revision, and the offending state.
