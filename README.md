@@ -179,6 +179,13 @@ the reference seams, drives it to a terminal state, and prints every pass
 boundary, every step, every arm, the merge, the verdict, and the route each pass
 took with the counters it was taken on.
 
+`tuned_research_loop` is the same loop with a third arm that may revise the
+run's own configuration — its thresholds, its spend, and which arms it is still
+paying for — within the room its preset declares. Every revision and every
+refusal is an event and a line in the report; nothing here scores them, because
+scoring a configuration against outcomes spans runs and lives in
+`tinyflows-adaptive`.
+
 Every example runs against TinyFlows' mock capabilities or the reference
 implementations, so they are deterministic, offline, and need no provider
 credentials. `tinyagents` is optional: the harness example declares
