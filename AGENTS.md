@@ -163,6 +163,9 @@ Supporting commands:
 - `cargo run -p tinyloops --features tinyagents --example tinyagents_harness` —
   run the same loop under the durable harness. The example declares
   `required-features`, so a default build skips it rather than failing.
+- `cargo run -p tinyloops --example research_loop` — drive the shipped preset
+  end to end over the reference seams: plan, research, attempt, both arms, the
+  merge, the route, and the closing report. Offline and deterministic.
 - `cargo run -p tinyloops --example basic` — run the bundled example.
 - `cargo doc --no-deps --all-features` — build the rustdoc CI also builds with
   `RUSTDOCFLAGS="-D warnings"`.
