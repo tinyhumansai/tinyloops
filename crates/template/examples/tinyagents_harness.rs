@@ -2,18 +2,18 @@
 //!
 //! [`simple_loop`](../examples/simple_loop.rs) keeps its control flow in Rust,
 //! which is fine until the loop needs to be paused, checkpointed, resumed, or
-//! observed. TinyAgents already owns that: its graph runtime is a durable
+//! observed. `TinyAgents` already owns that: its graph runtime is a durable
 //! agent harness, so the loop becomes two nodes — `refine` runs one turn of the
 //! workflow, `judge` decides whether to go round again — and the harness
 //! supplies the stepping, the visit limits, and the seam a checkpointer plugs
 //! into.
 //!
-//! The division of labour is the point. TinyFlows executes one graph and
-//! decides nothing; TinyAgents decides what to run next and judges what came
+//! The division of labour is the point. `TinyFlows` executes one graph and
+//! decides nothing; `TinyAgents` decides what to run next and judges what came
 //! back. Neither knows about the other, and this example is the whole of the
 //! glue.
 //!
-//! TinyAgents is an optional dependency, so this example is gated:
+//! `TinyAgents` is an optional dependency, so this example is gated:
 //!
 //! ```sh
 //! cargo run -p template --features tinyagents --example tinyagents_harness
