@@ -98,6 +98,11 @@ fn upto(threshold: u32) -> std::ops::RangeInclusive<u32> {
     0..=threshold.saturating_add(1)
 }
 
+/// How many values [`upto`] yields, for computing a sweep's expected case count.
+fn span(threshold: u32) -> usize {
+    upto(threshold).count()
+}
+
 /// Asserts the generated ladder and [`route`] agree about `state`.
 fn assert_ladder_parity(state: &LoopState, thresholds: &Thresholds) {
     let scope = expr_scope(state, LOOP_ID);
@@ -174,9 +179,22 @@ fn the_ladder_agrees_with_route_on_every_combination() {
         });
     }
 
-    // The whole input space of `route`, twice: 4 x 2 x 10 x 4 x 4 x 4 for the
-    // defaults, and 5 x 2 x 5 x 3 x 3 x 6 for the second set.
-    assert_eq!(cases.into_inner(), 5_120 + 2_700);
+    // The whole input space of `route`, for every threshold set. The
+    // expectation is computed from the same sets the sweep iterates rather than
+    // written out, so adding a preset extends the sweep and its assertion
+    // together instead of turning one into a stale number.
+    let expected: usize = threshold_sets()
+        .iter()
+        .map(|thresholds| {
+            span(thresholds.blocked)
+                * 2
+                * span(thresholds.max_attempts)
+                * span(thresholds.unverified)
+                * span(thresholds.stuck)
+                * span(thresholds.computational)
+        })
+        .sum();
+    assert_eq!(cases.into_inner(), expected);
 }
 
 #[test]
@@ -210,9 +228,18 @@ fn the_terminal_condition_agrees_with_is_terminal_on_every_combination() {
         });
     }
 
-    // 4 x 2 x 2 x 4 x 10 x 4 for the defaults, 5 x 2 x 2 x 3 x 5 x 3 for the
-    // second set.
-    assert_eq!(cases.into_inner(), 2_560 + 900);
+    let expected: usize = threshold_sets()
+        .iter()
+        .map(|thresholds| {
+            span(thresholds.blocked)
+                * 2
+                * 2
+                * span(thresholds.max_restarts)
+                * span(thresholds.max_attempts)
+                * span(thresholds.unverified)
+        })
+        .sum();
+    assert_eq!(cases.into_inner(), expected);
 }
 
 #[test]
