@@ -492,7 +492,7 @@ pub trait DropObserver: std::fmt::Debug + Send + Sync {
 /// The mailbox reports drops through [`DropObserver`] rather than through a
 /// sink directly, so `harness` does not have to know what a run is being
 /// observed with. This is the adapter for the case where it is being observed
-/// with [`crate::observe`], and it exists because a drop that reaches only a
+/// with a [`Sink`](crate::Sink), and it exists because a drop that reaches only a
 /// counter is a designed loss nobody reading the log can see.
 ///
 /// The pass is supplied rather than read, because a mailbox outlives any one
