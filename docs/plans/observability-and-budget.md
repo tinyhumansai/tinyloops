@@ -28,8 +28,8 @@ Parallel within a group: B1 and B2 are independent, and B3 needs both. O1
 sketch in O1's interface block; O3, O4, and O5 each need O2. P1 and P2 are
 independent.
 
-Every task ends with `cargo test -p tinyloops <module>` and `cargo clippy
---all-targets --all-features -- -D warnings`.
+Every task ends with `cargo test -p tinyloops <module>` and a clippy run over
+`--all-targets --all-features -- -D warnings`.
 
 ## Prerequisites
 
