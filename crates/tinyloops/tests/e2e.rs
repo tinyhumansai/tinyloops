@@ -331,7 +331,7 @@ async fn every_node_runs_and_no_expression_resolves_to_null() {
     for step in [
         "plan", "research", "attempt", "reflect", "judge", "merge", "pass", "report",
     ] {
-        assert!(steps.calls_for(step).len() > 0, "{step} never ran");
+        assert!(!steps.calls_for(step).is_empty(), "{step} never ran");
     }
 }
 
