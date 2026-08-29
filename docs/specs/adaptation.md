@@ -203,8 +203,11 @@ it means — the *shape* is unchanged — while the numbers are free to move.
 **Accepting this specification requires amending invariant 7 of
 [`loop-kernel.md`](loop-kernel.md)**, from "every number in the ladder is
 rendered from the Rust constant" to "no number in the ladder is a literal; both
-sides read the same address". The parity requirement is untouched, and invariant
-9 is untouched.
+sides read the same address". The parity requirement is untouched, and
+invariant 9's mechanism is untouched: it still hashes the emitted graph and
+still refuses a mismatch. Its rationale is not — "every rendered threshold" no
+longer names anything, since invariant 7 stops rendering one, so
+`loop-kernel.md` invariant 9 is amended alongside it to say so.
 
 ### 2. One proposer, and the head is still the only writer
 
