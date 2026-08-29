@@ -678,3 +678,62 @@ fn the_termination_expression_evaluates_rather_than_yielding_null() {
     fresh["state"]["solved"] = json!(true);
     assert_eq!(tinyflows::expr::evaluate(&program, &fresh), json!(true));
 }
+
+#[test]
+fn the_node_vocabulary_is_the_ids_the_builder_emits() {
+    let ids = NodeIds::default();
+    let vocabulary = ids.all();
+    assert_eq!(vocabulary.len(), 12);
+    // Every name is distinct: two nodes answering to one id would collide in
+    // the graph and in every address derived from it.
+    for (index, name) in vocabulary.iter().enumerate() {
+        assert!(
+            !vocabulary[..index].contains(name),
+            "{name} is declared twice",
+        );
+    }
+    // The approval is in the vocabulary but not in every graph.
+    assert!(vocabulary.contains(&ids.approval));
+    assert!(graph().node(ids.approval).is_none());
+}
+
+#[test]
+fn the_accumulator_address_follows_the_declared_head() {
+    assert_eq!(
+        NodeIds::default().accumulator_address(),
+        "=nodes.loop.state",
+    );
+    assert_eq!(
+        NodeIds {
+            loop_head: "outer",
+            ..NodeIds::default()
+        }
+        .accumulator_address(),
+        "=nodes.outer.state",
+    );
+}
+
+#[test]
+fn an_address_is_looked_for_at_every_depth_of_a_config() {
+    // The invariant tests read the emitted JSON rather than the code that wrote
+    // it, so the search has to reach a string wherever it is nested.
+    assert!(mentions(
+        &json!({ "a": { "b": ["x", "=nodes.loop.state"] } }),
+        "=nodes.loop.state"
+    ));
+    assert!(mentions(&json!(["=nodes.loop.state"]), "=nodes.loop.state"));
+    assert!(mentions(
+        &json!("=nodes.loop.state.attempts"),
+        "=nodes.loop.state"
+    ));
+    // Numbers, booleans, and nulls hold no address, and neither does an
+    // unrelated string.
+    assert!(!mentions(
+        &json!({ "n": 1, "b": true, "z": Value::Null }),
+        "=nodes.loop.state"
+    ));
+    assert!(!mentions(
+        &json!("=nodes.attempt.item.json"),
+        "=nodes.loop.state"
+    ));
+}
