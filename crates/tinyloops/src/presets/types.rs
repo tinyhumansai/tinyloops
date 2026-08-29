@@ -11,6 +11,8 @@
 //! without being swept is a preset whose generated ladder nobody proved agrees
 //! with [`route`](crate::route).
 
+use serde::{Deserialize, Serialize};
+
 use crate::policy::Thresholds;
 
 /// A shipped threshold set.
@@ -21,7 +23,18 @@ use crate::policy::Thresholds;
 /// self-revision beats drawing several independent attempts only while feedback
 /// accuracy is high; below that, sampling and selecting wins. Every preset here
 /// is an estimate of which side of that crossing a domain sits on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+///
+/// # Wire form
+///
+/// The serde names are [`Preset::as_str`], and `src/presets/test.rs` asserts
+/// the two agree. A preset travels inside the run's accumulator as part of
+/// [`LoopProfile`](crate::LoopProfile), so its names are a wire format: a
+/// variant renamed on one side and not the other is a decode error at run time
+/// rather than a compile error.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum Preset {
     /// The shipped default: [`Thresholds::default`].
@@ -30,6 +43,7 @@ pub enum Preset {
     /// third time. It is the set every other one here is a deliberate deviation
     /// from, and the set a domain should start on before it has measured
     /// anything.
+    #[default]
     Balanced,
     /// Revise for longer before drawing a fresh approach.
     ///
