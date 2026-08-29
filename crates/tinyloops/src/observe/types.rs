@@ -539,6 +539,8 @@ impl Event {
                 | Self::Routed { .. }
                 | Self::BoundTripped { .. }
                 | Self::LoopFinished { .. }
+                | Self::Amended { .. }
+                | Self::AmendmentRefused { .. }
         )
     }
 }
