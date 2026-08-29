@@ -465,7 +465,14 @@ impl Arm for TunerArm {
         ctx: StepContext<'_, NoWrite>,
     ) -> Result<ArmOutcome> {
         let mut outcome = ArmOutcome::unchanged(Arm::name(self), base);
-        if let Some(amendment) = self.tuner.propose(base, report, ctx)? {
+        let pass = ctx.pass();
+        if let Some(mut amendment) = self.tuner.propose(base, report, ctx)? {
+            // Stamped here rather than trusted from the tuner: a `Tuner` is a
+            // trait object an embedder can implement, and an amendment that
+            // named another arm as proposer or an earlier pass would
+            // misattribute a revision in the run's own record.
+            amendment.proposer = Arm::name(self).to_owned();
+            amendment.pass = pass;
             outcome.contribution.amendment = Some(amendment.clone());
             outcome.state.proposed = Some(amendment);
         }
