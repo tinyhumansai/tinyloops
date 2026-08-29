@@ -177,15 +177,14 @@ are named below.
 
 1. Failing tests, all against one base state and hand-built arm outputs:
    - `a_reset_and_an_increment_compose_from_the_same_base` — one arm returns a
-     counter of 0 from a base of 3, another returns 4; the fold yields 1. This
-     is invariant 5's reason for existing and the test a last-writer-wins fold
-     fails.
-   - `a_list_folds_by_what_each_arm_appended`.
-   - `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
+     counter of 0 from a base of 3, another returns 4; the fold yields 1. This is
+     invariant 5's reason for existing, and the test a last-writer-wins fold fails.
+   - `a_list_folds_by_what_each_arm_appended`, and
+     `two_arms_disagreeing_on_one_scalar_is_a_refused_collision`, asserting
      `Error::ArmCollision { field, first, second }` naming both arms.
    - `folding_is_commutative_over_every_permutation` — four arm outputs, all 24
-     permutations, one expected result.
-   - `folding_is_associative_over_every_grouping` — the same four folded as
+     permutations, one expected result — and
+     `folding_is_associative_over_every_grouping`, the same four folded as
      `((a,b),(c,d))`, `(a,(b,(c,d)))`, and `(((a,b),c),d)`.
 2. Implement:
 
@@ -291,9 +290,9 @@ are named below.
    (`vendor/tinyflows/src/compiler.rs:31`);
    `building_twice_emits_byte_identical_json`, the purity C5 rests on; and
    `the_accumulator_update_is_an_assignment_not_an_increment`, asserting the
-   head's `config.state.update` contains no `+ 1` against its own previous
-   value — invariant 4, where a replayed activation makes `attempts + 1` wrong
-   by one and nothing reports it.
+   head's `config.state.update` contains no `+ 1` against its own previous value
+   — invariant 4, where a replayed activation makes `attempts + 1` wrong by one
+   and nothing reports it.
 2. Implement:
 
    ```rust
@@ -389,9 +388,9 @@ All through `tinyflows::testkit::TestHarness`.
    `tinyflows::interception::StepInterceptor`
    (`vendor/tinyflows/src/interception.rs`) returning `StepAction::Replace` with
    the merge node's own previous items the second time it sees that node, and
-   assert the counters match a single application. An interceptor rather than a
-   mock capability because what an interceptor returns is *obeyed*, before and
-   after every non-trigger activation, while a `RunObserver` callback returns `()`.
+   assert the counters match a single application. An interceptor, not a mock
+   capability: what an interceptor returns is *obeyed*, before and after every
+   non-trigger activation, while a `RunObserver` callback returns `()`.
 5. `a_failed_step_routes_rather_than_aborting` — `StepAction::Fail` on the
    attempt node, asserting the run reaches `report` with `Blocked`.
 
@@ -435,7 +434,8 @@ All through `tinyflows::testkit::TestHarness`.
    `spawning_a_delegate_outside_the_declared_set_is_an_error`;
    `it_does_not_fall_back_to_the_host_registry`, where the host registry holds the
    name, the declared set does not, and the spawn still fails; and
-   `the_declared_delegate_set_is_checked_against_the_step_registry`.
+   `the_declared_delegate_set_is_checked_against_the_step_registry`, so a role and
+   a registry cannot diverge quietly.
 2. Implement `Orchestrator::new(tools: ToolGrant, delegates: DelegateSet)
    -> Result<Self>`, rejecting execution capabilities at construction. Both sets
    are fixed there and have no extend method: a driver that *can* run the
