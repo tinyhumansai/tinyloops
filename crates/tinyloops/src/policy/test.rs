@@ -53,13 +53,20 @@ use crate::state::LoopState;
 /// than a jq subtraction and the scope has to survive one.
 const LOOP_ID: &str = "goal-loop";
 
-/// The threshold sets every sweep runs under: the shipped defaults, and a set
-/// deliberately different in every field so a sweep cannot pass by accidentally
-/// agreeing on the numbers it was written against.
-fn threshold_sets() -> [Thresholds; 2] {
-    [
-        Thresholds::default(),
-        Thresholds {
+/// The threshold sets every sweep runs under: **every shipped preset**, plus a
+/// set deliberately different in every field so a sweep cannot pass by
+/// accidentally agreeing on the numbers it was written against.
+///
+/// Reading the presets from [`Preset::ALL`] rather than listing them is the
+/// point. A preset is a generated ladder, and a generated ladder nobody proved
+/// against [`route`] is a routing decision nobody checked. Deriving the sweep
+/// from the same constant the presets are published from means a preset cannot
+/// be added without being swept.
+fn threshold_sets() -> Vec<Thresholds> {
+    crate::presets::Preset::ALL
+        .into_iter()
+        .map(crate::presets::Preset::thresholds)
+        .chain(std::iter::once(Thresholds {
             max_attempts: 3,
             stuck: 1,
             blocked: 3,
@@ -67,8 +74,22 @@ fn threshold_sets() -> [Thresholds; 2] {
             unverified: 1,
             max_restarts: 1,
             plan_interval: 2,
-        },
-    ]
+        }))
+        .collect()
+}
+
+#[test]
+fn the_sweep_covers_every_shipped_preset() {
+    // Asserted rather than assumed: the sweeps below iterate `threshold_sets`,
+    // and this is what makes "every preset is swept" a checked fact rather than
+    // a property of how that function happens to be written today.
+    let swept = threshold_sets();
+    for preset in crate::presets::Preset::ALL {
+        assert!(
+            swept.contains(&preset.thresholds()),
+            "{preset} is not in the parity sweep"
+        );
+    }
 }
 
 /// `0` through one past `threshold`, so every sweep reaches past the point the
