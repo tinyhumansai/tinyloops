@@ -85,7 +85,7 @@ are named below.
    `set_state` exists **only** in the `CanWrite` impl block. That is invariant
    11: an arm writing the accumulator is a missing method, not a failed
    assertion.
-3. Add `Error::UnknownStep { name }` and `Error::StepFailed { step, reason }`
+3. Add `Error::UnknownStep { name }` and `Error::StepFailed { step, reason }`,
    with message assertions in `src/error/test.rs`.
 
 ## Task A2: the `Step` trait and the closed registry
@@ -96,8 +96,7 @@ are named below.
 1. Failing tests: `resolves_a_registered_step_by_name`;
    `rejects_an_unregistered_step_by_name`, asserting `Error::UnknownStep` rather
    than `Ok`; and `rejects_a_second_registration_of_the_same_name`, so a name in
-   the closed set has one meaning.
-2. Implement:
+   the closed set has one meaning. Implement:
 
    ```rust
    pub trait Step: Send + Sync {
@@ -228,7 +227,7 @@ are named below.
 
    There is **no** constructor taking two lists. "Every arm converges" and
    "every arm is folded" are one fact because there is one place to say it.
-3. Export `Arm`, `ArmFold`, `ArmSet`, and `DeltaFold` from `src/lib.rs`.
+   Export `Arm`, `ArmFold`, `ArmSet`, and `DeltaFold` from `src/lib.rs`.
 
 ## Task C1: node identity and the emitted shape
 
@@ -246,12 +245,12 @@ are named below.
    `node_ids_are_declared_not_positional`, where inserting a node leaves every
    other id unchanged.
 2. Implement `NodeIds`, a struct of `&'static str` constants, and the shape.
-   Kinds, all from `vendor/tinyflows/src/model/node_kind.rs`: `Trigger` for
+   Kinds, from `vendor/tinyflows/src/model/node_kind.rs`: `Trigger` for
    `trigger`; `ToolCall` for `plan`, `research`, `attempt`, every arm, `pass`,
    and `report`; `Loop` for the head; `Merge` for the barrier; `Switch` for
    `route`; `Spawn` for `side_arms`; `Gate` for `stand_down`. Every `ToolCall`
    node names `run_loop_step` with a `step` argument, and none carries a bare
-   `agent_ref`: `NodeKind::Agent` would lose the operator-directive drain, the
+   `agent_ref` — `NodeKind::Agent` would lose the operator-directive drain, the
    salvage of a timed-out attempt, and the arms opened beside the loop.
 3. `side_arms` (`Spawn`) and `stand_down` (`Gate`) are this plan's reading of
    "the arms opened beside the loop are started at a named node, at a place a
