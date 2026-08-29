@@ -20,6 +20,9 @@ allow = [
     "BSD-3-Clause",
     "CDLA-Permissive-2.0",
     "GPL-3.0-only",
+    # `vendor/tinyflows` and its `tinyflows-adaptive` crate are licensed
+    # "or later", which this GPL-3.0-only workspace may take.
+    "GPL-3.0-or-later",
     "ISC",
     "MIT",
     "MPL-2.0",

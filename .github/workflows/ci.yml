@@ -53,11 +53,15 @@ jobs:
       - name: Test default features
         run: cargo test
 
-      # `cargo build --all-targets` only *compiles* an example. `AGENTS.md`
-      # promises `cargo run -p template --example basic` works, and a compiled
-      # example can still fail on its first line.
-      - name: Run the bundled example
-        run: cargo run -p template --example basic
+      # `cargo build --all-targets` only *compiles* an example. `README.md` and
+      # `AGENTS.md` promise these run, and a compiled example can still fail on
+      # its first line. The harness example is behind `required-features`, so it
+      # needs the feature named explicitly or cargo silently skips it.
+      - name: Run the bundled examples
+        run: |
+          cargo run -p template --example basic
+          cargo run -p template --example simple_loop
+          cargo run -p template --features tinyagents --example tinyagents_harness
 
       # `crates/template-bus` exists so a host can name the payload types
       # without compiling the module. That promise is invisible in a diff,
