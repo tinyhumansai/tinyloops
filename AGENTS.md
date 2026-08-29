@@ -12,24 +12,24 @@ Delete guidance that no longer applies rather than leaving it to rot.
 
 Do this once, in a single commit, before writing feature code:
 
-- [ ] Rename `crates/template` and `crates/template-bus` to the project's crate
-      names, and update `name` in each manifest plus the `template-bus` entry in
+- [ ] Rename `crates/tinyloops` and `crates/tinyloops-bus` to the project's crate
+      names, and update `name` in each manifest plus the `tinyloops-bus` entry in
       the root `[workspace.dependencies]`.
 - [ ] Set `description`, `keywords`, and `categories` in each manifest, and
       `repository` in the root `[workspace.package]`.
 - [ ] Rename the crate references in `README.md`, both `src/lib.rs` files,
-      `crates/template/examples/`, and `crates/template/tests/` (search for
-      `template` and `template_bus`).
+      `crates/tinyloops/examples/`, and `crates/tinyloops/tests/` (search for
+      `tinyloops` and `tinyloops_bus`).
 - [ ] Replace the placeholder `greeting` module in both crates with the first
       real feature area — payload types in the contract crate, behavior in the
       module crate — keeping the `mod.rs` / `types.rs` / `test.rs` layout.
 - [ ] Confirm `license` and `LICENSE` match the project's intended license.
 - [ ] Update the security contact in `SECURITY.md`.
 - [ ] Rename the TinyBus interface, object path, and member constants in
-      `crates/template-bus/src/names/`, and the matching `provides` / `methods`
-      declarations in `crates/template/src/tinybus_module/`, while keeping
+      `crates/tinyloops-bus/src/names/`, and the matching `provides` / `methods`
+      declarations in `crates/tinyloops/src/tinybus_module/`, while keeping
       `vendor/tinybus` pinned.
-- [ ] Reset `CONTRACT_VERSION` in `crates/template-bus/src/version/` for the new
+- [ ] Reset `CONTRACT_VERSION` in `crates/tinyloops-bus/src/version/` for the new
       contract.
 - [ ] Replace `ROADMAP.md` with the real plan, or delete it.
 - [ ] Rewrite the "Project Structure" section below to describe this workspace.
@@ -39,20 +39,20 @@ Do this once, in a single commit, before writing feature code:
 This is a Rust 2024 cargo workspace rooted at a virtual `Cargo.toml`. Every
 crate lives under `crates/`, one directory per package, each directory named for
 the package it holds. There is no root package: the crate that ships as the
-loadable module is `crates/template`, the same as any other member.
+loadable module is `crates/tinyloops`, the same as any other member.
 
 ```text
 Cargo.toml              # virtual workspace: members, [workspace.package],
                         # [workspace.dependencies], [workspace.lints]
 crates/
-├── template-bus/       # the wire contract: what crosses the bus, nothing else
+├── tinyloops-bus/       # the wire contract: what crosses the bus, nothing else
 │   ├── README.md       # why the contract is its own crate
 │   └── src/
 │       ├── lib.rs      # crate docs + the entire public re-export surface
 │       ├── names/      # interface, object path, one constant per member
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
-└── template/           # the module: behavior, adapter, and the cdylib
+└── tinyloops/           # the module: behavior, adapter, and the cdylib
     ├── src/
     │   ├── lib.rs      # crate docs + public surface, re-exporting the contract
     │   ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
@@ -75,12 +75,12 @@ docs/
 
 ### The two-crate split
 
-`crates/template-bus` holds every type that crosses the bus and the names of the
+`crates/tinyloops-bus` holds every type that crosses the bus and the names of the
 members that carry them. It has no transport, no runtime, and no behavior, and
 CI asserts it stays that way. A host that only makes calls depends on it alone.
 
-`crates/template` depends on it and re-exports all of it, so
-`template::GreetRequest` and `template_bus::GreetRequest` are the *same* type
+`crates/tinyloops` depends on it and re-exports all of it, so
+`tinyloops::GreetRequest` and `tinyloops_bus::GreetRequest` are the *same* type
 rather than structural twins. That direction is load-bearing: a parallel set of
 payload types for hosts would mean a conversion at every call site that nothing
 checks.
@@ -117,7 +117,7 @@ broad ones.
 
 Keep public exports centralized in each crate's `src/lib.rs` so downstream users
 have one predictable surface. Put shared error variants in
-`crates/template/src/error/mod.rs` and return the crate-wide `Result<T>` from
+`crates/tinyloops/src/error/mod.rs` and return the crate-wide `Result<T>` from
 fallible public APIs.
 
 ## Build And Test
@@ -136,12 +136,12 @@ Supporting commands:
 
 - `cargo fmt --all` — format before committing.
 - `cargo test <filter>` — run a focused subset while iterating.
-- `cargo test -p template-bus` — run one crate's suite.
-- `cargo run -p template --example simple_loop` — run the loop template.
-- `cargo run -p template --features tinyagents --example tinyagents_harness` —
+- `cargo test -p tinyloops-bus` — run one crate's suite.
+- `cargo run -p tinyloops --example simple_loop` — run the loop template.
+- `cargo run -p tinyloops --features tinyagents --example tinyagents_harness` —
   run the same loop under the durable harness. The example declares
   `required-features`, so a default build skips it rather than failing.
-- `cargo run -p template --example basic` — run the bundled example.
+- `cargo run -p tinyloops --example basic` — run the bundled example.
 - `cargo doc --no-deps --all-features` — build the rustdoc CI also builds with
   `RUSTDOCFLAGS="-D warnings"`.
 - `cargo test --doc` — run doctests alone when editing documentation examples.
@@ -192,7 +192,7 @@ add one:
 - gate anything optional behind a Cargo feature, documented in `Cargo.toml`;
 - declare it once in the root `[workspace.dependencies]` when more than one
   crate needs it, and take it with `{ workspace = true }`;
-- never add one to `crates/template-bus` that pulls in a transport, an async
+- never add one to `crates/tinyloops-bus` that pulls in a transport, an async
   runtime, an HTTP client, or a native library — CI fails the build if you do;
 - leave a comment above the entry explaining *why* the crate is needed and what
   uses it — see the existing entries for the expected tone;
@@ -214,7 +214,7 @@ Three dependencies are vendored as git submodules, each pinned by its gitlink.
   this repository provides the implementations rather than the engine choosing
   a vendor.
 - `vendor/tinyagents` supplies the durable agent and graph harness. It is an
-  *optional* dependency of `crates/template`, behind that crate's `tinyagents`
+  *optional* dependency of `crates/tinyloops`, behind that crate's `tinyagents`
   feature, and nothing under `src/` is gated on it: it exists so an example can
   drive a loop from a real harness instead of a hand-rolled stand-in. A module
   a host loads resolves neither it nor its HTTP client.
@@ -316,7 +316,7 @@ Releases run from `.github/workflows/release.yml` via a manual
 an interrupted release after its version commit and tag exist. The workflow
 re-runs the full validation suite, computes the next version, updates
 the root `[workspace.package]` version and `Cargo.lock`, commits and tags
-`vX.Y.Z`, builds `crates/template` as a TinyBus module for every supported
+`vX.Y.Z`, builds `crates/tinyloops` as a TinyBus module for every supported
 platform, pushes, and creates an immutable GitHub release with installable
 native packages.
 

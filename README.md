@@ -19,13 +19,13 @@ The pieces it is assembled from are vendored, not reimplemented:
   reached from outside the process. The workspace builds as both an `rlib` and
   the `cdylib` TinyBus loads.
 
-It is a two-crate cargo workspace. `crates/template-bus` is the wire contract —
+It is a two-crate cargo workspace. `crates/tinyloops-bus` is the wire contract —
 member names, payload types, and the contract version, with no transport and no
-behavior — and `crates/template` is the implementation. A host that only makes
+behavior — and `crates/tinyloops` is the implementation. A host that only makes
 calls depends on the contract crate alone and compiles neither the module nor
 `tinybus` itself.
 
-> The crates are still named `template`: this repository was generated from
+> The crates are still named `tinyloops`: this repository was generated from
 > [rust-template](https://github.com/tinyhumansai/rust-template) and the rename
 > checklist below has not been worked through yet.
 
@@ -33,7 +33,7 @@ calls depends on the contract crate alone and compiles neither the module nor
 
 Compile the graph once, run it per turn, feed each result back in, and stop on a
 judge or a budget. That is the whole shape, and it is the complete
-[`simple_loop`](crates/template/examples/simple_loop.rs) example minus its graph
+[`simple_loop`](crates/tinyloops/examples/simple_loop.rs) example minus its graph
 definition:
 
 ```rust
@@ -82,15 +82,15 @@ let finished = loop_graph.run(LoopState::new()).await?;
 
 TinyFlows never learns that a harness is driving it, and TinyAgents never learns
 what the workflow does. See
-[`tinyagents_harness`](crates/template/examples/tinyagents_harness.rs) for the
+[`tinyagents_harness`](crates/tinyloops/examples/tinyagents_harness.rs) for the
 running version.
 
 ## Examples
 
 ```sh
-cargo run -p template --example simple_loop                              # the loop, in plain Rust
-cargo run -p template --features tinyagents --example tinyagents_harness # the loop, under a harness
-cargo run -p template --example basic                                    # ordinary library API usage
+cargo run -p tinyloops --example simple_loop                              # the loop, in plain Rust
+cargo run -p tinyloops --features tinyagents --example tinyagents_harness # the loop, under a harness
+cargo run -p tinyloops --example basic                                    # ordinary library API usage
 ```
 
 Both loop examples run against TinyFlows' mock capabilities, so they are
@@ -103,20 +103,20 @@ default build skips it rather than failing to compile.
 Choose **Use this template** on GitHub, create a repository, then work through
 the checklist at the top of [`AGENTS.md`](AGENTS.md):
 
-- rename the `crates/template` and `crates/template-bus` directories and the
+- rename the `crates/tinyloops` and `crates/tinyloops-bus` directories and the
   `name` fields in their manifests, and set the shared `description`,
   `repository`, `keywords`, and `categories`;
-- update this README and the crate documentation in `crates/template/src/lib.rs`;
+- update this README and the crate documentation in `crates/tinyloops/src/lib.rs`;
 - replace the placeholder `greeting` module with the first real feature area, in
   both crates: the payload types in the contract, the behavior in the module;
 - rename the TinyBus interface, object path, and member constants in
-  `crates/template-bus/src/names/`, and the matching `provides` / `methods`
-  declarations in `crates/template/src/tinybus_module/`;
+  `crates/tinyloops-bus/src/names/`, and the matching `provides` / `methods`
+  declarations in `crates/tinyloops/src/tinybus_module/`;
 - update the security contact and repository links in the community files;
 - replace `ROADMAP.md` with the real plan, or delete it;
 - change the license if GPL-3.0-only is not appropriate.
 
-Search for `template` and `template_bus` to find every remaining
+Search for `tinyloops` and `tinyloops_bus` to find every remaining
 template-specific value.
 
 ## What You Get
@@ -136,7 +136,7 @@ template-specific value.
 ```text
 Cargo.toml              # virtual workspace: members, shared metadata, lints
 crates/
-├── template-bus/       # the wire contract — what crosses the bus
+├── tinyloops-bus/       # the wire contract — what crosses the bus
 │   ├── README.md       # why the contract is its own crate
 │   └── src/
 │       ├── lib.rs      # crate docs + the entire public re-export surface
@@ -146,7 +146,7 @@ crates/
 │       │   ├── types.rs
 │       │   └── test.rs
 │       └── version/    # contract version and the host bind rule
-└── template/           # the module — behavior, adapter, and the cdylib
+└── tinyloops/           # the module — behavior, adapter, and the cdylib
     ├── src/
     │   ├── lib.rs      # crate docs + public surface, re-exporting the contract
     │   ├── error/      # crate-wide `Error` and `Result<T>`
@@ -172,12 +172,12 @@ docs/
 ```
 
 The split is the point. A payload type describes what a frame carries; the
-behavior that answers it is a different obligation. `template` depends on
-`template-bus` and re-exports all of it, so `template::GreetRequest` and
-`template_bus::GreetRequest` are the *same* type rather than structural twins,
+behavior that answers it is a different obligation. `tinyloops` depends on
+`tinyloops-bus` and re-exports all of it, so `tinyloops::GreetRequest` and
+`tinyloops_bus::GreetRequest` are the *same* type rather than structural twins,
 and a host is never forced to choose between linking the whole module and
 redefining the vocabulary. See
-[`crates/template-bus/README.md`](crates/template-bus/README.md).
+[`crates/tinyloops-bus/README.md`](crates/tinyloops-bus/README.md).
 
 Within each crate, feature areas use directory modules: implementation and
 exports live in `mod.rs`, substantial types move to `types.rs`, and unit tests
@@ -198,9 +198,9 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo build --all-targets --all-features
 cargo test --all-features
-cargo run -p template --example simple_loop
-cargo run -p template --features tinyagents --example tinyagents_harness
-cargo build -p template --release --lib   # produces the installable cdylib
+cargo run -p tinyloops --example simple_loop
+cargo run -p tinyloops --features tinyagents --example tinyagents_harness
+cargo build -p tinyloops --release --lib   # produces the installable cdylib
 ```
 
 Those four checks are exactly what CI runs. Optional extras:
@@ -218,8 +218,8 @@ Run the **Release** workflow from the Actions tab with a `patch`, `minor`, or
 `major` bump. Use `current` only to resume an interrupted release whose version
 commit and tag already exist. The workflow revalidates the workspace, versions
 and tags it — one `[workspace.package]` version that every member inherits —
-builds `crates/template` as a TinyBus `cdylib`, and creates a GitHub release.
-Assets follow `template-<version>-<platform>.<tar.gz|zip>` and contain the
+builds `crates/tinyloops` as a TinyBus `cdylib`, and creates a GitHub release.
+Assets follow `tinyloops-<version>-<platform>.<tar.gz|zip>` and contain the
 native module, its SHA-256 `modules.toml`, license, and
 [`MODULE.md`](MODULE.md). Every release also publishes `checksum.toml`, which
 TinyBus uses to verify an archive before extraction. The workflow loads the
