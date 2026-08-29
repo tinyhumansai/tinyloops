@@ -1346,3 +1346,101 @@ fn a_muted_arm_still_runs_its_node_and_still_converges() {
     assert_eq!(returned.delta_from(&state), crate::Delta::default());
     assert!(crate::Contribution::claimed_from(crate::step::STEP_JUDGE, &state, &returned).is_empty());
 }
+
+#[test]
+fn a_tuned_run_carries_a_third_arm_and_a_different_graph() {
+    let plain = assembled(Preset::Balanced).expect("the preset assembles");
+    let tuned = tuned_research_loop(
+        "bound the error term",
+        Preset::Balanced,
+        delegates(),
+        plan(),
+        Arc::new(Inline::of(
+            delegates(),
+            [(
+                "prover".to_owned(),
+                vec![Scripted::Answers {
+                    reply: "still working".to_owned(),
+                    artifacts: Vec::new(),
+                }],
+            )],
+        )),
+    )
+    .expect("the tuned preset assembles");
+
+    // A run that can revise itself and one that cannot are different loops, and
+    // the difference is in the topology rather than in an argument.
+    let graph = tuned.graph().expect("the tuned graph validates");
+    assert!(graph.node(Rules::NAME).is_some());
+    assert!(
+        plain
+            .graph()
+            .expect("the plain graph validates")
+            .node(Rules::NAME)
+            .is_none()
+    );
+    assert_ne!(
+        plain.signature().expect("signed"),
+        tuned.signature().expect("signed"),
+    );
+}
+
+#[test]
+fn a_tuned_run_reports_every_revision_and_every_refusal() {
+    // End to end, over the reference seams: the specialist keeps failing, the
+    // run notices the machinery rather than the work, and its report says what
+    // it changed about itself.
+    let tuned = tuned_research_loop(
+        "bound the error term",
+        Preset::Balanced,
+        delegates(),
+        plan(),
+        Arc::new(Inline::of(delegates(), [("prover".to_owned(), vec![])])),
+    )
+    .expect("the tuned preset assembles");
+
+    let sink = Arc::new(LineSink::new(std::io::sink()));
+    let recorder = Recorder::new("run", sink);
+    let driven = tuned.drive(&recorder).expect("a tuned run drives");
+
+    // The profile is an output, not a detail of the state.
+    assert_eq!(driven.profile, driven.state.profile);
+
+    // Whatever it proposed, every proposal is in the record and in the report,
+    // and the events say which were folded and which were refused.
+    let amended = recorder
+        .journal()
+        .into_iter()
+        .filter(|entry| {
+            matches!(
+                entry.event,
+                Event::Amended { .. } | Event::AmendmentRefused { .. }
+            )
+        })
+        .count();
+    assert_eq!(amended, driven.profile.history.len());
+
+    if !driven.profile.history.is_empty() {
+        assert!(driven.answer().contains("Revised itself"));
+        for recorded in &driven.profile.history {
+            assert!(
+                driven.answer().contains(&recorded.amendment.change.to_string()),
+                "the report omits {recorded}",
+            );
+        }
+    }
+}
+
+#[test]
+fn a_plain_run_proposes_nothing_and_says_nothing_about_revisions() {
+    // The tuner is optional, and a loop without one costs nothing for it and
+    // reports no section about it.
+    let driven = assembled(Preset::Balanced)
+        .expect("the preset assembles")
+        .drive(&Recorder::new("run", Arc::new(LineSink::new(std::io::sink()))))
+        .expect("a plain run drives");
+
+    assert!(driven.profile.history.is_empty());
+    assert_eq!(driven.profile.revision, 0);
+    assert!(!driven.answer().contains("Revised itself"));
+}
