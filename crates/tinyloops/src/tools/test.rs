@@ -60,9 +60,7 @@ fn constructing_without_a_group_leaves_it_absent_from_schemas() {
     assert!(names.contains(&"read".to_owned()));
     assert!(!names.contains(&"execute".to_owned()));
     assert!(
-        set.schemas()
-            .iter()
-            .all(|schema| schema.name != "execute"),
+        set.schemas().iter().all(|schema| schema.name != "execute"),
         "a withheld group is not in the model-facing schemas"
     );
     assert!(set.tool("execute").is_none());
@@ -110,7 +108,11 @@ fn the_model_facing_and_introspection_schema_sets_differ() {
 
     assert_ne!(model_facing, declared);
     assert!(declared.parameters["properties"].get("sandbox").is_some());
-    assert!(model_facing.parameters["properties"].get("sandbox").is_none());
+    assert!(
+        model_facing.parameters["properties"]
+            .get("sandbox")
+            .is_none()
+    );
     let required = model_facing.parameters["required"].as_array().unwrap();
     assert!(!required.contains(&Value::String("sandbox".to_owned())));
 }
@@ -276,9 +278,13 @@ fn the_reference_set_separates_read_search_edit_and_execute() {
 
     assert_eq!(set.names(), vec!["read", "search", "edit", "execute"]);
     assert_eq!(
-        set.invoke(&ToolInvocation::new("c", "read", json!({ "path": "plan.md" })))
-            .unwrap()
-            .content,
+        set.invoke(&ToolInvocation::new(
+            "c",
+            "read",
+            json!({ "path": "plan.md" })
+        ))
+        .unwrap()
+        .content,
         "attempt, evaluate, route, budget"
     );
     assert_eq!(
@@ -335,7 +341,10 @@ fn each_reference_tool_reports_its_own_bad_arguments() {
             json!({ "path": "nope.md", "from": "a", "to": "b" }),
         ))
         .unwrap();
-    assert_eq!(unknown_document.content, "tool error: no document named nope.md");
+    assert_eq!(
+        unknown_document.content,
+        "tool error: no document named nope.md"
+    );
 
     let absent_fragment = set
         .invoke(&ToolInvocation::new(
@@ -350,7 +359,11 @@ fn each_reference_tool_reports_its_own_bad_arguments() {
     );
 
     let no_command = set
-        .invoke(&ToolInvocation::new("c", "execute", json!({ "command": "" })))
+        .invoke(&ToolInvocation::new(
+            "c",
+            "execute",
+            json!({ "command": "" }),
+        ))
         .unwrap();
     assert_eq!(no_command.content, "tool error: execute needs a command");
 }
@@ -360,7 +373,11 @@ fn a_receipt_names_the_tool_that_ran() {
     let set = ToolSet::new(ToolGrant::all());
 
     let outcome = set
-        .invoke(&ToolInvocation::new("c", "read", json!({ "path": "notes.md" })))
+        .invoke(&ToolInvocation::new(
+            "c",
+            "read",
+            json!({ "path": "notes.md" }),
+        ))
         .unwrap();
 
     assert_eq!(outcome.receipt().tool(), "read");
@@ -378,12 +395,15 @@ fn a_grant_holds_exactly_the_groups_it_names() {
     assert!(!grant.holds(ToolGroup::Edit));
     assert!(!grant.holds(ToolGroup::Execute));
     assert_eq!(ToolSet::new(grant).grant(), grant);
-    assert_eq!(ToolGrant::default(), ToolGrant {
-        read: false,
-        search: false,
-        edit: false,
-        execute: false,
-    });
+    assert_eq!(
+        ToolGrant::default(),
+        ToolGrant {
+            read: false,
+            search: false,
+            edit: false,
+            execute: false,
+        }
+    );
 }
 
 #[test]
@@ -403,11 +423,12 @@ fn the_names_of_the_vocabulary_are_the_wire_names() {
         serde_json::from_str::<Recovery>("\"salvage\"").unwrap(),
         Recovery::Salvage
     );
-    assert_eq!(
-        serde_json::from_str::<ToolGrant>(r#"{"read":true,"search":false,"edit":false,"execute":true}"#)
-            .unwrap()
-            .execute,
-        true
+    assert!(
+        serde_json::from_str::<ToolGrant>(
+            r#"{"read":true,"search":false,"edit":false,"execute":true}"#
+        )
+        .unwrap()
+        .execute
     );
     assert_eq!(
         serde_json::from_str::<ToolGroup>("\"read\"").unwrap(),
@@ -420,11 +441,17 @@ fn a_call_round_trips_through_its_wire_form() {
     let call = ToolInvocation::new("c", "read", json!({ "path": "notes.md" }));
     let encoded = serde_json::to_string(&call).unwrap();
 
-    assert_eq!(serde_json::from_str::<ToolInvocation>(&encoded).unwrap(), call);
+    assert_eq!(
+        serde_json::from_str::<ToolInvocation>(&encoded).unwrap(),
+        call
+    );
 
     let schema = ToolSchema::new("read", "read one document", &["path"]);
     let encoded = serde_json::to_string(&schema).unwrap();
-    assert_eq!(serde_json::from_str::<ToolSchema>(&encoded).unwrap(), schema);
+    assert_eq!(
+        serde_json::from_str::<ToolSchema>(&encoded).unwrap(),
+        schema
+    );
 }
 
 #[test]
@@ -433,7 +460,10 @@ fn a_salvage_reports_what_it_rebuilt_and_a_requery_reports_the_error() {
     let requery = ToolError::requery("no such thing");
     let fatal = ToolError::fatal("nothing left");
 
-    assert_eq!(salvaged.model_readable(), "the sandbox is gone (salvaged) a diff");
+    assert_eq!(
+        salvaged.model_readable(),
+        "the sandbox is gone (salvaged) a diff"
+    );
     assert_eq!(requery.model_readable(), "tool error: no such thing");
     assert_eq!(fatal.recovery, Recovery::Fatal);
     assert_eq!(fatal.salvage, None);
