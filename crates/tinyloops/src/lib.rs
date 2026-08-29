@@ -66,8 +66,9 @@ mod tinybus_module;
 pub use budget::{Bound, Caps, Meter, RunBudget, TOOL_CALLS_PER_MODEL_CALL};
 pub use error::{Error, Result};
 pub use observe::{
-    Accounting, Capture, Entry, Event, FanOutSink, JsonlSink, LineSink, ModelCall, PassProfile,
-    Recorder, RedactingSink, Report, Sink, Spend, StepTiming, ToolCall, Unit, Unpaired, render,
+    Accounting, CallSink, Capture, Entry, Event, FanOutSink, JsonlSink, LineSink, ModelCall,
+    Movement, PassProfile, Recorder, RedactingSink, Report, Sink, Spend, StepTiming, ToolCall, Unit,
+    Unpaired, render,
 };
 pub use greeting::greet;
 // The loop's accumulator and the decision made from it. `state` is what one
