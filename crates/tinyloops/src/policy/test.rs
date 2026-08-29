@@ -43,8 +43,8 @@ use serde_json::Value;
 use tinyflows::expr;
 
 use super::{
-    Autonomy, Judgement, LoopProfile, Outcome, Route, Thresholds, expr_scope, is_terminal, ladder,
-    route, terminal_condition,
+    Amendment, Autonomy, Bounds, CapField, Change, Judgement, LoopProfile, Outcome, Range, Route,
+    ThresholdField, Thresholds, expr_scope, is_terminal, ladder, route, terminal_condition,
 };
 use crate::Error;
 use crate::state::LoopState;
@@ -796,4 +796,282 @@ fn a_profile_written_without_a_revision_deserializes() {
 
     let empty: LoopProfile = serde_json::from_value(serde_json::json!({})).unwrap();
     assert_eq!(empty, LoopProfile::default());
+}
+
+// --- amendments and bounds -------------------------------------------------
+
+/// The change every test below starts from.
+fn stuck_to(value: u32) -> Change {
+    Change::Threshold {
+        field: ThresholdField::Stuck,
+        to: value,
+    }
+}
+
+#[test]
+fn a_threshold_field_reads_and_writes_the_field_it_names() {
+    // The one place a field name and a struct field are joined by hand, so the
+    // round trip is asserted rather than assumed. A `Stuck` that wrote
+    // `blocked` would move a run's routing to a field nobody proposed.
+    for (index, field) in ThresholdField::ALL.into_iter().enumerate() {
+        let mut thresholds = Thresholds::default();
+        let written = u32::try_from(index).unwrap() + 40;
+        field.write(&mut thresholds, written);
+
+        assert_eq!(field.read(&thresholds), written);
+        for other in ThresholdField::ALL {
+            if other != field {
+                assert_eq!(
+                    other.read(&thresholds),
+                    other.read(&Thresholds::default()),
+                    "{field} moved {other}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_cap_field_reads_and_writes_the_field_it_names() {
+    for field in CapField::ALL {
+        let mut caps = crate::budget::Caps::default();
+        field.write(&mut caps, 7);
+        assert_eq!(field.read(&caps), 7);
+    }
+}
+
+#[test]
+fn the_amendment_wire_form_is_pinned() {
+    let amendment = Amendment::new("tune", 3, stuck_to(3), "diversifying did not pay");
+
+    assert_eq!(
+        serde_json::to_value(&amendment).unwrap(),
+        serde_json::json!({
+            "proposer": "tune",
+            "pass": 3,
+            "change": { "change": "threshold", "field": "stuck", "to": 3 },
+            "because": "diversifying did not pay",
+        })
+    );
+    assert_eq!(
+        serde_json::from_value::<Amendment>(serde_json::to_value(&amendment).unwrap()).unwrap(),
+        amendment,
+    );
+}
+
+#[test]
+fn every_change_round_trips_and_renders() {
+    let changes = [
+        stuck_to(3),
+        Change::Cap {
+            field: CapField::MaxTokens,
+            to: 1_000,
+        },
+        Change::MuteArm {
+            arm: "judge".to_owned(),
+        },
+        Change::UnmuteArm {
+            arm: "judge".to_owned(),
+        },
+    ];
+
+    for change in changes {
+        let encoded = serde_json::to_value(&change).unwrap();
+        assert_eq!(serde_json::from_value::<Change>(encoded).unwrap(), change);
+        assert!(!change.to_string().is_empty());
+    }
+}
+
+#[test]
+fn a_change_names_the_arm_it_moves_and_nothing_else() {
+    assert_eq!(
+        Change::MuteArm {
+            arm: "judge".to_owned()
+        }
+        .arm(),
+        Some("judge")
+    );
+    assert_eq!(stuck_to(3).arm(), None);
+}
+
+#[test]
+fn a_range_holds_its_endpoints_and_nothing_past_them() {
+    let range = Range::new(1, 4);
+    assert!(range.holds(1));
+    assert!(range.holds(4));
+    assert!(!range.holds(0));
+    assert!(!range.holds(5));
+}
+
+#[test]
+fn a_change_outside_its_range_is_refused_rather_than_clamped() {
+    let bounds = Bounds::none().threshold(ThresholdField::Stuck, Range::new(1, 4));
+
+    assert!(bounds.check(&stuck_to(4)).is_ok());
+    assert_eq!(
+        bounds.check(&stuck_to(5)).unwrap_err(),
+        Error::AmendmentOutOfBounds {
+            field: "stuck".to_owned(),
+            value: 5,
+            low: 1,
+            high: 4,
+        },
+    );
+}
+
+#[test]
+fn a_field_with_no_bound_cannot_be_amended_at_all() {
+    // The safe default, and the deliberate one: bounds written without thinking
+    // about a field are bounds that do not let a tuner touch it.
+    let bounds = Bounds::none();
+    assert_eq!(
+        bounds.check(&stuck_to(2)).unwrap_err(),
+        Error::UnboundedAmendment {
+            field: "stuck".to_owned(),
+        },
+    );
+    assert_eq!(
+        bounds
+            .check(&Change::MuteArm {
+                arm: "judge".to_owned()
+            })
+            .unwrap_err(),
+        Error::UnboundedAmendment {
+            field: "judge".to_owned(),
+        },
+    );
+}
+
+#[test]
+fn narrowing_only_ever_tightens() {
+    let preset = Bounds::none()
+        .threshold(ThresholdField::Stuck, Range::new(1, 6))
+        .threshold(ThresholdField::MaxAttempts, Range::new(4, 12))
+        .cap(CapField::MaxTokens, Range::new(1, 1_000))
+        .mutable("judge")
+        .mutable("reflect")
+        .amendments(4)
+        .window(2);
+    let deployment = Bounds::none()
+        .threshold(ThresholdField::Stuck, Range::new(2, 3))
+        .cap(CapField::MaxTokens, Range::new(1, 9_999))
+        .mutable("judge")
+        .amendments(99)
+        .window(9);
+
+    let narrowed = preset.narrow(&deployment);
+
+    // Intersected where both spoke.
+    assert_eq!(narrowed.thresholds[&ThresholdField::Stuck], Range::new(2, 3));
+    assert_eq!(narrowed.caps[&CapField::MaxTokens], Range::new(1, 1_000));
+    // Dropped where only one did: silence is not permission.
+    assert!(!narrowed.thresholds.contains_key(&ThresholdField::MaxAttempts));
+    assert_eq!(narrowed.mutable_arms.len(), 1);
+    // A deployment cannot buy the run more amendments, or a shorter window
+    // before an arm may be retired.
+    assert_eq!(narrowed.max_amendments, 4);
+    assert_eq!(narrowed.muting_window, 9);
+}
+
+#[test]
+fn folding_an_amendment_bumps_the_revision_and_records_it() {
+    let bounds = crate::presets::Preset::Balanced.bounds();
+    let mut profile = LoopProfile::of(crate::presets::Preset::Balanced);
+
+    let verdict = profile.fold(Amendment::new("tune", 1, stuck_to(3), "because"), &bounds);
+
+    assert!(verdict.applied());
+    assert_eq!(profile.thresholds.stuck, 3);
+    assert_eq!(profile.revision, 1);
+    assert_eq!(profile.applied(), 1);
+    assert_eq!(profile.history.len(), 1);
+    assert!(profile.history[0].to_string().contains("stuck := 3"));
+}
+
+#[test]
+fn a_refused_amendment_leaves_the_profile_byte_identical() {
+    let bounds = crate::presets::Preset::Balanced.bounds();
+    let mut profile = LoopProfile::of(crate::presets::Preset::Balanced);
+    let before = profile.clone();
+
+    let verdict = profile.fold(Amendment::new("tune", 1, stuck_to(40), "because"), &bounds);
+
+    assert!(!verdict.applied());
+    assert_eq!(profile.thresholds, before.thresholds);
+    assert_eq!(profile.revision, 0);
+    assert_eq!(profile.applied(), 0);
+    // Recorded, though. A refusal nobody can see is a broken tuner nobody can
+    // see either.
+    assert_eq!(profile.history.len(), 1);
+    assert!(profile.history[0].to_string().contains("refused"));
+}
+
+#[test]
+fn a_run_at_its_amendment_budget_refuses_the_next_and_carries_on() {
+    let bounds = Bounds::none()
+        .threshold(ThresholdField::Stuck, Range::new(1, 9))
+        .amendments(2);
+    let mut profile = LoopProfile::of(crate::presets::Preset::Balanced);
+
+    for value in [3, 4] {
+        assert!(
+            profile
+                .fold(Amendment::new("tune", 1, stuck_to(value), "because"), &bounds)
+                .applied()
+        );
+    }
+    let third = profile.fold(Amendment::new("tune", 2, stuck_to(5), "because"), &bounds);
+
+    assert!(!third.applied());
+    assert_eq!(profile.thresholds.stuck, 4, "the profile stopped at the budget");
+    assert_eq!(profile.revision, 2);
+    assert_eq!(profile.history.len(), 3);
+}
+
+#[test]
+fn muting_moves_the_profile_and_unmuting_moves_it_back() {
+    let bounds = Bounds::none().mutable("judge").amendments(2);
+    let mut profile = LoopProfile::of(crate::presets::Preset::Balanced);
+
+    profile.fold(
+        Amendment::new(
+            "tune",
+            1,
+            Change::MuteArm {
+                arm: "judge".to_owned(),
+            },
+            "silent",
+        ),
+        &bounds,
+    );
+    assert!(profile.is_muted("judge"));
+
+    profile.fold(
+        Amendment::new(
+            "tune",
+            2,
+            Change::UnmuteArm {
+                arm: "judge".to_owned(),
+            },
+            "wanted again",
+        ),
+        &bounds,
+    );
+    assert!(!profile.is_muted("judge"));
+}
+
+#[test]
+fn every_preset_states_its_bounds_and_none_of_them_permits_everything() {
+    for preset in crate::presets::Preset::ALL {
+        let bounds = preset.bounds();
+        assert!(bounds.max_amendments > 0, "{preset} cannot revise itself");
+        assert!(!bounds.thresholds.is_empty(), "{preset} bounds no threshold");
+        // No preset may tune its way out of the ceiling that stops a run: the
+        // attempt cap can never be raised past the head's runaway backstop, or
+        // the amendment folds, reads back as raised, and buys nothing.
+        let backstop = u64::from(crate::budget::Caps::default().max_iterations);
+        if let Some(range) = bounds.thresholds.get(&ThresholdField::MaxAttempts) {
+            assert!(range.high <= backstop, "{preset} may amend past the backstop");
+        }
+    }
 }
