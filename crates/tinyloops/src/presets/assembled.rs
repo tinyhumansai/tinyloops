@@ -494,7 +494,7 @@ pub fn research_loop(
     registry.register(Arc::new(ArmStep::new(Arc::clone(&judge))))?;
     let arms = ArmSet::new(vec![reflect, judge])?;
     registry.register(Arc::new(Converge::new(arms.clone())))?;
-    registry.register(Arc::new(Advance))?;
+    registry.register(Arc::new(Advance::new(preset.bounds())))?;
     registry.register(Arc::new(ReportStep::new(Arc::new(Summarize))))?;
 
     AssembledLoop::new(goal, preset, arms, registry, RunBudget::default())

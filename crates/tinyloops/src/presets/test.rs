@@ -810,11 +810,11 @@ fn the_pass_step_counts_the_pass_by_assignment_and_consumes_the_steer() {
     let mut state = LoopState::new("goal");
     state.steer = "narrow the claim".to_owned();
 
-    let once = Advance
+    let once = Advance::default()
         .run(state, advancing(4, &thresholds))
         .expect("pass runs")
         .into_state();
-    let twice = Advance
+    let twice = Advance::default()
         .run(once.clone(), advancing(4, &thresholds))
         .expect("pass runs again")
         .into_state();
