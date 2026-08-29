@@ -41,6 +41,20 @@ tinybus = { path = "vendor/tinybus/crates/tinybus", version = "0.1.0", default-f
 # The module-side SDK owns the isolated runtime and exports the ABI entrypoints
 # required by TinyBus's dynamic loader.
 tinybus-module = { path = "vendor/tinybus/crates/tinybus-module", version = "0.1.0" }
+# The workflow engine this project builds its loop framework on. Vendored as the
+# `vendor/tinyflows` submodule and pinned by its gitlink, the same arrangement
+# TinyBus uses. It is host-agnostic by construction — every effect goes through
+# a capability trait the embedder implements — so no feature here pulls in an
+# HTTP client, a browser protocol, or a process spawner. `store` is on because
+# the loop needs the durable model around a graph (versioned documents, run
+# records, proposals) to have anything to iterate over.
+tinyflows = { path = "vendor/tinyflows", version = "0.8.0", default-features = false, features = [
+    "store",
+] }
+# The adaptive loop that lives beside the engine: select or author a graph, run
+# it, judge the result, learn. `default-features = false` drops the bundled
+# SQLite build so a backend is a deliberate choice rather than a default.
+tinyflows-adaptive = { path = "vendor/tinyflows/crates/adaptive", version = "0.1.0", default-features = false }
 # Derive macros for the crate-wide error type in `crates/template/src/error/`.
 # Every dependency entry should carry a comment like this one saying why it is
 # here.
