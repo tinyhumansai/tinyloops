@@ -43,7 +43,7 @@ use tinyflows::testkit::{MockCaps, RunTrace, RunTracer};
 
 use tinyloops::{
     Artifact, DelegateSet, Error, FixedPlan, Inline, LineSink, LoopState, Preset, RUN_LOOP_STEP,
-    Recorder, SOLVED_MARKER, Scripted, StepRegistry, Thresholds, research_loop, run_loop_step,
+    Recorder, SOLVED_MARKER, Scripted, StepRegistry, research_loop, run_loop_step,
 };
 
 // ------------------------------------------------------------------ fixtures

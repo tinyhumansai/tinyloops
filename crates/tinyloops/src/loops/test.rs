@@ -412,7 +412,7 @@ fn the_accumulator_update_is_an_assignment_not_an_increment() {
 #[test]
 fn the_emitted_graph_validates_and_compiles() {
     for autonomy in [Autonomy::Report, Autonomy::Assisted, Autonomy::Unattended] {
-        let graph = graph_at(autonomy, Thresholds::default());
+        let graph = graph_at(autonomy, LoopProfile::default());
         tinyflows::validate::validate(&graph).expect("the emitted graph validates");
         tinyflows::compiler::compile(&graph).expect("the emitted graph compiles");
     }
@@ -441,7 +441,7 @@ fn a_step_absent_from_the_registry_is_a_build_error() {
             .register(Arc::new(Body(name)))
             .expect("each step is registered once");
     }
-    let error = LoopBuilder::new(Thresholds::default(), arms(), missing)
+    let error = LoopBuilder::new(arms(), missing)
         .autonomy(Autonomy::Unattended)
         .build()
         .expect_err("a node naming an unregistered step cannot build");
@@ -475,7 +475,7 @@ fn a_graph_that_fails_validation_is_a_named_error() {
 #[test]
 fn assisted_emits_an_approval_point_and_unattended_does_not() {
     let ids = NodeIds::default();
-    let assisted = graph_at(Autonomy::Assisted, Thresholds::default());
+    let assisted = graph_at(Autonomy::Assisted, LoopProfile::default());
     let approval = assisted.node(ids.approval).expect("assisted asks");
     assert_eq!(approval.kind, NodeKind::Approval);
     // The attempt is reachable only through it.
@@ -487,7 +487,7 @@ fn assisted_emits_an_approval_point_and_unattended_does_not() {
         .collect();
     assert_eq!(into_attempt, [ids.approval]);
 
-    let unattended = graph_at(Autonomy::Unattended, Thresholds::default());
+    let unattended = graph_at(Autonomy::Unattended, LoopProfile::default());
     assert!(unattended.node(ids.approval).is_none());
     let into_attempt: Vec<&str> = unattended
         .edges
@@ -500,7 +500,7 @@ fn assisted_emits_an_approval_point_and_unattended_does_not() {
 
 #[test]
 fn report_autonomy_emits_no_node_that_acts() {
-    let graph = graph_at(Autonomy::Report, Thresholds::default());
+    let graph = graph_at(Autonomy::Report, LoopProfile::default());
     let ids = NodeIds::default();
     for absent in [ids.loop_head, ids.attempt, ids.merge, ids.route, ids.pass] {
         assert!(graph.node(absent).is_none(), "{absent} acts");
