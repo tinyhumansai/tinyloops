@@ -4,6 +4,7 @@
 - **Owner:** Maintainers
 - **Related:** [`routing-and-policy.md`](routing-and-policy.md),
   [`orchestrator.md`](orchestrator.md),
+  [`adaptation.md`](adaptation.md) — which proposes amending invariant 7,
   [ADR 0002](../adr/0002-loop-on-the-tinyflows-graph.md),
   [ADR 0004](../adr/0004-routing-in-the-graph-steps-in-rust.md)
 

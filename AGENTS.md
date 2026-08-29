@@ -25,6 +25,8 @@ code:
 - [`workspace-and-ledgers.md`](docs/specs/workspace-and-ledgers.md) — what a run
   writes down and where
 - [`budget.md`](docs/specs/budget.md) — the limits every run carries
+- [`adaptation.md`](docs/specs/adaptation.md) — what a run may revise about
+  itself mid-run, who may propose it, and what bounds it
 - [`observability.md`](docs/specs/observability.md) — the events a run emits
 - [`prior-art.md`](docs/specs/prior-art.md) — the evidence each default rests
   on, what the record contradicts, and what it does not settle; its sources are
