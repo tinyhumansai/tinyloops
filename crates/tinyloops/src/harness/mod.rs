@@ -410,11 +410,11 @@ impl ScriptedDelegate {
 impl Scripted {
     /// The outcome this script entry describes for `brief`.
     ///
-    /// Public because the reference dispatcher in
-    /// [`orchestrate`](crate::orchestrate_docs) collects specialists
-    /// synchronously and must produce byte-identical outcomes to the ones
-    /// [`ScriptedDelegate`] produces asynchronously. Two spellings of the same
-    /// mapping is how a test starts agreeing with a bug.
+    /// Public because the reference dispatcher behind
+    /// [`Specialists`](crate::Specialists) collects synchronously and must
+    /// produce exactly the outcomes [`ScriptedDelegate`] produces
+    /// asynchronously. Two spellings of one mapping is how a test starts
+    /// agreeing with a bug.
     #[must_use]
     pub fn outcome(&self, brief: Brief) -> DelegationOutcome {
         match self {
