@@ -73,10 +73,20 @@ passes without consulting anything else.
 
 ### The `Sink` and the recorder
 
-A `Sink` receives loop events. A recorder implements **both** the engine's
-`RunObserver` and the harness's `EventListener`, so all three planes — loop
-events, node activations, and model and tool calls — land in one ordered stream,
-each entry tagged with a `who` label.
+A `Sink` receives loop events. A recorder implements the engine's `RunObserver`
+directly, and accepts the model-and-tool-call plane through a crate-local
+`CallSink` trait, so all three planes — loop events, node activations, and model
+and tool calls — land in one ordered stream, each entry tagged with a `who`
+label.
+
+The third plane arrives through a local trait rather than by implementing the
+harness's `EventListener` because `AGENTS.md` requires that nothing under
+`src/` is gated on the optional `tinyagents` dependency: a module a host loads
+must resolve neither it nor its HTTP client. `CallSink` is the seam that keeps
+that true, and the `EventListener` bridge onto it lives in the
+`tinyagents_harness` example, behind the feature. The ordering guarantee is
+unaffected — one recorder, one journal, one stream — and an embedder using a
+different harness implements `CallSink` instead of being locked out.
 
 `child(label)` returns a view that shares the same counters and the same
 journal, differing only in its label. One journal, many views: a per-role view
@@ -153,8 +163,9 @@ reports the number that inverts.
 
 - Every loop transition named in the vocabulary emits exactly one event, and
   every event names its pass.
-- The recorder implements both `RunObserver` and `EventListener`, and all three
-  planes share one ordered stream with a `who` label per entry.
+- The recorder implements `RunObserver` and accepts calls through `CallSink`,
+  and all three planes share one ordered stream with a `who` label per entry.
+  Nothing under `src/` names a `tinyagents` type.
 - `child(label)` shares the parent's counters and journal. No view owns a
   separate journal.
 - Cost and token fields are populated from the provider's response. No local
@@ -178,9 +189,11 @@ reports the number that inverts.
 
 ## Acceptance criteria
 
-- A recorder registered as both a `RunObserver` and an `EventListener` produces
+- A recorder registered as a `RunObserver` and fed through `CallSink` produces
   one stream in which a node activation and a model call emitted during the same
   pass appear in their true order, each with a distinct `who` label.
+- `cargo tree -p tinyloops -e normal` on a default build names no `tinyagents`
+  crate, and the `tinyagents_harness` example still drives the same recorder.
 - Events from `child("judge")` and its parent appear in the same journal, and
   the parent's counters include the child's.
 - A run with no step ever emitting a completion event fails a test that asserts
