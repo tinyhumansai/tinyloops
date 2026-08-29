@@ -5,7 +5,7 @@ resolver = "3"
 # package: the crate a host loads is `crates/tinyloops`, the same as any other
 # member. Keeping the root virtual is what makes that uniform — a root package
 # would make one crate structurally different from the rest for no reason other
-# than history, and it is the arrangement this template moved away from.
+# than history, and it is the arrangement this workspace moved away from.
 members = ["crates/*"]
 # `vendor/` holds the pinned TinyBus submodule, which is its own workspace with
 # its own lockfile. `worktrees/` holds `git worktree` checkouts of this same

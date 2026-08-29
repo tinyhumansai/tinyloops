@@ -5,10 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "A production-ready template for installable TinyBus modules."
+description = "A loop engineering framework: the scaffolding for agentic loops that run a workflow, judge what came back, and decide whether to go round again."
 documentation = "https://docs.rs/tinyloops"
 readme = "../../README.md"
-keywords = ["tinybus", "module", "plugin", "template"]
+keywords = ["agent", "loop", "workflow", "tinyflows", "tinybus"]
 categories = ["development-tools"]
 publish = false
 
