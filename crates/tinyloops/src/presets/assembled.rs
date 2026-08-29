@@ -34,7 +34,7 @@ use crate::orchestrate::{
     Attempt, Decompose, DelegateSet, Orchestrator, Plan, Report as ReportStep, Specialists,
     Summarize,
 };
-use crate::policy::{Autonomy, LoopProfile, Outcome, Route, route};
+use crate::policy::{Autonomy, LoopProfile, Outcome, Route, Verdict, route};
 use crate::state::LoopState;
 use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry};
 use crate::tools::ToolGrant;
@@ -269,13 +269,40 @@ impl AssembledLoop {
             });
 
             meter.pass(!state.last_attempt.is_empty());
-            state.passes = pass.saturating_add(1);
+
+            // The `pass` step, run rather than re-implemented. It counts the
+            // pass, clears the steer, and folds whatever amendment the tuner
+            // proposed — and a driver that inlined the first of those and
+            // skipped the other two would be a second, quieter loop.
+            let folded = state.profile.history.len();
+            state = self.run_step(STEP_PASS, state, pass, recorder)?;
+            for recorded in &state.profile.history[folded..] {
+                recorder.record(match &recorded.verdict {
+                    Verdict::Applied => Event::Amended {
+                        pass,
+                        revision: state.profile.revision,
+                        change: recorded.amendment.change.clone(),
+                        because: recorded.amendment.because.clone(),
+                    },
+                    Verdict::Refused { reason } => Event::AmendmentRefused {
+                        pass,
+                        change: recorded.amendment.change.clone(),
+                        reason: reason.clone(),
+                    },
+                });
+            }
+
             recorder.record(Event::PassFinished {
                 pass,
                 duration: Duration::ZERO,
             });
 
-            if let Some(tripped) = self.budget.tripped(&meter) {
+            // Narrowed by the run's own caps, so a `Cap` amendment actually
+            // tightens what the run may spend. `narrow` takes the lower of the
+            // two field by field, so a run can restrict itself and can never
+            // spend past the budget its embedder set.
+            let budget = self.budget.narrow(state.profile.caps)?;
+            if let Some(tripped) = budget.tripped(&meter) {
                 bound = Some(tripped);
                 recorder.record(Event::BoundTripped {
                     pass,
