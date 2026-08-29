@@ -322,7 +322,7 @@ async fn an_arm_reading_the_accumulator_is_handed_a_one_pass_stale_report() {
         .expect("the arm is emitted");
     // The bug, written out: the head folds at the *top* of a pass, so mid-body
     // the accumulator holds the state as of the previous one.
-    arm.config["args"]["report"] = json!(NodeIds::default().accumulator_address());
+    arm.config["args"]["state"] = json!(NodeIds::default().accumulator_address());
 
     let mut histories = Vec::new();
     for graph in [&correct, &rewired] {
@@ -332,7 +332,7 @@ async fn an_arm_reading_the_accumulator_is_handed_a_one_pass_stale_report() {
             .calls_for("judge")
             .iter()
             .map(|args| {
-                args["report"]["last_attempt"]
+                args["state"]["last_attempt"]
                     .as_str()
                     .unwrap_or_default()
                     .to_string()
