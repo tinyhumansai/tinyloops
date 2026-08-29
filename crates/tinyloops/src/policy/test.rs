@@ -43,8 +43,8 @@ use serde_json::Value;
 use tinyflows::expr;
 
 use super::{
-    Autonomy, Judgement, Outcome, Route, Thresholds, expr_scope, is_terminal, ladder, route,
-    terminal_condition,
+    Autonomy, Judgement, LoopProfile, Outcome, Route, Thresholds, expr_scope, is_terminal, ladder,
+    route, terminal_condition,
 };
 use crate::Error;
 use crate::state::LoopState;
