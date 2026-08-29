@@ -117,6 +117,15 @@ pub fn render(event: &Event) -> String {
         Event::NoteDropped { from, capacity, .. } => {
             format!("pass {pass} note from {from} dropped, mailbox full at {capacity}")
         }
+        Event::Amended {
+            revision,
+            change,
+            because,
+            ..
+        } => format!("pass {pass} amended to r{revision}: {change} — {because}"),
+        Event::AmendmentRefused { change, reason, .. } => {
+            format!("pass {pass} refused {change}: {reason}")
+        }
         Event::ArmStarted { arm, .. } => format!("pass {pass} arm {arm} started"),
         Event::ArmFinished { arm, duration, .. } => {
             format!("pass {pass} arm {arm} finished in {duration:?}")
