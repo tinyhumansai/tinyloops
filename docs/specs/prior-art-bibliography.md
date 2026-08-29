@@ -24,6 +24,7 @@ restate one without the marker.
 - Huang, Chen, Mishra, Zheng, Yu, Song, Zhou. *Large Language Models Cannot Self-Correct Reasoning Yet.* ICLR 2024. https://arxiv.org/abs/2310.01798
 - Valmeekam, Marquez, Kambhampati. *Can Large Language Models Really Improve by Self-critiquing Their Own Plans?* 2023. https://arxiv.org/abs/2310.08118
 - Stechly, Marquez, Kambhampati. *GPT-4 Doesn't Know It's Wrong.* 2023. https://arxiv.org/abs/2310.12397
+- Kamoi, Zhang, Zhang, Han, Zhang. *When Can LLMs Actually Correct Their Own Mistakes? A Critical Survey of Self-Correction of LLMs.* TACL 2024. https://arxiv.org/abs/2406.01297
 - Gou et al. *CRITIC: Large Language Models Can Self-Correct with Tool-Interactive Critiquing.* ICLR 2024. https://arxiv.org/abs/2305.11738
 - Song, Zhang, Eisenach, Kakade, Foster, Ghai. *Mind the Gap: Examining the Self-Improvement Capabilities of Large Language Models.* ICLR 2025. https://arxiv.org/abs/2412.02674
 - Snell, Lee, Xu, Kumar. *Scaling LLM Test-Time Compute Optimally.* 2024. https://arxiv.org/abs/2408.03314
