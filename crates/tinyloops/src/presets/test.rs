@@ -588,7 +588,11 @@ fn a_model_call_cap_below_the_iteration_cap_stops_the_run_first() {
 
     let driven = assembled.drive(&quiet()).expect("the loop drives");
 
-    assert_eq!(driven.routes.len(), 5, "one attempt a pass, five model calls");
+    assert_eq!(
+        driven.routes.len(),
+        5,
+        "one attempt a pass, five model calls"
+    );
     assert_eq!(driven.bound, Some(Bound::ModelCalls));
     assert_eq!(driven.outcome, Outcome::Exhausted);
 }
