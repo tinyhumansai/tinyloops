@@ -19,7 +19,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use tinyflows::caps::mock_capabilities;
+use tinyflows::caps::mock::mock_capabilities;
 
 use super::*;
 
