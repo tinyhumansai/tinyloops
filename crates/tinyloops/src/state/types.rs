@@ -199,6 +199,69 @@ impl Contribution {
         }
     }
 
+    /// Applies these claims to `state`.
+    ///
+    /// The inverse of [`Self::claimed_from`], and the reason both exist: under
+    /// the engine an arm's node returns a whole accumulator, not a
+    /// `Contribution`, so the claims have to survive the trip as *state*. An
+    /// arm applies them on the way out and the merge reads them back on the way
+    /// in.
+    ///
+    /// Applying is append-or-replace by field: a lesson and a score are
+    /// appended, everything else replaces. That is the same shape
+    /// [`LoopState::merge`] uses, because it is the same operation performed at
+    /// a different point.
+    pub fn apply_to(&self, state: &mut LoopState) {
+        if let Some(lesson) = self.lesson.clone() {
+            state.lessons.push(lesson);
+        }
+        if let Some(steer) = self.steer.clone() {
+            state.steer = steer;
+        }
+        if let Some(score) = self.score {
+            state.scores.push(score);
+        }
+        if let Some(judged) = self.judged {
+            state.judged = judged;
+        }
+        if let Some(last_attempt) = self.last_attempt.clone() {
+            state.last_attempt = last_attempt;
+        }
+    }
+
+    /// Reads back what `candidate` claims, relative to `base`.
+    ///
+    /// The inverse of [`Self::apply_to`], for the merge node. An arm's output
+    /// arrives as a whole accumulator; this recovers which narrative fields
+    /// that arm actually touched, so [`LoopState::merge`] can still refuse two
+    /// arms writing the same one.
+    ///
+    /// **A field is claimed when it differs from the base**, which is the only
+    /// signal available once the claims have been flattened into state. Two
+    /// consequences are worth stating rather than discovering. An arm that
+    /// re-writes a field with the value it already held claims nothing, and the
+    /// fold is the same either way. An arm that appends more than one lesson
+    /// has all of them read back, which is what a caller would want and is not
+    /// what a single `Option` could have expressed.
+    #[must_use]
+    pub fn claimed_from(arm: &'static str, base: &LoopState, candidate: &LoopState) -> Self {
+        let appended = |now: &[String], was: &[String]| -> Option<String> {
+            (now.len() > was.len()).then(|| now[was.len()..].join("\n"))
+        };
+
+        Self {
+            arm,
+            lesson: appended(&candidate.lessons, &base.lessons),
+            steer: (candidate.steer != base.steer).then(|| candidate.steer.clone()),
+            score: (candidate.scores.len() > base.scores.len())
+                .then(|| candidate.scores[base.scores.len()])
+                .or(None),
+            judged: (candidate.judged != base.judged).then_some(candidate.judged),
+            last_attempt: (candidate.last_attempt != base.last_attempt)
+                .then(|| candidate.last_attempt.clone()),
+        }
+    }
+
     /// Whether this contribution says nothing at all.
     ///
     /// An arm that ran and contributed nothing is ordinary — most arms only
