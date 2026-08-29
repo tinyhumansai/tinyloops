@@ -197,32 +197,32 @@ impl TerminationCondition {
     /// "stop when all of nothing holds" stops immediately, and one given "stop
     /// when any of nothing holds" runs to its cap.
     #[must_use]
-    pub fn expression(&self, thresholds: &Thresholds) -> String {
-        format!("={}", self.program(thresholds))
+    pub fn expression(&self) -> String {
+        format!("={}", self.program())
     }
 
     /// The `=`-less body, so a composed rule can nest it.
-    fn program(&self, thresholds: &Thresholds) -> String {
+    fn program(&self) -> String {
         match &self.rule {
             Rule::Terminal => {
-                let rendered = terminal_condition(thresholds);
+                let rendered = terminal_condition();
                 let body = rendered.strip_prefix('=').unwrap_or(&rendered);
                 format!("({body})")
             }
             Rule::Expired => "((.state // .item) as $s | (($s | .expired) // false))".to_string(),
             Rule::Solved => "((.state // .item) as $s | (($s | .solved) // false))".to_string(),
-            Rule::All(inner) => Self::join(inner, thresholds, "and", "true"),
-            Rule::Any(inner) => Self::join(inner, thresholds, "or", "false"),
+            Rule::All(inner) => Self::join(inner, "and", "true"),
+            Rule::Any(inner) => Self::join(inner, "or", "false"),
         }
     }
 
-    fn join(inner: &[Self], thresholds: &Thresholds, operator: &str, empty: &str) -> String {
+    fn join(inner: &[Self], operator: &str, empty: &str) -> String {
         if inner.is_empty() {
             return format!("({empty})");
         }
         let parts: Vec<String> = inner
             .iter()
-            .map(|condition| condition.program(thresholds))
+            .map(|condition| condition.program())
             .collect();
         format!("({})", parts.join(&format!(" {operator} ")))
     }

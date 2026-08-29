@@ -304,7 +304,8 @@ impl Outcome {
     /// assert_eq!(Outcome::classify(&state, &Thresholds::default()), Outcome::Exhausted);
     /// ```
     #[must_use]
-    pub fn classify(state: &LoopState, thresholds: &Thresholds) -> Self {
+    pub fn classify(state: &LoopState) -> Self {
+        let thresholds = &state.profile.thresholds;
         if state.blocked >= thresholds.blocked {
             Self::Blocked
         } else if state.expired || state.attempts >= thresholds.max_attempts {

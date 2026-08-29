@@ -82,7 +82,8 @@ use crate::state::LoopState;
 /// assert_eq!(route(&state, &thresholds), Route::Blocked);
 /// ```
 #[must_use]
-pub fn route(state: &LoopState, thresholds: &Thresholds) -> Route {
+pub fn route(state: &LoopState) -> Route {
+    let thresholds = &state.profile.thresholds;
     if state.blocked >= thresholds.blocked {
         Route::Blocked
     } else if state.solved || state.attempts >= thresholds.max_attempts {
@@ -119,10 +120,10 @@ pub fn route(state: &LoopState, thresholds: &Thresholds) -> Route {
 /// assert!(is_terminal(&state, &thresholds));
 /// ```
 #[must_use]
-pub fn is_terminal(state: &LoopState, thresholds: &Thresholds) -> bool {
+pub fn is_terminal(state: &LoopState) -> bool {
     state.expired
-        || state.restarts >= thresholds.max_restarts
-        || route(state, thresholds).is_terminal()
+        || state.restarts >= state.profile.thresholds.max_restarts
+        || route(state).is_terminal()
 }
 
 #[cfg(test)]
