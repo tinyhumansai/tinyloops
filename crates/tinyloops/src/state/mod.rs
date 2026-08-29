@@ -188,6 +188,7 @@ impl LoopState {
             scores: self.scores.clone(),
             judged: self.judged,
             board: self.board.clone(),
+            profile: self.profile,
             answer: self.answer.clone(),
         }
     }

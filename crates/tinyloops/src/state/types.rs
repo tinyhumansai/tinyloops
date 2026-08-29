@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::policy::Judgement;
+use crate::policy::{Judgement, LoopProfile};
 
 /// What one goal run carries from turn to turn.
 ///
@@ -103,6 +103,21 @@ pub struct LoopState {
     /// because a decomposition that lives anywhere else is a decomposition the
     /// loop head is not the sole writer of.
     pub board: crate::orchestrate::TaskBoard,
+    /// The configuration this run is operating under.
+    ///
+    /// The routing ladder reads its thresholds from here, at
+    /// `.profile.thresholds.<field>`, rather than from numbers rendered into
+    /// the graph — see [`LoopProfile`] and
+    /// `docs/adr/0006-thresholds-addressed-from-run-state.md`. Like
+    /// [`Self::board`] it is nested, and for the same reason: it has to survive
+    /// a checkpoint with the guarantee every counter has, and a configuration
+    /// that lived anywhere else is a configuration the loop head is not the
+    /// sole writer of.
+    ///
+    /// [`Self::apply`] carries it through the fold untouched and neither
+    /// [`Delta`] nor [`Contribution`] has a slot that reaches it, so no arm can
+    /// move it however it is wired.
+    pub profile: LoopProfile,
     /// The run's final answer, written by the `report` step alone.
     ///
     /// Sole authorship is structural rather than conventional: [`Self::apply`]
