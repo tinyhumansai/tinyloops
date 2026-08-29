@@ -41,7 +41,7 @@
 //! not panic, because this code runs inside a node the engine is not able to
 //! unwind sensibly.
 
-use crate::policy::Judgement;
+use crate::policy::{Judgement, LoopProfile};
 
 mod types;
 
@@ -96,6 +96,28 @@ impl LoopState {
         Self {
             goal: goal.into(),
             ..Self::default()
+        }
+    }
+
+    /// Starts a run on `goal` under `profile`.
+    ///
+    /// [`Self::new`] seeds the default profile, which is the balanced preset.
+    /// This is the constructor a run with any other preset uses, and it is the
+    /// only place the profile is ever chosen: nothing after construction moves
+    /// it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::{LoopProfile, LoopState, Preset};
+    /// let state = LoopState::with_profile("ship it", LoopProfile::of(Preset::Persistent));
+    /// assert_eq!(state.profile.thresholds.stuck, 4);
+    /// ```
+    #[must_use]
+    pub fn with_profile(goal: impl Into<String>, profile: LoopProfile) -> Self {
+        Self {
+            profile,
+            ..Self::new(goal)
         }
     }
 
