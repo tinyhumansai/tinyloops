@@ -83,8 +83,8 @@ pub use observe::{
 // goal run carries between turns; `policy` is the routing that reads it, in
 // both the Rust and the jq spelling.
 pub use policy::{
-    Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder, evaluate_terminal_condition,
-    expr_scope, is_terminal, ladder, route, terminal_condition,
+    Autonomy, Judgement, LoopProfile, Outcome, Route, Thresholds, evaluate_ladder,
+    evaluate_terminal_condition, expr_scope, is_terminal, ladder, route, terminal_condition,
 };
 pub use state::{Contribution, Delta, LoopState};
 
