@@ -59,37 +59,45 @@ const DEFAULT_PORT: &str = "default";
 /// # use serde_json::Value;
 /// # use tinyloops::{
 /// #     Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopState, NoWrite,
-/// #     Result, Step, StepContext, StepRegistry, Thresholds,
+/// #     Result, STEP_MERGE, Step, StepContext, StepRegistry, Thresholds,
 /// # };
-/// # struct Body(&'static str);
-/// # impl Step for Body {
-/// #     fn name(&self) -> &'static str { self.0 }
-/// #     fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced> {
-/// #         Ok(ctx.advance(state))
-/// #     }
-/// # }
-/// # impl Arm for Body {
-/// #     fn name(&self) -> &'static str { self.0 }
-/// #     fn evaluate(
-/// #         &self,
-/// #         base: &LoopState,
-/// #         _report: &Value,
-/// #         _ctx: StepContext<'_, NoWrite>,
-/// #     ) -> Result<ArmOutcome> {
-/// #         Ok(ArmOutcome::unchanged(self.name(), base))
-/// #     }
-/// # }
-/// # let mut registry = StepRegistry::new();
-/// # for name in ["plan", "research", "attempt", "merge", "pass", "report", "reflect", "judge"] {
-/// #     registry.register(Arc::new(Body(match name {
-/// #         "plan" => "plan", "research" => "research", "attempt" => "attempt",
-/// #         "merge" => "merge", "pass" => "pass", "report" => "report",
-/// #         "reflect" => "reflect", _ => "judge",
-/// #     })))?;
-/// # }
+/// struct Body(&'static str);
+///
+/// impl Step for Body {
+///     fn name(&self) -> &'static str {
+///         self.0
+///     }
+///
+///     fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced> {
+///         Ok(ctx.advance(state))
+///     }
+/// }
+///
+/// struct Evaluator(&'static str);
+///
+/// impl Arm for Evaluator {
+///     fn name(&self) -> &'static str {
+///         self.0
+///     }
+///
+///     fn evaluate(
+///         &self,
+///         base: &LoopState,
+///         _report: &Value,
+///         _ctx: StepContext<'_, NoWrite>,
+///     ) -> Result<ArmOutcome> {
+///         Ok(ArmOutcome::unchanged(Arm::name(self), base))
+///     }
+/// }
+///
+/// let mut registry = StepRegistry::new();
+/// for step in ["plan", "research", "attempt", STEP_MERGE, "pass", "report", "reflect", "judge"] {
+///     registry.register(Arc::new(Body(step)))?;
+/// }
+///
 /// let arms = ArmSet::new(vec![
-///     Arc::new(Body("reflect")) as Arc<dyn Arm>,
-///     Arc::new(Body("judge")),
+///     Arc::new(Evaluator("reflect")) as Arc<dyn Arm>,
+///     Arc::new(Evaluator("judge")),
 /// ])?;
 ///
 /// let graph = LoopBuilder::new(Thresholds::default(), arms, registry)
