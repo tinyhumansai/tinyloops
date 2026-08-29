@@ -404,3 +404,42 @@ fn the_plain_resolver_names_the_directory_a_path_sits_in() {
     assert_eq!(PlainParents.canonical_parent("notes/one.md"), "notes");
     assert_eq!(PlainParents.canonical_parent("one.md"), "");
 }
+
+#[test]
+fn the_workspace_refusals_render_the_messages_a_reader_will_see() {
+    assert_eq!(
+        Error::UnlistedWriteKind {
+            kind: WriteKind::Source
+        }
+        .to_string(),
+        "no location is listed for write kind source"
+    );
+    assert_eq!(
+        Error::PathTraversal {
+            path: "../x".to_owned()
+        }
+        .to_string(),
+        "path ../x holds a traversal segment"
+    );
+    assert_eq!(
+        Error::AbsolutePath {
+            path: "/x".to_owned()
+        }
+        .to_string(),
+        "path /x is absolute"
+    );
+    assert_eq!(
+        Error::ParentEscaped {
+            path: "notes/x".to_owned()
+        }
+        .to_string(),
+        "the canonical parent of notes/x left the workspace"
+    );
+    assert_eq!(
+        Error::UnknownPath {
+            path: "notes/x".to_owned()
+        }
+        .to_string(),
+        "the workspace holds nothing at notes/x"
+    );
+}

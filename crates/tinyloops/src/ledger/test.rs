@@ -307,3 +307,35 @@ fn an_event_names_the_entry_it_merges_into() {
     assert_eq!(event, LedgerEvent::about("finding-1"));
     assert_eq!(LedgerEvent::default().id(), "");
 }
+
+#[test]
+fn the_ledger_refusals_render_the_messages_a_reader_will_see() {
+    assert_eq!(
+        Error::DerivedWrite {
+            path: "derived/x.md".to_owned()
+        }
+        .to_string(),
+        "path derived/x.md is inside a derived folder"
+    );
+    assert_eq!(
+        Error::UnknownEntry {
+            id: "finding-1".to_owned()
+        }
+        .to_string(),
+        "no ledger entry named finding-1 exists"
+    );
+    assert_eq!(
+        Error::UnknownCriterion {
+            id: "c1".to_owned()
+        }
+        .to_string(),
+        "no criterion named c1 exists"
+    );
+    assert_eq!(
+        Error::EvidenceNotRecorded {
+            id: "c1".to_owned()
+        }
+        .to_string(),
+        "criterion c1 has no recorded evidence"
+    );
+}

@@ -497,3 +497,30 @@ fn a_tool_renders_its_name_in_debug_output() {
 
     assert!(format!("{tool:?}").contains("read"));
 }
+
+#[test]
+fn the_tool_failures_render_the_messages_a_reader_will_see() {
+    assert_eq!(
+        Error::UnknownTool {
+            name: "execute".to_owned()
+        }
+        .to_string(),
+        "no tool named execute is registered"
+    );
+    assert_eq!(
+        Error::ToolFatal {
+            tool: "execute".to_owned(),
+            message: "the sandbox is gone".to_owned(),
+        }
+        .to_string(),
+        "tool execute failed fatally: the sandbox is gone"
+    );
+    assert_eq!(
+        Error::RequeriesExhausted {
+            tool: "execute".to_owned(),
+            limit: 3,
+        }
+        .to_string(),
+        "tool execute exhausted its 3 requeries"
+    );
+}
