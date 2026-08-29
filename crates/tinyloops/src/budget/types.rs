@@ -174,7 +174,14 @@ impl Default for Caps {
     /// not be constructed is a default nobody can use.
     fn default() -> Self {
         Self {
-            max_iterations: 8,
+            // The runaway backstop, not the routing ceiling: `max_attempts`
+            // decides when a run stops trying and lives in the accumulator.
+            // This has to clear the largest `max_attempts` any shipped preset
+            // asks for — twelve, for `Preset::Persistent` — or that preset is
+            // truncated four attempts short of the ceiling it declares, and
+            // nothing says so. `src/presets/test.rs` asserts the relationship
+            // rather than the number.
+            max_iterations: 12,
             max_model_calls: 60,
             // 60 * 8 = 480 is the reachability floor; 600 clears it.
             max_tool_calls: 600,

@@ -1082,3 +1082,20 @@ fn merge_of(
         )
         .map(crate::step::Advanced::into_state)
 }
+
+#[test]
+fn every_preset_can_reach_its_attempt_ceiling() {
+    // The loop head's `max_iterations` is a runaway backstop, and a backstop
+    // below a preset's own attempt ceiling truncates the run before its
+    // thresholds ever fire. `Preset::Persistent` asks for twelve attempts; a
+    // default cap of eight would stop it four short, and the run would report
+    // "not solved within N attempts" having never spent N.
+    let cap = crate::budget::Caps::default().max_iterations;
+    for preset in Preset::ALL {
+        let ceiling = preset.thresholds().max_attempts;
+        assert!(
+            ceiling <= cap,
+            "{preset} asks for {ceiling} attempts under a cap of {cap}",
+        );
+    }
+}
