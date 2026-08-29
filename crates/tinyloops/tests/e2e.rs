@@ -85,8 +85,7 @@ fn assembled(
     .expect("the preset assembles");
 
     let graph = loop_.graph().expect("the emitted graph validates");
-    let thresholds = *loop_.thresholds();
-    (graph, thresholds, loop_.registry().clone())
+    (graph, loop_.registry().clone())
 }
 
 fn answers(reply: &str, artifacts: Vec<Artifact>) -> Scripted {
@@ -184,7 +183,7 @@ impl ToolInvoker for Steps {
             .unwrap_or_default()
             .to_string();
 
-        let answer = run_loop_step(&self.registry, &self.thresholds, &args)
+        let answer = run_loop_step(&self.registry, &args)
             .unwrap_or_else(|error| panic!("step {step} failed: {error}"));
 
         self.calls
@@ -589,11 +588,10 @@ async fn a_step_the_registry_does_not_hold_is_an_error_rather_than_a_no_op() {
     // The closed step set, from the tool's side. A node naming a step nobody
     // registered runs green, changes nothing, and routes on a state nobody
     // advanced, which is the failure this returns an error for instead.
-    let (_, thresholds, registry) = assembled(Preset::Balanced, solving_script());
+    let (_, registry) = assembled(Preset::Balanced, solving_script());
 
     let refused = run_loop_step(
         &registry,
-        &thresholds,
         &json!({
             "step": "invented",
             "state": serde_json::to_value(LoopState::new("goal")).expect("encodes"),

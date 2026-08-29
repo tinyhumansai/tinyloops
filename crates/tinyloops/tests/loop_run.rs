@@ -41,7 +41,8 @@ use tinyflows::testkit::{MockCaps, Respond, RunTrace, RunTracer, TestHarness};
 
 use tinyloops::{
     Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopState, NoWrite,
-    NodeIds, RUN_LOOP_STEP, Result, STEP_MERGE, Step, StepContext, StepRegistry, Thresholds,
+    LoopProfile, NodeIds, RUN_LOOP_STEP, Result, STEP_MERGE, Step, StepContext, StepRegistry,
+    Thresholds,
 };
 
 /// A step body that changes nothing: every node's answer comes from the tool
@@ -300,7 +301,8 @@ async fn pass_runs_exactly_once_per_iteration() {
     let steps = Arc::new(Steps::default());
     let (_outcome, trace) = run(&graph, &steps, None).await;
 
-    let iterations = usize::try_from(thresholds().max_attempts).expect("a small cap fits");
+    let iterations =
+        usize::try_from(profile().thresholds.max_attempts).expect("a small cap fits");
     assert_eq!(trace.steps_for("pass").len(), iterations);
     assert_eq!(steps.count("pass"), iterations);
     assert_eq!(trace.steps_for("attempt").len(), iterations);
