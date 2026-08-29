@@ -76,7 +76,8 @@ use crate::{Error, Result};
 /// address naming a key the scope does not have resolves to `null` **silently**
 /// — a jq compile error, a run error, non-JSON output and empty output are all
 /// `null` here — so the arm would read nothing and the run would look healthy.
-/// [`resolves_against_a_completed_node`](self) pins it.
+/// A unit test resolves this address through the engine so the guard is a
+/// measurement rather than a spelling.
 ///
 /// It uses the simple dotted-path form, with no leading `.`, because that form
 /// is resolved by a segment walk rather than by jq, and a hyphen in a node id
