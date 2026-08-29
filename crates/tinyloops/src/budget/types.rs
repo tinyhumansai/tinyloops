@@ -186,7 +186,7 @@ impl Default for Caps {
             // 60 * 8 = 480 is the reachability floor; 600 clears it.
             max_tool_calls: 600,
             max_tokens: 2_000_000,
-            run_timeout: Duration::from_secs(30 * 60),
+            run_timeout: Duration::from_mins(30),
             tool_timeout: Duration::from_secs(120),
             request_timeout: Duration::from_secs(60),
             max_retries: 3,
