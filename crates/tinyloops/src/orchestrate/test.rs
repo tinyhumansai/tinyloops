@@ -13,8 +13,8 @@ use super::{
 };
 use crate::error::Error;
 use crate::harness::{
-    Artifact, Brief, DEFAULT_MAILBOX_CAPACITY, Mailbox, Note, Role, RoleGrant, RoleRegistry,
-    Scripted, SinkDrops, Tier,
+    Artifact, Brief, DEFAULT_MAILBOX_CAPACITY, Mailbox, Note, RoleGrant, RoleRegistry, Scripted,
+    SinkDrops, Tier,
 };
 use crate::observe::{Event, Sink};
 use crate::policy::{Route, Thresholds};
@@ -293,7 +293,7 @@ fn it_does_not_fall_back_to_the_host_registry() {
     declare(&mut registry, "wildcard");
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), DelegateSet::of(["prover"]))
         .expect("a legal registration");
-    let delegate = crate::harness::ScriptedDelegate::new(registry)
+    let delegate = crate::harness::ScriptedDelegate::new(registry, tinyflows::caps::mock::mock_capabilities())
         .scripting("wildcard", vec![answers("I was reachable")]);
 
     let refused = orchestrator.spawn(&delegate, "wildcard", Brief::new("do a thing"));
@@ -314,7 +314,7 @@ fn a_declared_delegate_the_registry_lacks_fails_at_wiring_time() {
 
     let checked = orchestrator.verify_declared_in(&registry);
 
-    assert!(matches!(checked, Err(Error::UnknownRole { ref name }) if name == "never-declared"));
+    assert!(matches!(checked, Err(Error::UnknownRole { ref role }) if role == "never-declared"));
 }
 
 #[test]
@@ -337,7 +337,7 @@ fn a_declared_delegate_reaches_the_harness() {
     declare(&mut registry, "prover");
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), DelegateSet::of(["prover"]))
         .expect("a legal registration");
-    let delegate = crate::harness::ScriptedDelegate::new(registry)
+    let delegate = crate::harness::ScriptedDelegate::new(registry, tinyflows::caps::mock::mock_capabilities())
         .scripting("prover", vec![answers("proved")]);
 
     let ticket = orchestrator
@@ -440,7 +440,10 @@ fn declare(registry: &mut RoleRegistry, name: &str) {
     registry
         .declare(
             name,
-            Role::new("do the thing", RoleGrant::none(), None, Tier::Standard),
+            "do the thing",
+            RoleGrant::none(),
+            Some(crate::budget::Caps::default()),
+            Tier::Standard,
         )
         .expect("a fresh name");
 }
