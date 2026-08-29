@@ -206,12 +206,54 @@ fn removing_an_arm_removes_it_from_both_edge_sets_and_the_fold() {
 }
 
 #[test]
-fn an_arms_input_is_the_upstream_nodes_output() {
+fn an_arms_input_is_the_upstream_nodes_payload() {
     // Invariant 3's helper. `=.nodes.<loop>.state` is the address it exists to
     // keep out of an arm's input: the head folds at the top of a pass, so
     // mid-body that slot is one pass behind.
-    assert_eq!(upstream_address("attempt"), "=.nodes.attempt.output");
+    assert_eq!(upstream_address("attempt"), "=nodes.attempt.item.json");
     assert!(!upstream_address("attempt").contains(".state"));
+}
+
+#[test]
+fn an_arms_input_resolves_against_a_completed_node() {
+    // The assertion above only pins the *string*. This one runs it through the
+    // engine, because the failure being guarded is silent: the `nodes` scope
+    // holds `item` and `items` and no `output`, and an address naming a key the
+    // scope lacks evaluates to `null` rather than erroring. An arm wired to one
+    // reads nothing while the run reports success.
+    let scope = serde_json::json!({
+        "nodes": {
+            "attempt": {
+                "item": { "json": { "report": "two routes agreed" } },
+                "items": [{ "json": { "report": "two routes agreed" } }],
+            }
+        }
+    });
+
+    let resolved = tinyflows::expr::evaluate(
+        &serde_json::Value::String(upstream_address("attempt")),
+        &scope,
+    );
+
+    assert_eq!(resolved, serde_json::json!({ "report": "two routes agreed" }));
+    assert!(!resolved.is_null(), "a null here is the silent failure");
+}
+
+#[test]
+fn a_hyphenated_node_id_still_addresses_its_payload() {
+    // The dotted-path form is resolved by a segment walk rather than by jq, so
+    // the hyphen is a literal key character. Under jq it would be subtraction,
+    // and the address would resolve to null.
+    let scope = serde_json::json!({
+        "nodes": { "eval-judge": { "item": { "json": { "score": 4 } }, "items": [] } }
+    });
+
+    let resolved = tinyflows::expr::evaluate(
+        &serde_json::Value::String(upstream_address("eval-judge")),
+        &scope,
+    );
+
+    assert_eq!(resolved, serde_json::json!({ "score": 4 }));
 }
 
 #[test]
