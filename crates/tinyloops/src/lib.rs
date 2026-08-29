@@ -56,6 +56,7 @@ mod error;
 mod greeting;
 mod harness;
 mod ledger;
+mod loops;
 mod memory;
 mod observe;
 mod policy;
@@ -104,6 +105,14 @@ pub use memory::{
 // nodes are. `arm` owns the one list both arm edge sets are derived from and the
 // merge that folds them; `step` owns the single tool a node body is.
 pub use arm::{Arm, ArmOutcome, ArmSet, Edge, upstream_address};
+// The graph the loop is: one builder emitting one `WorkflowGraph`, the
+// signature a checkpoint carries so a changed topology refuses a resume rather
+// than corrupting one, and the composable condition that says when — and why —
+// a run stops.
+pub use loops::{
+    GraphSignature, LoopBuilder, NodeIds, STEP_MERGE, TerminalState, TerminationCondition,
+    verify_resume,
+};
 pub use step::{
     AccumulatorAccess, Advanced, CanWrite, NoWrite, Observer, RUN_LOOP_STEP, RegisteredStep,
     STEP_ATTEMPT, STEP_JUDGE, STEP_NAMES, STEP_PASS, STEP_PLAN, STEP_REFLECT, STEP_REPORT,

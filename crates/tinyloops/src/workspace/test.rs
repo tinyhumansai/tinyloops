@@ -69,7 +69,9 @@ fn writing_an_unlisted_kind_is_refused_and_lands_no_bytes() {
 fn a_relocated_write_returns_both_the_proposed_and_the_actual_location() {
     let (workspace, _side) = workspace();
 
-    let landed = workspace.write(WriteKind::Note, "finding.md", b"it works").unwrap();
+    let landed = workspace
+        .write(WriteKind::Note, "finding.md", b"it works")
+        .unwrap();
 
     assert!(landed.relocated());
     assert_eq!(landed.proposed, "finding.md");
@@ -81,7 +83,9 @@ fn a_relocated_write_returns_both_the_proposed_and_the_actual_location() {
 fn the_relocation_record_appears_in_the_following_brief() {
     let (workspace, _side) = workspace();
 
-    let landed = workspace.write(WriteKind::Note, "finding.md", b"it works").unwrap();
+    let landed = workspace
+        .write(WriteKind::Note, "finding.md", b"it works")
+        .unwrap();
     let brief = format!("previously: {}", landed.brief_note());
 
     assert!(brief.contains("notes/finding.md"));
@@ -252,10 +256,14 @@ fn a_capture_with_no_room_at_all_keeps_nothing_and_counts_everything() {
 fn a_snapshot_difference_names_exactly_the_files_the_action_touched() {
     let (workspace, _side) = workspace();
 
-    workspace.write(WriteKind::Note, "first.md", b"one").unwrap();
+    workspace
+        .write(WriteKind::Note, "first.md", b"one")
+        .unwrap();
     let after_first = workspace.state();
     workspace.mark();
-    workspace.write(WriteKind::Note, "second.md", b"two").unwrap();
+    workspace
+        .write(WriteKind::Note, "second.md", b"two")
+        .unwrap();
     let after_second = workspace.state();
 
     assert_eq!(after_first.changed, vec!["notes/first.md".to_owned()]);
@@ -292,8 +300,12 @@ fn the_snapshot_is_bounded_in_size() {
 fn a_checkpoint_follows_every_successful_write() {
     let (workspace, side) = workspace();
 
-    workspace.write(WriteKind::Note, "first.md", b"one").unwrap();
-    workspace.write(WriteKind::Note, "second.md", b"two").unwrap();
+    workspace
+        .write(WriteKind::Note, "first.md", b"one")
+        .unwrap();
+    workspace
+        .write(WriteKind::Note, "second.md", b"two")
+        .unwrap();
     let _ = workspace.write(WriteKind::Source, "../escape.rs", b"no");
 
     assert_eq!(side.commits().len(), 2);
