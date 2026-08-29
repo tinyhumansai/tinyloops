@@ -286,10 +286,19 @@ impl LoopBuilder {
         // folded" are one fact rather than two that can drift.
         let mut fold_inputs = serde_json::Map::new();
         for arm in self.arms.names() {
+            // `state`, addressed at the attempt's output, and deliberately not
+            // at the loop head's accumulator: the head folds at the *top* of a
+            // pass, so mid-body the accumulator is one pass behind and an arm
+            // reading it routes on a stale answer (invariant 3).
+            //
+            // One key rather than a separate `report`, because the pass's one
+            // attempt report rides *inside* that accumulator, in `last_attempt`.
+            // Addressing it twice would give a reader two candidate inputs and
+            // no way to tell which the arm is meant to believe.
             nodes.push(tool_call(
                 arm,
                 arm,
-                json!({ "report": payload_address(ids.attempt) }),
+                json!({ "state": payload_address(ids.attempt) }),
             ));
             edges.push(edge(ids.attempt, arm));
             edges.push(edge(arm, ids.merge));
