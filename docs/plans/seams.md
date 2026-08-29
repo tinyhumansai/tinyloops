@@ -431,18 +431,20 @@ recording. A test in H5 asserts it for the reference implementations.
 |---|---|
 | H2 | `seams.md`: no seam trait exposes a blocking delegation |
 | H3 | `seams.md`: a full mailbox drops and reports, never blocks |
-| H4 | `seams.md` and `orchestrator.md` rule 4: a failed delegation is a result |
-| H1, H5 | `seams.md`: reference implementations are deterministic; every effect crosses `Capabilities` |
+| H4 | `seams.md`, `orchestrator.md` rule 4: a failed delegation is a result |
+| H1, H5 | `seams.md`: deterministic references; every effect crosses `Capabilities` |
 | M1 | `seams.md`: a missing capability is `None` at wiring time |
 | M2 | `seams.md`: a write is not durable until a read-back verified it |
 | M3 | `seams.md`: compaction is idempotent and recorded; pins survive |
-| T1 | `seams.md`: grants resolve in a constructor; the two schema sets stay split |
+| T1 | `seams.md`: grants resolve in a constructor; the schema sets stay split |
 | T2 | `seams.md`: the decorator wraps instances before they are shared |
 | T3 | `seams.md`: failures are messages; only `Fatal` terminates |
 | W1 | `workspace-and-ledgers.md`: the allowlist, and the reported relocation |
 | W2 | `workspace-and-ledgers.md`: the path check at both moments |
-| W3 | `workspace-and-ledgers.md`: output bounded during capture; bounded `state()` |
+| W3 | `workspace-and-ledgers.md`: bounded capture; bounded `state()` |
 | W4 | `workspace-and-ledgers.md`: a checkpoint failure never fails the write |
-| L1, L2 | `workspace-and-ledgers.md`: merge-only entries; asserted render bounds; index-in-prompt |
-| L3 | `workspace-and-ledgers.md`: the folder refusal, `evidence_origin`, the immutable spec |
+| L1, L2 | `workspace-and-ledgers.md`: merge-only entries; asserted render
+  bounds; the index, never the ledger, in a prompt |
+| L3 | `workspace-and-ledgers.md`: folder refusal, `evidence_origin`, the
+  immutable spec |
 | X1 | `seams.md`: every bundled example runs in CI with no credentials |

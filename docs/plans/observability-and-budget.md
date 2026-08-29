@@ -325,13 +325,22 @@ is discovered from `examples/` and built by `cargo test`, and it declares no
 
 | Tasks | Invariants |
 |---|---|
-| B1 | `budget.md`: exactly one reachable cap; `tool_timeout < run_timeout`; no role without caps |
-| B2 | `budget.md`: all six bounds present, none unbounded; the loop bound is a conjunction |
-| B3 | `budget.md`: a tripped bound is a routed outcome; both meters advance; cost is a field of the result; no bound enforced by prompt text |
+| B1 | `budget.md`: exactly one reachable cap; `tool_timeout < run_timeout` |
+| B1 | `budget.md`: no role without caps |
+| B2 | `budget.md`: all six bounds, none unbounded; the loop bound is a conjunction |
+| B3 | `budget.md`: a tripped bound is a routed outcome; both meters advance |
+| B3 | `budget.md`: cost is a field of the result; no bound enforced by prompt text |
 | O1 | `observability.md`: one event per transition, each naming its pass |
-| O2 | `observability.md`: one ordered stream with a `who` label; `child` shares journal and counters; no observability call blocks the loop |
-| O3 | `observability.md` rules 1 and 2: entry and completion pair up; the spine reaches every view |
-| O4 | `observability.md` rules 3 and 4: payload-free by default; the journal is outside the layout and unreadable by the loop |
-| O5 | `observability.md` rule 5 and the `Report`: per-call cache hit rate; no price table; a concurrency factor, never negative time; one `Report` for summary and status; repeat-reliability, never a success bit |
-| P1 | `routing-and-policy.md`: every threshold and preset ships its rationale, and every preset is swept |
-| P2, E1 | `seams.md`: every bundled example runs offline and deterministically |
+| O2 | `observability.md`: one ordered stream with a `who` label |
+| O2 | `observability.md`: `child` shares journal and counters; no call blocks |
+| O3 | `observability.md` rules 1 and 2: entry and completion pair up |
+| O3 | `observability.md`: the spine reaches every filtered view |
+| O4 | `observability.md` rule 3: payload-free by default, redaction on capture |
+| O4 | `observability.md` rule 4: the journal is outside the layout, unreadable |
+| O5 | `observability.md` rule 5: a per-call cache hit rate; no price table |
+| O5 | `observability.md`: a concurrency factor, never negative time |
+| O5 | `observability.md`: one `Report` for summary and status |
+| O5 | `observability.md`: repeat-reliability, never a lone success bit |
+| P1 | `routing-and-policy.md`: every threshold and preset ships its rationale |
+| P1 | `routing-and-policy.md`: every preset is swept by the parity harness |
+| P2, E1 | `seams.md`: every bundled example runs offline, deterministically |
