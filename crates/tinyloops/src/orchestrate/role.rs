@@ -65,7 +65,8 @@ impl DelegateSet {
 ///
 /// One role at all three nodes, holding one grant and one delegate set. What
 /// differs between the nodes is what they are handed and what they must
-/// produce, which is [`steps`](super::steps) rather than this type.
+/// produce, which is [`Plan`](crate::Plan), [`Attempt`](crate::Attempt), and
+/// [`ReportStep`](crate::ReportStep) rather than this type.
 ///
 /// # The two rules this type *is*
 ///
