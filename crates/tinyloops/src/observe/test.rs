@@ -655,6 +655,13 @@ fn the_line_sink_renders_one_line_per_event() {
 /// One of every event, so the rendering and the wire form are exercised whole
 /// rather than variant by variant as somebody remembers to.
 fn every_event() -> Vec<Event> {
+    let mut events = loop_events();
+    events.extend(host_events());
+    events
+}
+
+/// The events the loop itself emits.
+fn loop_events() -> Vec<Event> {
     vec![
         Event::PassStarted { pass: 1 },
         Event::PassFinished {
@@ -739,6 +746,15 @@ fn every_event() -> Vec<Event> {
             },
             reason: "max_attempts may be 4..=12, not 99".to_string(),
         },
+    ]
+}
+
+/// The events the host and the engine emit around it.
+///
+/// Split from [`loop_events`] only because one list of twenty-three is
+/// longer than the lint allows; the two are always used together.
+fn host_events() -> Vec<Event> {
+    vec![
         Event::BoundTripped {
             pass: 1,
             bound: crate::Bound::RunClock,
