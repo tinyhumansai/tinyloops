@@ -261,8 +261,10 @@ fn the_tool_runs_the_named_step_and_returns_the_state_as_json() {
     assert_eq!(returned["attempts"], json!(2));
     assert_eq!(returned["goal"], json!("goal"));
     // Every field of the accumulator is present, because the head replaces its
-    // slot with exactly this value.
-    assert_eq!(returned.as_object().unwrap().len(), 17);
+    // slot with exactly this value. The count is spelled out rather than
+    // derived so that adding a field to `LoopState` without deciding how the
+    // head folds it fails here.
+    assert_eq!(returned.as_object().unwrap().len(), 19);
 }
 
 #[test]
