@@ -61,6 +61,8 @@ mod policy;
 mod state;
 mod step;
 mod tinybus_module;
+mod tools;
+mod workspace;
 
 // The limits every run carries, and the events it emits while spending them.
 // `budget` is what stops a run; `observe` is what the run leaves behind so a
@@ -105,6 +107,25 @@ pub use step::{
     AccumulatorAccess, Advanced, CanWrite, NoWrite, Observer, RUN_LOOP_STEP, RegisteredStep,
     STEP_ATTEMPT, STEP_JUDGE, STEP_NAMES, STEP_PASS, STEP_PLAN, STEP_REFLECT, STEP_REPORT,
     STEP_RESEARCH, Step, StepContext, StepRegistry, run_loop_step,
+};
+
+// The seams a deployment plugs its own world into: the tools an attempt may
+// use, the place it writes bytes, and the record it leaves behind. A withheld
+// tool is withheld by not registering it; a ledger is derived state nothing in
+// the run may write.
+pub use ledger::{
+    Criterion, DERIVED_FOLDER, EntryStatus, Evidence, EvidenceOrigin, LedgerEntry, LedgerEvent,
+    Ledger, MAX_INDEX_ROWS, MAX_PROSE, MAX_RENDERED_BYTES, MAX_ROWS, RunSpec, index, refuse_derived,
+    render as render_ledger,
+};
+pub use tools::{
+    MAX_REQUERIES, PureTools, Recovery, Resilient, Tool, ToolError, ToolGrant, ToolGroup,
+    ToolGroups, ToolInvocation, ToolMessage, ToolOutcome, ToolReceipt, ToolReport, ToolSchema,
+    ToolSet,
+};
+pub use workspace::{
+    BoundedCapture, Checkpoint, Landed, Layout, MemoryWorkspace, Parents, PlainParents,
+    SNAPSHOT_NAMES, SideRepository, Snapshot, Workspace, WorkspaceEvent, WriteKind, validate,
 };
 
 // The wire contract, re-exported by module rather than by item so every path
