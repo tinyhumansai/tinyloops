@@ -227,7 +227,7 @@ impl AssembledLoop {
 
             let report: Value =
                 serde_json::from_str(&state.last_attempt).map_err(|_| Error::StateEncoding)?;
-            state = self.evaluate(state, &report, pass, recorder)?;
+            state = self.evaluate(&state, &report, pass, recorder)?;
 
             let chosen = route(&state, &self.thresholds);
             routes.push(chosen);
@@ -337,7 +337,7 @@ impl AssembledLoop {
     /// on the order they finished in.
     fn evaluate(
         &self,
-        state: LoopState,
+        state: &LoopState,
         report: &Value,
         pass: u32,
         recorder: &Recorder,
@@ -349,7 +349,7 @@ impl AssembledLoop {
                 pass,
                 arm: arm.name().to_owned(),
             });
-            outcomes.push(arm.evaluate(&state, report, ctx())?);
+            outcomes.push(arm.evaluate(state, report, ctx())?);
             recorder.record(Event::ArmFinished {
                 pass,
                 arm: arm.name().to_owned(),
@@ -386,7 +386,7 @@ impl AssembledLoop {
             arms: outcomes.len(),
             movement: summed,
         });
-        self.arms.merge(&state, outcomes)
+        self.arms.merge(state, outcomes)
     }
 }
 
