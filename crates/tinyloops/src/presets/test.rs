@@ -28,7 +28,7 @@ fn quiet() -> Recorder {
     Recorder::new("test", Arc::new(LineSink::new(std::io::sink())))
 }
 
-fn observing<'a>(thresholds: &'a Thresholds) -> StepContext<'a, NoWrite> {
+fn observing(thresholds: &Thresholds) -> StepContext<'_, NoWrite> {
     StepContext::observing(0, thresholds)
 }
 

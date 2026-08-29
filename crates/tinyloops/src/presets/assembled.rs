@@ -359,7 +359,7 @@ impl AssembledLoop {
 
         let deltas: Vec<_> = outcomes
             .iter()
-            .map(|outcome| outcome.state.delta_from(&state))
+            .map(|outcome| outcome.state.delta_from(state))
             .collect();
         // One `Merged` per pass carrying the summed movement, because that is
         // what the fold actually applied. Reporting each arm's delta separately
