@@ -79,7 +79,7 @@ mod types;
 use types::refuse;
 pub use types::{
     Artifact, Brief, DelegationOutcome, DropObserver, Ending, Mailbox, Note, Posted, Role,
-    RoleGrant, Status, Ticket, Tier, salvage,
+    RoleGrant, SinkDrops, Status, Ticket, Tier, salvage,
 };
 
 use crate::{Caps, Error, Result, RunBudget};
