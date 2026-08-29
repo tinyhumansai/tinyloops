@@ -21,6 +21,7 @@
 //! provider is the loop most people should meet first.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::Value;
 
@@ -28,16 +29,14 @@ use crate::arm::ArmSet;
 use crate::budget::{Bound, Meter, RunBudget};
 use crate::error::{Error, Result};
 use crate::loops::{GraphSignature, LoopBuilder, NodeIds};
-use crate::observe::{Event, Recorder};
+use crate::observe::{Event, Movement, Recorder};
 use crate::orchestrate::{
-    Attempt, Compose, Decompose, DelegateSet, Orchestrator, Plan, Report as ReportStep,
-    Specialists, Summarize,
+    Attempt, Decompose, DelegateSet, Orchestrator, Plan, Report as ReportStep, Specialists,
+    Summarize,
 };
-use crate::policy::{Autonomy, Judgement, Outcome, Route, Thresholds, route};
+use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
 use crate::state::LoopState;
-use crate::step::{
-    CanWrite, STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, Step, StepContext, StepRegistry,
-};
+use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, StepContext, StepRegistry};
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
@@ -211,24 +210,35 @@ impl AssembledLoop {
             let chosen = route(&state, &self.thresholds);
             routes.push(chosen);
             recorder.record(Event::Routed {
+                pass,
                 route: chosen,
-                because: format!(
+                // The counters, not a sentence about them. A route that cannot
+                // be re-derived from the reason beside it is a route nobody can
+                // audit after the fact.
+                reason: format!(
                     "unproductive={} blocked={} unverified={} attempts={}",
                     state.unproductive, state.blocked, state.unverified, state.attempts
                 ),
             });
             recorder.record(Event::Judged {
+                pass,
                 judgement: state.judged,
                 score: state.scores.last().copied().unwrap_or_default(),
             });
 
             meter.pass(!state.last_attempt.is_empty());
             state.passes = pass.saturating_add(1);
-            recorder.record(Event::PassFinished { pass, ms: 0 });
+            recorder.record(Event::PassFinished {
+                pass,
+                duration: Duration::ZERO,
+            });
 
             if let Some(tripped) = self.budget.tripped(&meter) {
                 bound = Some(tripped);
-                recorder.record(Event::BoundTripped { bound: tripped });
+                recorder.record(Event::BoundTripped {
+                    pass,
+                    bound: tripped,
+                });
                 break;
             }
             if crate::policy::is_terminal(&state, &self.thresholds) {
@@ -239,6 +249,7 @@ impl AssembledLoop {
         if bound.is_none() && state.passes >= caps.max_iterations {
             bound = Some(Bound::Iterations);
             recorder.record(Event::BoundTripped {
+                pass: state.passes,
                 bound: Bound::Iterations,
             });
         }
@@ -255,7 +266,10 @@ impl AssembledLoop {
             Some(_) if classified == Outcome::Stalled => Outcome::Exhausted,
             _ => classified,
         };
-        recorder.record(Event::LoopFinished { outcome });
+        recorder.record(Event::LoopFinished {
+            pass: state.passes,
+            outcome,
+        });
 
         Ok(Driven {
             state,
@@ -278,13 +292,16 @@ impl AssembledLoop {
         pass: u32,
         recorder: &Recorder,
     ) -> Result<LoopState> {
-        recorder.record(Event::StepEntered { step: name });
+        recorder.record(Event::StepEntered {
+            pass,
+            step: name.to_owned(),
+        });
         let advanced = self.registry.run(name, state, &self.thresholds)?;
         recorder.record(Event::StepFinished {
-            step: name,
-            ms: 0,
+            pass,
+            step: name.to_owned(),
+            duration: Duration::ZERO,
         });
-        let _ = pass;
         Ok(advanced)
     }
 
@@ -305,11 +322,15 @@ impl AssembledLoop {
         let ctx = || StepContext::observing(pass, &self.thresholds);
         let mut outcomes = Vec::new();
         for arm in self.arms.arms() {
-            recorder.record(Event::ArmStarted { arm: arm.name() });
+            recorder.record(Event::ArmStarted {
+                pass,
+                arm: arm.name().to_owned(),
+            });
             outcomes.push(arm.evaluate(&state, report, ctx())?);
             recorder.record(Event::ArmFinished {
-                arm: arm.name(),
-                ms: 0,
+                pass,
+                arm: arm.name().to_owned(),
+                duration: Duration::ZERO,
             });
         }
 
@@ -317,12 +338,30 @@ impl AssembledLoop {
             .iter()
             .map(|outcome| outcome.state.delta_from(&state))
             .collect();
+        // One `Merged` per pass carrying the summed movement, because that is
+        // what the fold actually applied. Reporting each arm's delta separately
+        // would invite a reader to add them up by hand and get a different
+        // answer to the one the accumulator took.
+        let summed = deltas.iter().fold(Movement::default(), |acc, delta| {
+            let movement = Movement::from(delta);
+            Movement {
+                passes: acc.passes + movement.passes,
+                attempts: acc.attempts + movement.attempts,
+                unproductive: acc.unproductive + movement.unproductive,
+                blocked: acc.blocked + movement.blocked,
+                computational: acc.computational + movement.computational,
+                unverified: acc.unverified + movement.unverified,
+                restarts: acc.restarts + movement.restarts,
+                established: acc.established + movement.established,
+                banked: acc.banked + movement.banked,
+                solved: movement.solved.or(acc.solved),
+                expired: movement.expired.or(acc.expired),
+            }
+        });
         recorder.record(Event::Merged {
-            deltas: outcomes
-                .iter()
-                .zip(&deltas)
-                .map(|(outcome, delta)| (outcome.arm(), delta.established + delta.unverified))
-                .collect(),
+            pass,
+            arms: outcomes.len(),
+            movement: summed,
         });
         self.arms.merge(&state, outcomes)
     }
