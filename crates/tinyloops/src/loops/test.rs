@@ -567,9 +567,9 @@ fn the_routing_programs_are_the_same_under_every_preset() {
     );
     assert_eq!(programs(&head), baseline);
     assert_eq!(
-        head.node(NodeIds::default().loop_head).expect("the head")["max_iterations"
-            .to_string()
-            .as_str()],
+        head.node(NodeIds::default().loop_head)
+            .expect("the head")
+            .config["max_iterations"],
         json!(crate::budget::Caps::default().max_iterations),
     );
 }
