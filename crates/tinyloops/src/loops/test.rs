@@ -326,7 +326,7 @@ fn fan_out_and_fold_inputs_name_the_same_arms() {
 fn removing_an_arm_removes_it_from_both_the_fan_out_and_the_fold() {
     let one = ArmSet::new(vec![Arc::new(Evaluator(STEP_REFLECT)) as Arc<dyn Arm>])
         .expect("one arm is a valid set");
-    let graph = LoopBuilder::new(Thresholds::default(), one, registry())
+    let graph = LoopBuilder::new(one, registry())
         .autonomy(Autonomy::Unattended)
         .build()
         .expect("a one-armed loop builds");
@@ -344,37 +344,48 @@ fn removing_an_arm_removes_it_from_both_the_fan_out_and_the_fold() {
 }
 
 #[test]
-fn no_threshold_is_typed_into_the_builder() {
-    let thresholds = Thresholds {
-        max_attempts: 41,
-        blocked: 37,
-        unverified: 29,
-        stuck: 23,
-        computational: 19,
-        max_restarts: 17,
-        plan_interval: 13,
-    };
-    let graph = graph_at(Autonomy::Unattended, thresholds);
+fn no_threshold_reaches_the_builder_at_all() {
+    // The guard this replaces asserted that every threshold was rendered into
+    // the emitted programs, and that the defaults' numbers were absent because
+    // they had not been typed. Both halves flip: no threshold is rendered, and
+    // the programs address the accumulator instead. What is still being guarded
+    // is the same thing — a second copy of a constant, free to drift.
+    let graph = graph_at(
+        Autonomy::Unattended,
+        profile(Thresholds {
+            max_attempts: 41,
+            blocked: 37,
+            unverified: 29,
+            stuck: 23,
+            computational: 19,
+            max_restarts: 17,
+            plan_interval: 13,
+        }),
+    );
     let ids = NodeIds::default();
 
     let head = graph.node(ids.loop_head).expect("the head is emitted");
-    assert_eq!(head.config["max_iterations"], json!(41));
+    // The head's cap is the budget's runaway backstop, never `max_attempts`:
+    // an amendment raising the attempt ceiling would otherwise fold, read back
+    // as raised, and buy nothing.
+    assert_eq!(
+        head.config["max_iterations"],
+        json!(crate::budget::Caps::default().max_iterations)
+    );
     let until = head.config["until"].as_str().expect("`until` is a program");
-    assert!(until.contains(">= 41"), "{until}");
-    assert!(until.contains(">= 17"), "{until}");
+    assert!(until.contains(".profile.thresholds"), "{until}");
 
     let route = graph.node(ids.route).expect("the switch is emitted");
     let program = route.config["expression"]
         .as_str()
         .expect("the switch keys on a program");
-    for rendered in [">= 37", ">= 41", ">= 29", ">= 23", ">= 19"] {
+    assert!(program.contains(".profile.thresholds"), "{program}");
+    for rendered in [">= 37", ">= 41", ">= 29", ">= 23", ">= 19", ">= 8"] {
         assert!(
-            program.contains(rendered),
-            "{rendered} missing from {program}"
+            !program.contains(rendered),
+            "{rendered} was rendered into {program}"
         );
     }
-    // The default thresholds' numbers cannot appear: they were never typed.
-    assert!(!program.contains(">= 8"), "{program}");
 }
 
 #[test]
