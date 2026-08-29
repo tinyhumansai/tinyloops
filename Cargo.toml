@@ -20,7 +20,11 @@ exclude = ["vendor", "worktrees"]
 [workspace.package]
 version = "0.2.1"
 edition = "2024"
-rust-version = "1.88"
+# The floor every optional feature must clear too: the MSRV CI job builds
+# `--all-features`, and `vendor/tinyagents` (behind the `tinyagents` feature)
+# uses `if let` guards, stable since 1.95 and rejected as experimental below
+# it. A lower number here would be a number the CI job itself disproves.
+rust-version = "1.95"
 license = "GPL-3.0-only"
 repository = "https://github.com/tinyhumansai/tinyloops"
 
