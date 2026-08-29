@@ -117,7 +117,7 @@ impl Rules {
     /// A zero window never reads as flat: there is no run of zero equal
     /// scores that means anything, and treating it as "always silent" would
     /// mute the arm on its first pass.
-    fn scores_are_flat(&self, state: &LoopState) -> bool {
+    fn scores_are_flat(self, state: &LoopState) -> bool {
         let scores = &state.scores;
         self.window > 0
             && scores.len() >= self.window
@@ -168,7 +168,7 @@ impl Rules {
     /// A judge returning the same score for a window of passes is a judge whose
     /// score is carrying no information, and the run is paying for it every
     /// pass. Muting it is not a claim that it was wrong.
-    fn on_silence(&self, state: &LoopState) -> Option<Change> {
+    fn on_silence(self, state: &LoopState) -> Option<Change> {
         if !self.scores_are_flat(state) || state.profile.is_muted(STEP_JUDGE) {
             return None;
         }
@@ -178,7 +178,7 @@ impl Rules {
     }
 
     /// The reason line that travels with `change`.
-    fn because(&self, state: &LoopState, change: &Change) -> String {
+    fn because(self, state: &LoopState, change: &Change) -> String {
         match change {
             Change::Cap { .. } => format!(
                 "{} consecutive blocked passes; the machinery is failing, not the work",
