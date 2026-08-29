@@ -88,6 +88,7 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 3. Add `Error::UnknownStep { name }` and `Error::StepFailed { step, reason }`,
    with message assertions in `src/error/test.rs`.
 
+
 ## Task A2: the `Step` trait and the closed registry
 
 **Files:** `crates/tinyloops/src/step/registry.rs`, `src/step/mod.rs`,
@@ -149,8 +150,8 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 `src/arm/test.rs`
 
 1. Failing tests: `an_arm_reads_the_report_it_was_handed` and
-   `an_arm_returns_a_whole_state_not_a_patch` — a whole `LoopState` is what
-   makes B2's fold a delta of two whole values. Implement:
+   `an_arm_returns_a_whole_state_not_a_patch`; a whole `LoopState` is what makes
+   B2's fold a delta of two whole values. Implement:
 
    ```rust
    pub trait Arm: Send + Sync {
