@@ -453,3 +453,14 @@ fn the_wire_form_is_pinned() {
     let json = serde_json::to_string(&history).unwrap();
     assert_eq!(serde_json::from_str::<History>(&json).unwrap(), history);
 }
+
+#[test]
+fn the_write_failure_renders_readably() {
+    assert_eq!(
+        Error::WriteNotDurable {
+            scope: "run-1".to_owned()
+        }
+        .to_string(),
+        "write to scope run-1 was acknowledged but not retained",
+    );
+}

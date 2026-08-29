@@ -630,3 +630,43 @@ fn a_brief_and_its_outcome_round_trip_as_json() {
     assert_eq!(serde_json::to_string(&Tier::Deep).unwrap(), r#""deep""#);
     assert_eq!(serde_json::to_string(&Status::Ready).unwrap(), r#""ready""#,);
 }
+
+#[test]
+fn the_harness_failures_render_readably() {
+    assert_eq!(
+        Error::RoleWithoutCaps {
+            role: "summarizer".to_owned()
+        }
+        .to_string(),
+        "role summarizer was declared without caps",
+    );
+    assert_eq!(
+        Error::DuplicateRole {
+            role: "judge".to_owned()
+        }
+        .to_string(),
+        "a role named judge is already declared",
+    );
+    assert_eq!(
+        Error::UnknownRole {
+            role: "architect".to_owned()
+        }
+        .to_string(),
+        "no role named architect is declared",
+    );
+    assert_eq!(
+        Error::UnknownTicket {
+            ticket: "judge#0".to_owned()
+        }
+        .to_string(),
+        "no delegation is held for ticket judge#0",
+    );
+    assert_eq!(
+        Error::SpawnRefused {
+            role: "judge".to_owned(),
+            reason: "at capacity".to_owned(),
+        }
+        .to_string(),
+        "spawn of judge refused: at capacity",
+    );
+}
