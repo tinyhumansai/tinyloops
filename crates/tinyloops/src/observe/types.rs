@@ -438,6 +438,7 @@ impl Event {
             | Self::ArmStarted { pass, .. }
             | Self::ArmFinished { pass, .. }
             | Self::Merged { pass, .. }
+            | Self::NoteDropped { pass, .. }
             | Self::Judged { pass, .. }
             | Self::Routed { pass, .. }
             | Self::Delegated { pass, .. }
@@ -470,6 +471,7 @@ impl Event {
             Self::ArmStarted { .. } => "arm_started",
             Self::ArmFinished { .. } => "arm_finished",
             Self::Merged { .. } => "merged",
+            Self::NoteDropped { .. } => "note_dropped",
             Self::Judged { .. } => "judged",
             Self::Routed { .. } => "routed",
             Self::Delegated { .. } => "delegated",

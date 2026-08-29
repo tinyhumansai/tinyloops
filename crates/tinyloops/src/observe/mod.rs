@@ -114,6 +114,9 @@ pub fn render(event: &Event) -> String {
         Event::StepFinished { step, duration, .. } => {
             format!("pass {pass} step {step} finished in {duration:?}")
         }
+        Event::NoteDropped { from, capacity, .. } => format!(
+            "pass {pass} note from {from} dropped, mailbox full at {capacity}"
+        ),
         Event::ArmStarted { arm, .. } => format!("pass {pass} arm {arm} started"),
         Event::ArmFinished { arm, duration, .. } => {
             format!("pass {pass} arm {arm} finished in {duration:?}")
