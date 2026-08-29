@@ -1351,6 +1351,42 @@ fn a_muted_arm_still_runs_its_node_and_still_converges() {
 }
 
 #[test]
+fn muting_the_concluding_arm_is_refused_whatever_the_bounds_say() {
+    // A run that mutes the one arm able to end it cannot succeed — it would
+    // run to its iteration cap and report nothing about why. Caught here, at
+    // assembly, before a tuner ever proposes it.
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let bounds = crate::policy::Bounds::none().mutable(crate::step::STEP_REFLECT);
+
+    let error = Advance::new(bounds, &arms).expect_err("reflect concludes the run");
+    assert_eq!(
+        error,
+        Error::IneligibleMutableArm {
+            arm: crate::step::STEP_REFLECT.to_owned(),
+            reason: "it is the run's concluding arm",
+        }
+    );
+}
+
+#[test]
+fn muting_an_undeclared_arm_is_refused_rather_than_a_recorded_no_op() {
+    // An arm not in the set has no room to mute at all: accepting the
+    // amendment would spend the run's amendment budget recording a change
+    // that touches nothing.
+    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set");
+    let bounds = crate::policy::Bounds::none().mutable("no-such-arm");
+
+    let error = Advance::new(bounds, &arms).expect_err("no arm named no-such-arm is declared");
+    assert_eq!(
+        error,
+        Error::IneligibleMutableArm {
+            arm: "no-such-arm".to_owned(),
+            reason: "the run's arm set does not declare it",
+        }
+    );
+}
+
+#[test]
 fn a_tuned_run_carries_a_third_arm_and_a_different_graph() {
     let plain = assembled(Preset::Balanced).expect("the preset assembles");
     let tuned = tuned_research_loop(
