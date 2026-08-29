@@ -6,14 +6,35 @@
 //!
 //! # How they are kept in agreement
 //!
-//! Every threshold is *interpolated* from the [`Thresholds`] passed in. Not one
-//! number is typed into a program string. A literal `2` in the jq would be a
-//! second copy of a constant, free to drift from the Rust the moment either is
-//! tuned, and drift between a router and its ladder is invisible: both sides
-//! still produce a route, they just produce different ones.
+//! Neither program holds a threshold. Both *address* one, reading it out of the
+//! accumulator at `.profile.thresholds.<field>` — the same place
+//! [`route`](super::route) reads it. A literal `2` in the jq would be a second
+//! copy of a constant, free to drift from the Rust the moment either is tuned,
+//! and drift between a router and its ladder is invisible: both sides still
+//! produce a route, they just produce different ones.
 //!
-//! The generated program emits exactly [`Route::as_str`], which is what
+//! Rendering the number in, which is what these functions used to do, removed
+//! that drift and bought a different problem: the emitted graph became a
+//! function of the thresholds, so changing one changed the topology and a
+//! resume across the change was refused. See
+//! `docs/adr/0006-thresholds-addressed-from-run-state.md`. Addressing keeps the
+//! single source and drops the coupling, and it means these are *constant*
+//! programs — one ladder serves every preset and every revision of one.
+//!
+//! The program emits exactly [`Route::as_str`], which is what
 //! [`Route::parse`] reads back.
+//!
+//! # The sentinel, and why it is not zero
+//!
+//! Every threshold read carries `// 4294967295`. That is `u32::MAX` standing
+//! for "this state names no threshold", and it makes every rung of the ladder
+//! false, so a state with no profile falls through to [`Route::Retry`] — the
+//! cheap outcome every default in this crate points at.
+//!
+//! It cannot be left off. A missing key resolves to `null`, `null` sorts below
+//! every number in jq, and `0 >= null` is therefore **true** — so an unguarded
+//! read would fire the *first* rung and route [`Route::Blocked`] on a state
+//! that simply had no profile, which is the most expensive answer available.
 //!
 //! # Addressing the accumulator
 //!
@@ -44,35 +65,43 @@ use super::{Route, Thresholds};
 use crate::state::LoopState;
 use crate::{Error, Result};
 
+/// The value a threshold read falls back to when the state names none.
+///
+/// `u32::MAX`, so every rung of the ladder is false and the run falls through
+/// to [`Route::Retry`]. See the module docs for why the fallback cannot be
+/// omitted and cannot be zero.
+const NO_THRESHOLD: u32 = u32::MAX;
+
 /// Returns the jq program that evaluates to a [`Route::as_str`] name.
 ///
 /// The arms are tested in the same order as [`route`](super::route), and for
 /// the same reasons; that documentation is the specification and this is its
 /// translation.
 ///
+/// The program is a constant: it addresses the thresholds in the accumulator
+/// rather than carrying them, so one ladder routes every preset and every
+/// revision of one.
+///
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{Thresholds, ladder};
-/// let program = ladder(&Thresholds { blocked: 7, ..Thresholds::default() });
+/// # use tinyloops::ladder;
+/// let program = ladder();
 /// assert!(program.starts_with('='));
-/// assert!(program.contains(">= 7"));
+/// assert!(program.contains(".profile.thresholds"));
+/// assert!(!program.contains(">= 2"));
 /// ```
 #[must_use]
-pub fn ladder(thresholds: &Thresholds) -> String {
+pub fn ladder() -> String {
     format!(
-        "=(.state // .item) as $s \
-| if ((($s | .blocked) // 0) >= {blocked}) then \"{route_blocked}\" \
-elif ((($s | .solved) // false) or ((($s | .attempts) // 0) >= {max_attempts})) then \"{route_solved}\" \
-elif ((($s | .unverified) // 0) >= {unverified}) then \"{route_reported}\" \
-elif (((($s | .unproductive) // 0) >= {stuck}) or ((($s | .computational) // 0) >= {computational})) then \"{route_diversify}\" \
+        "=(.state // .item) as $s | (($s | .profile.thresholds) // {{}}) as $t \
+| if ((($s | .blocked) // 0) >= (($t | .blocked) // {none})) then \"{route_blocked}\" \
+elif ((($s | .solved) // false) or ((($s | .attempts) // 0) >= (($t | .max_attempts) // {none}))) then \"{route_solved}\" \
+elif ((($s | .unverified) // 0) >= (($t | .unverified) // {none})) then \"{route_reported}\" \
+elif (((($s | .unproductive) // 0) >= (($t | .stuck) // {none})) or ((($s | .computational) // 0) >= (($t | .computational) // {none}))) then \"{route_diversify}\" \
 else \"{route_retry}\" \
 end",
-        blocked = thresholds.blocked,
-        max_attempts = thresholds.max_attempts,
-        unverified = thresholds.unverified,
-        stuck = thresholds.stuck,
-        computational = thresholds.computational,
+        none = NO_THRESHOLD,
         route_blocked = Route::Blocked.as_str(),
         route_solved = Route::Solved.as_str(),
         route_reported = Route::Reported.as_str(),
