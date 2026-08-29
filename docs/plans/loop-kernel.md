@@ -473,8 +473,6 @@ All through `tinyflows::testkit::TestHarness`.
    and the operational constraint that a threshold change invalidates every
    outstanding checkpoint. Extend `tests/public_api.rs` with a
    build-validate-compile walkthrough using only the public surface.
-2. `cargo test --doc` and
-   `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features`.
 
 ## Verification
 
@@ -496,8 +494,7 @@ All through `tinyflows::testkit::TestHarness`.
 | B2 | 5 (delta fold), 8 (commutative reducer, as a law) |
 | B3 | 6 (fan-out and barrier from one list) |
 | C2, C6 | 7 (thresholds generated, parity proved) |
-| C5 | 9 (checkpoint carries the graph signature) |
-| C4 | 10 (composable termination) |
+| C5, C4 | 9 (graph signature), 10 (composable termination) |
 | A2, A3, C3 | the closed step set; the builder is pure |
 | C8 | `routing-and-policy.md`: `Autonomy` in the topology |
 | D1–D3 | `orchestrator.md`: the three bindings and the five rules |
