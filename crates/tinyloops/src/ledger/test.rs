@@ -233,7 +233,11 @@ fn a_criterion_moves_to_true_only_through_recorded_evidence() {
     let mut spec = RunSpec::new("make the loop stop", &[("c1", "the judge fires")]);
 
     assert_eq!(spec.goal(), "make the loop stop");
-    assert!(spec.criteria().iter().all(|criterion| !criterion.satisfied()));
+    assert!(
+        spec.criteria()
+            .iter()
+            .all(|criterion| !criterion.satisfied())
+    );
     assert_eq!(
         spec.satisfy("c1").unwrap_err(),
         Error::EvidenceNotRecorded {

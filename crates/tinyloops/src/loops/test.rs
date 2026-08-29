@@ -133,8 +133,14 @@ fn every_node_in_the_body_is_a_tool_call_naming_one_step() {
         let node = graph.node(id).expect("the body node is emitted");
         assert_eq!(node.kind, NodeKind::ToolCall, "{id} is not a tool call");
         assert_eq!(node.config["slug"], json!(crate::RUN_LOOP_STEP));
-        assert!(node.config["args"]["step"].is_string(), "{id} names no step");
-        assert!(node.config.get("agent_ref").is_none(), "{id} names an agent");
+        assert!(
+            node.config["args"]["step"].is_string(),
+            "{id} names no step"
+        );
+        assert!(
+            node.config.get("agent_ref").is_none(),
+            "{id} names an agent"
+        );
     }
 }
 
@@ -347,7 +353,10 @@ fn no_threshold_is_typed_into_the_builder() {
         .as_str()
         .expect("the switch keys on a program");
     for rendered in [">= 37", ">= 41", ">= 29", ">= 23", ">= 19"] {
-        assert!(program.contains(rendered), "{rendered} missing from {program}");
+        assert!(
+            program.contains(rendered),
+            "{rendered} missing from {program}"
+        );
     }
     // The default thresholds' numbers cannot appear: they were never typed.
     assert!(!program.contains(">= 8"), "{program}");
@@ -389,7 +398,13 @@ fn building_twice_emits_byte_identical_json() {
 #[test]
 fn a_step_absent_from_the_registry_is_a_build_error() {
     let mut missing = StepRegistry::new();
-    for name in [STEP_PLAN, STEP_RESEARCH, STEP_ATTEMPT, STEP_PASS, STEP_REPORT] {
+    for name in [
+        STEP_PLAN,
+        STEP_RESEARCH,
+        STEP_ATTEMPT,
+        STEP_PASS,
+        STEP_REPORT,
+    ] {
         missing
             .register(Arc::new(Body(name)))
             .expect("each step is registered once");
@@ -418,7 +433,11 @@ fn a_graph_that_fails_validation_is_a_named_error() {
     let wrapped = Error::InvalidLoopGraph {
         reason: error.to_string(),
     };
-    assert!(wrapped.to_string().starts_with("the emitted loop graph is not valid"));
+    assert!(
+        wrapped
+            .to_string()
+            .starts_with("the emitted loop graph is not valid")
+    );
 }
 
 #[test]
@@ -458,7 +477,13 @@ fn report_autonomy_emits_no_node_that_acts() {
         assert!(graph.node(arm).is_none(), "{arm} acts");
     }
     // It still plans, researches, stands down, and reports.
-    for present in [ids.plan, ids.research, ids.side_arms, ids.stand_down, ids.report] {
+    for present in [
+        ids.plan,
+        ids.research,
+        ids.side_arms,
+        ids.stand_down,
+        ids.report,
+    ] {
         assert!(graph.node(present).is_some(), "{present} is missing");
     }
 }
@@ -619,7 +644,10 @@ fn a_composed_termination_is_what_the_head_runs() {
         .build()
         .expect("a composed condition still builds");
     let head = graph.node(NodeIds::default().loop_head).expect("the head");
-    assert_eq!(head.config["until"], json!(condition.expression(&thresholds)));
+    assert_eq!(
+        head.config["until"],
+        json!(condition.expression(&thresholds))
+    );
 }
 
 #[test]

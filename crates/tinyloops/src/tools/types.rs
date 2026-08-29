@@ -157,11 +157,8 @@ impl ToolSchema {
                 }
             }
             if let Some(required) = object.get_mut("required").and_then(Value::as_array_mut) {
-                required.retain(|value| {
-                    value
-                        .as_str()
-                        .is_none_or(|name| !injected.contains(&name))
-                });
+                required
+                    .retain(|value| value.as_str().is_none_or(|name| !injected.contains(&name)));
             }
         }
         self
