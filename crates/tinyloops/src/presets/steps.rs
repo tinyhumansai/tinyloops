@@ -164,14 +164,38 @@ pub struct Advance {
 }
 
 impl Advance {
-    /// A `pass` step that folds amendments within `bounds`.
+    /// A `pass` step that folds amendments within `bounds`, against `arms`.
     ///
     /// [`Advance::default`] carries [`Bounds::default`], which permits nothing:
     /// a loop assembled without deciding what its run may revise is a loop that
     /// revises nothing. That is the safe direction to get wrong.
-    #[must_use]
-    pub fn new(bounds: Bounds) -> Self {
-        Self { bounds }
+    ///
+    /// # Errors
+    ///
+    /// [`Error::IneligibleMutableArm`] when `bounds` names an arm mutable that
+    /// `arms` does not declare, or names the arm `arms` allows to conclude.
+    /// Both are caught here, at assembly, rather than left for a tuner's
+    /// amendment to discover: the first would spend the run's amendment
+    /// budget on a recorded no-op, and the second would let a run mute the
+    /// one arm able to end it.
+    pub fn new(bounds: Bounds, arms: &ArmSet) -> Result<Self> {
+        let concluding = arms.concluding();
+        let declared = arms.names();
+        for arm in &bounds.mutable_arms {
+            if Some(arm.as_str()) == concluding {
+                return Err(Error::IneligibleMutableArm {
+                    arm: arm.clone(),
+                    reason: "it is the run's concluding arm",
+                });
+            }
+            if !declared.iter().any(|&name| name == arm.as_str()) {
+                return Err(Error::IneligibleMutableArm {
+                    arm: arm.clone(),
+                    reason: "the run's arm set does not declare it",
+                });
+            }
+        }
+        Ok(Self { bounds })
     }
 
     /// The room this step gives a proposal.
