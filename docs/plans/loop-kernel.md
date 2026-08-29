@@ -46,8 +46,7 @@ group:** A1 and A2 are one file each and A3 joins them, while A4 needs only A1
 so it can run alongside all of B; B1 and B2 are independent and merge at B3; C1
 and C2 are independent and C3 joins them; D1 and D2 are independent. Every task
 ends with `cargo test -p tinyloops <module>` and a clippy run over
-`--all-targets --all-features -- -D warnings`; only the exceptions are named
-below.
+`--all-targets --all-features -- -D warnings`, except where noted.
 
 ## Task A0: dependencies
 
