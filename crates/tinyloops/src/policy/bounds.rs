@@ -182,9 +182,9 @@ impl Bounds {
     pub fn check(&self, change: &Change) -> Result<()> {
         match change {
             Change::Threshold { field, to } => {
-                self.within(field.as_str(), self.thresholds.get(field), u64::from(*to))
+                within(field.as_str(), self.thresholds.get(field), u64::from(*to))
             }
-            Change::Cap { field, to } => self.within(field.as_str(), self.caps.get(field), *to),
+            Change::Cap { field, to } => within(field.as_str(), self.caps.get(field), *to),
             Change::MuteArm { arm } | Change::UnmuteArm { arm } => {
                 if self.mutable_arms.contains(arm) {
                     Ok(())
@@ -192,25 +192,6 @@ impl Bounds {
                     Err(Error::UnboundedAmendment { field: arm.clone() })
                 }
             }
-        }
-    }
-
-    /// The shared helper behind the two numeric arms of [`Self::check`].
-    fn within(&self, field: &str, range: Option<&Range>, value: u64) -> Result<()> {
-        let Some(range) = range else {
-            return Err(Error::UnboundedAmendment {
-                field: field.to_owned(),
-            });
-        };
-        if range.holds(value) {
-            Ok(())
-        } else {
-            Err(Error::AmendmentOutOfBounds {
-                field: field.to_owned(),
-                value,
-                low: range.low,
-                high: range.high,
-            })
         }
     }
 
@@ -271,5 +252,27 @@ impl Bounds {
             muting_window: self.muting_window.max(other.muting_window),
             max_amendments: self.max_amendments.min(other.max_amendments),
         }
+    }
+}
+
+/// The shared check behind the two numeric arms of [`Bounds::check`].
+///
+/// A missing range is a refusal rather than a permission: bounds that never
+/// mention a field are bounds that do not let a tuner touch it.
+fn within(field: &str, range: Option<&Range>, value: u64) -> Result<()> {
+    let Some(range) = range else {
+        return Err(Error::UnboundedAmendment {
+            field: field.to_owned(),
+        });
+    };
+    if range.holds(value) {
+        Ok(())
+    } else {
+        Err(Error::AmendmentOutOfBounds {
+            field: field.to_owned(),
+            value,
+            low: range.low,
+            high: range.high,
+        })
     }
 }
