@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use super::{ordered, positive, uncontended};
+use super::{ordered, positive, positive_duration, uncontended};
 use crate::Result;
 
 /// How many tool calls one model call is assumed to be able to issue.
@@ -411,15 +411,6 @@ impl RunBudget {
         } else {
             None
         }
-    }
-}
-
-/// Rejects a zero duration for `bound`.
-fn positive_duration(value: Duration, bound: Bound) -> Result<()> {
-    if value.is_zero() {
-        Err(crate::Error::UnboundedCap { bound })
-    } else {
-        Ok(())
     }
 }
 

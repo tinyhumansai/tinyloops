@@ -66,6 +66,15 @@ fn positive(value: u64, bound: Bound) -> Result<()> {
     }
 }
 
+/// Rejects a zero timeout, which is a scope that ends before it starts.
+fn positive_duration(value: Duration, bound: Bound) -> Result<()> {
+    if value.is_zero() {
+        Err(Error::UnboundedCap { bound })
+    } else {
+        Ok(())
+    }
+}
+
 /// Asserts that an inner timeout expires strictly before the outer one.
 ///
 /// Strictly, not "at or before": equal timeouts race, and which one wins
