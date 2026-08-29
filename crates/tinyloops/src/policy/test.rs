@@ -1040,11 +1040,12 @@ fn a_cap_amendment_that_would_contend_the_budget_is_refused_rather_than_applied(
     );
 
     assert!(!verdict.applied());
-    assert_eq!(profile.caps, before.caps, "a refused cap amendment leaves caps untouched");
+    assert_eq!(
+        profile.caps, before.caps,
+        "a refused cap amendment leaves caps untouched"
+    );
     assert!(
-        profile.history[0]
-            .to_string()
-            .contains("reachable before"),
+        profile.history[0].to_string().contains("reachable before"),
         "{}",
         profile.history[0]
     );
