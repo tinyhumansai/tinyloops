@@ -53,6 +53,12 @@ tokio = { workspace = true }
 # keeps them offline and deterministic. A shipped module brings its own
 # capabilities rather than the mocks, so the feature stays out of `[dependencies]`.
 tinyflows = { workspace = true, features = ["mock", "testkit"] }
+# Test-only. `tinyflows::interception::StepInterceptor` is declared with
+# `#[async_trait]`, so implementing it — which `tests/loop_run.rs` does to prove
+# a replayed activation changes no counter — needs the same macro. Already in
+# the tree via the engine, and a dev-dependency so nothing the loader resolves
+# gains it.
+async-trait = "0.1"
 
 [features]
 default = []

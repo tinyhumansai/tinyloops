@@ -8,8 +8,6 @@
 //! choice written down: one `&'static str` per node, changed only by editing
 //! this file.
 
-use serde_json::Value;
-
 /// The id of every node the kernel emits.
 ///
 /// A struct rather than a set of free constants so a caller can rename the
@@ -133,7 +131,8 @@ pub(super) fn payload_address(node: &str) -> String {
 /// than against the code that wrote it. Nothing in the builder needs it, so it
 /// is compiled only for those tests.
 #[cfg(test)]
-pub(super) fn mentions(config: &Value, address: &str) -> bool {
+pub(super) fn mentions(config: &serde_json::Value, address: &str) -> bool {
+    use serde_json::Value;
     match config {
         Value::String(text) => text.contains(address),
         Value::Array(items) => items.iter().any(|item| mentions(item, address)),
