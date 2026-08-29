@@ -1,15 +1,102 @@
-# Rust Template
+# TinyLoops
 
-A production-ready Rust 2024 TinyBus module template used by TinyHumans AI. It
-ships the workspace layout, TinyBus ABI adapter, error handling, testing,
-documentation, CI, and multi-platform release workflow that every new
-integration in this organization starts from.
+A loop engineering framework: the scaffolding for building agentic loops that
+run a workflow, judge what came back, and decide whether to go round again.
+
+The pieces it is assembled from are vendored, not reimplemented:
+
+- [**TinyFlows**](https://github.com/tinyhumansai/tinyflows) executes one graph
+  and decides nothing. A loop's unit of work is a `WorkflowGraph` it compiles
+  once and runs per turn. Every effect — models, tools, HTTP, code execution,
+  persistence — goes through a capability trait, so a loop chooses its own
+  vendors, and its examples run offline against the in-memory mocks.
+- [**TinyAgents**](https://github.com/tinyhumansai/tinyagents) is the optional
+  durable agent harness. Once a loop needs to be paused, checkpointed, resumed,
+  or observed, the `while` statement stops being enough and the control flow
+  moves into a harness graph. It is behind the `tinyagents` cargo feature so a
+  shipped module never resolves it.
+- [**TinyBus**](https://github.com/tinyhumansai/tinybus) is how a loop is
+  reached from outside the process. The workspace builds as both an `rlib` and
+  the `cdylib` TinyBus loads.
 
 It is a two-crate cargo workspace. `crates/template-bus` is the wire contract —
 member names, payload types, and the contract version, with no transport and no
-behavior — and `crates/template` is the implementation, built as both an `rlib`
-and the `cdylib` TinyBus loads. A host that only makes calls depends on the
-contract crate alone and compiles neither the module nor `tinybus` itself.
+behavior — and `crates/template` is the implementation. A host that only makes
+calls depends on the contract crate alone and compiles neither the module nor
+`tinybus` itself.
+
+> The crates are still named `template`: this repository was generated from
+> [rust-template](https://github.com/tinyhumansai/rust-template) and the rename
+> checklist below has not been worked through yet.
+
+## The Loop Template
+
+Compile the graph once, run it per turn, feed each result back in, and stop on a
+judge or a budget. That is the whole shape, and it is the complete
+[`simple_loop`](crates/template/examples/simple_loop.rs) example minus its graph
+definition:
+
+```rust
+// Compile once, outside the loop: a compiled workflow is the reusable artifact.
+let step = compile(&refine_step())?;
+let capabilities = mock_capabilities();
+
+let mut state = json!({ "score": 0 });
+let mut turns = 0;
+
+while turns < MAX_TURNS {
+    let outcome = run(&step, state.clone(), &capabilities).await?;
+    // The run state is keyed by node id; the loop carries the last node forward.
+    state = outcome.output["nodes"]["refine"]["items"][0]["json"].clone();
+    turns += 1;
+
+    if state["score"].as_i64().unwrap_or(0) >= TARGET_SCORE {
+        break;
+    }
+}
+```
+
+Swap `refine_step()` for a graph that calls a model and `score` for a real
+judge, and nothing around them changes. A hard turn budget is part of the
+template rather than something a caller remembers to add — a loop without one is
+a way to spend an afternoon discovering that a judge never says yes.
+
+When the loop needs durability, the same two decisions become harness nodes and
+the `while` statement disappears:
+
+```rust
+let loop_graph = GraphBuilder::<LoopState, LoopState>::overwrite()
+    .add_node("refine", move |state: LoopState, _ctx: NodeContext| {
+        refine(state, Arc::clone(&workflow), Arc::clone(&capabilities))
+    })
+    .set_entry("refine")
+    .add_conditional_edges(
+        "refine",
+        |state: &LoopState| judge(state),          // "again" or "done"
+        [("again", "refine"), ("done", END)],
+    )
+    .compile()?;
+
+let finished = loop_graph.run(LoopState::new()).await?;
+```
+
+TinyFlows never learns that a harness is driving it, and TinyAgents never learns
+what the workflow does. See
+[`tinyagents_harness`](crates/template/examples/tinyagents_harness.rs) for the
+running version.
+
+## Examples
+
+```sh
+cargo run -p template --example simple_loop                              # the loop, in plain Rust
+cargo run -p template --features tinyagents --example tinyagents_harness # the loop, under a harness
+cargo run -p template --example basic                                    # ordinary library API usage
+```
+
+Both loop examples run against TinyFlows' mock capabilities, so they are
+deterministic, offline, and need no provider credentials. `tinyagents` is an
+optional dependency: the harness example declares `required-features`, so a
+default build skips it rather than failing to compile.
 
 ## Use This Template
 
