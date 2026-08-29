@@ -200,9 +200,9 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
 
    Sort by `id()` before folding — a belt to the braces that neither replaces
    the law nor excuses skipping the permutation test.
-3. The permutation and association tests are exhaustive over a fixed fixture
-   rather than generative: `proptest` is a dependency decision, and 24
-   permutations of four values cover the property with no new crate.
+3. The permutation and association tests are exhaustive over a fixed fixture,
+   not generative: `proptest` is a dependency decision and 24 permutations of
+   four values cover the property with no new crate.
 
 ## Task B3: `ArmSet` — one list, both edge sets
 
@@ -243,8 +243,7 @@ ends with `cargo test -p tinyloops <module>` and `cargo clippy --all-targets
    ports terminate at `pass` and none returns to `attempt`, because an inner
    cycle the head never sees cannot be bounded by `config.max_iterations`;
    `report_is_reachable_only_after_stand_down`; and
-   `node_ids_are_declared_not_positional`, where inserting a node leaves every
-   other id unchanged.
+   `node_ids_are_declared_not_positional`.
 2. Implement `NodeIds`, a struct of `&'static str` constants, and the shape.
    Kinds, from `vendor/tinyflows/src/model/node_kind.rs`: `Trigger` for
    `trigger`; `ToolCall` for `plan`, `research`, `attempt`, every arm, `pass`,

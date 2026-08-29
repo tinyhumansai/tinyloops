@@ -116,9 +116,9 @@ spec's letter is visible rather than discovered.
      result carries the work completed, the tripped bound's identity, and the
      accumulated cost. It is never a bare error: the loop stops, reports what
      it has, and says which bound stopped it.
-   - `an_expired_tool_timeout_returns_the_captured_output_and_the_run_continues`.
-   - `ten_passes_with_signal_and_ten_without_reach_the_same_raw_compute_and_different_effective_feedback`,
-     and the report shows both. A loop that counts only turns cannot
+   - `an_expired_tool_timeout_returns_its_captured_output_and_the_run_goes_on`.
+   - `ten_passes_with_signal_and_ten_without_differ_on_effective_feedback`,
+     reaching the same raw-compute total, and the report shows both. A loop that counts only turns cannot
      distinguish ten productive passes from ten that each learned nothing, and
      those are the two cases a budget most needs to tell apart.
    - `the_cost_sums_generation_verification_and_a_retried_call` — the expected
@@ -156,8 +156,8 @@ spec's letter is visible rather than discovered.
 **Files:** `crates/tinyloops/src/observe/recorder.rs`, `src/observe/test.rs`
 
 1. Failing tests:
-   - `a_node_activation_and_a_model_call_in_one_pass_appear_in_their_true_order`,
-     each with a distinct `who` label. The recorder is registered as a
+   - `an_activation_and_a_model_call_in_one_pass_keep_their_true_order`, each
+     with a distinct `who` label. The recorder is registered as a
      `RunObserver` and as this crate's `CallSink`.
    - `a_child_view_and_its_parent_share_one_journal`, and
      `the_parents_counters_include_the_childs`. One journal, many views: a
@@ -182,7 +182,7 @@ spec's letter is visible rather than discovered.
      and which node was holding could only be inferred from which sub-agents
      happened to spawn during it. "The run stalled" must be a question the log
      answers.
-   - `a_view_filtered_to_one_role_still_contains_pass_boundaries_verdicts_routes_and_budget_trips`.
+   - `a_role_filtered_view_still_holds_boundaries_verdicts_routes_and_trips`.
      Nobody should have to be looking at the right tab to see that the run
      changed course.
 2. Implement the pairing check as a public assertion helper the tests and the
@@ -198,8 +198,8 @@ spec's letter is visible rather than discovered.
      asserted by scanning the **serialized** stream for a fixture secret, not
      by inspecting fields. Disabled is the default: observability that defaults
      to recording prompts is a secret leak with a dashboard attached.
-   - `with_capture_enabled_and_redaction_configured_the_fixture_secret_is_absent_from_every_sink`
-     — the shape upstream already has is `RedactingSink`
+   - `with_capture_on_and_redaction_configured_no_sink_holds_the_secret` — the
+     shape upstream already has is `RedactingSink`
      (`vendor/tinyagents/src/harness/observability/types.rs:397`).
    - `a_layout_that_includes_the_journal_path_is_rejected`, and
      `no_public_api_reads_the_journal`. One reflection step pulled its own 1.1
@@ -215,8 +215,8 @@ spec's letter is visible rather than discovered.
 `src/observe/report.rs`, `src/observe/test.rs`, `src/lib.rs`
 
 1. Failing tests:
-   - `a_response_reporting_a_different_model_yields_accounting_naming_the_model_that_answered`.
-     Cost and token fields are read off each response body; with a fallback
+   - `accounting_names_the_model_that_answered_not_the_one_configured`. Cost
+     and token fields are read off each response body; with a fallback
      ladder the route genuinely varies per call, and a local price table prices
      the request that was intended rather than the one that happened. A
      companion test, `this_crate_holds_no_price_table`, asserts no cost
@@ -232,8 +232,8 @@ spec's letter is visible rather than discovered.
    - `the_printed_summary_and_the_status_payload_derive_from_one_report_value`.
      One structure for both, so the observability surface and the control
      surface cannot diverge.
-   - `a_report_from_eight_repeats_states_per_attempt_outcomes_and_an_aggregate`,
-     and `no_field_of_a_report_is_a_lone_success_boolean`. A 61% single-attempt
+   - `a_report_from_eight_repeats_states_each_outcome_and_an_aggregate`, and
+     `no_field_of_a_report_is_a_lone_success_boolean`. A 61% single-attempt
      pass rate becomes 25% when the same task must be completed over eight
      attempts, and capability rankings invert at long horizons — a single
      success bit reports the number that inverts.

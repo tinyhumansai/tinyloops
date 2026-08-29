@@ -315,7 +315,8 @@ recording. A test in H5 asserts it for the reference implementations.
      the run had accumulated dies with it, including the output that would have
      explained the failure.
    - `peak_capture_memory_is_a_function_of_the_bound_not_the_command`.
-   - `two_consecutive_actions_produce_snapshots_whose_difference_names_exactly_the_files_the_second_touched`.
+   - `a_snapshot_difference_names_exactly_the_files_the_action_touched`, over
+     two consecutive actions.
    - `the_snapshot_is_bounded_in_size` — it is paid for on every turn, so it is
      a summary of the workspace, not its contents.
 2. Implement streaming capture and `state()`, recomputed after every action.
