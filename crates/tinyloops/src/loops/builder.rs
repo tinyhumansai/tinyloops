@@ -60,7 +60,7 @@ const DEFAULT_PORT: &str = "default";
 /// # use serde_json::Value;
 /// # use tinyloops::{
 /// #     Advanced, Arm, ArmOutcome, ArmSet, Autonomy, CanWrite, LoopBuilder, LoopState, NoWrite,
-/// #     Result, STEP_MERGE, Step, StepContext, StepRegistry, Thresholds,
+/// #     Result, STEP_MERGE, Step, StepContext, StepRegistry,
 /// # };
 /// struct Body(&'static str);
 ///
@@ -101,7 +101,7 @@ const DEFAULT_PORT: &str = "default";
 ///     Arc::new(Evaluator("judge")),
 /// ])?;
 ///
-/// let graph = LoopBuilder::new(Thresholds::default(), arms, registry)
+/// let graph = LoopBuilder::new(arms, registry)
 ///     .goal("ship the release")
 ///     .autonomy(Autonomy::Unattended)
 ///     .build()?;

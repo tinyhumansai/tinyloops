@@ -339,7 +339,7 @@ impl AssembledLoop {
             pass,
             step: name.to_owned(),
         });
-        let advanced = self.registry.run(name, state, &self.thresholds)?;
+        let advanced = self.registry.run(name, state)?;
         recorder.record(Event::StepFinished {
             pass,
             step: name.to_owned(),
@@ -373,7 +373,7 @@ impl AssembledLoop {
             });
             let candidate = self
                 .registry
-                .run(arm.name(), state.clone(), &self.thresholds)?;
+                .run(arm.name(), state.clone())?;
             deltas.push(candidate.delta_from(state));
             returned.insert(
                 arm.name().to_owned(),
