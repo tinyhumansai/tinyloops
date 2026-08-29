@@ -161,27 +161,50 @@ pub struct AttemptReport {
 }
 
 impl AttemptReport {
-    /// Whether anything the pass commissioned came back with something to act on.
+    /// Whether anything the pass commissioned came back as evidence about the
+    /// goal.
     ///
     /// A reply or an artifact from *any* specialist is enough. That "any" is
     /// load-bearing: a pass where one specialist timed out and another answered
     /// produced work, and counting it unproductive would spend a diversify on a
     /// run that was not stuck.
+    ///
+    /// A [`Ending::Failed`] outcome's reply is *not* evidence, and the
+    /// distinction is the whole reason [`LoopState::blocked`] exists apart from
+    /// [`LoopState::unproductive`]. A specialist that could not start reports
+    /// why it could not start, which is readable, useful, and says nothing
+    /// about the goal. Artifacts still count, because a failure that left files
+    /// behind left work behind.
+    ///
+    /// [`LoopState::blocked`]: crate::LoopState::blocked
+    /// [`LoopState::unproductive`]: crate::LoopState::unproductive
     #[must_use]
     pub fn is_informative(&self) -> bool {
-        self.outcomes.iter().any(DelegationOutcome::is_informative)
+        self.outcomes.iter().any(Self::is_evidence)
     }
 
-    /// How many specialists ended in a way that says nothing about the goal.
-    ///
-    /// A failure to *start* the work is infrastructure, not evidence, and the
-    /// loop counts it apart from an attempt that ran and did not succeed.
+    /// How many specialists never got as far as saying anything about the goal.
     #[must_use]
     pub fn blocked(&self) -> usize {
         self.outcomes
             .iter()
-            .filter(|outcome| outcome.ending == Ending::Failed && !outcome.is_informative())
+            .filter(|outcome| outcome.ending == Ending::Failed)
             .count()
+    }
+
+    /// Whether the pass learned nothing except that the machinery would not run.
+    ///
+    /// "Only outcome" is literal: one specialist that failed alongside one that
+    /// merely came back empty is an unproductive pass, not a blocked one, and
+    /// the two rungs of the ladder are different distances from the exit.
+    #[must_use]
+    pub fn is_blocked(&self) -> bool {
+        !self.outcomes.is_empty() && self.blocked() == self.outcomes.len()
+    }
+
+    fn is_evidence(outcome: &DelegationOutcome) -> bool {
+        !outcome.artifacts.is_empty()
+            || (outcome.ending != Ending::Failed && outcome.reply.is_some())
     }
 }
 
@@ -392,10 +415,15 @@ impl Step for Attempt {
         state.established = state
             .established
             .saturating_add(u32::try_from(report.artifacts.len()).unwrap_or(u32::MAX));
+        // The three counters this step may move, and the order they are decided
+        // in. Evidence breaks both streaks; a pass that learned only that the
+        // machinery would not run is blocked rather than unproductive, because
+        // infrastructure failure is not evidence about the goal and the ladder
+        // exits on it far sooner.
         if report.is_informative() {
             state.unproductive = 0;
             state.blocked = 0;
-        } else if report.blocked() > 0 {
+        } else if report.is_blocked() {
             state.blocked = state.blocked.saturating_add(1);
         } else {
             state.unproductive = state.unproductive.saturating_add(1);

@@ -623,7 +623,7 @@ fn a_specialist_that_never_started_counts_as_blocked_rather_than_unproductive() 
         vec![(
             "prover".to_owned(),
             vec![Scripted::Fails {
-                reason: String::new(),
+                reason: "the sandbox would not start".to_owned(),
             }],
         )],
         &["prover"],
@@ -637,8 +637,76 @@ fn a_specialist_that_never_started_counts_as_blocked_rather_than_unproductive() 
 
     let report: AttemptReport = serde_json::from_str(&state.last_attempt).expect("a report");
     assert_eq!(report.blocked(), 1);
+    assert!(report.is_blocked());
+    // The reason it gives is readable and is not evidence about the goal.
+    assert_eq!(
+        report.outcomes[0].reply.as_deref(),
+        Some("the sandbox would not start")
+    );
+    assert!(!report.is_informative());
     assert_eq!(state.blocked, 1);
     assert_eq!(state.unproductive, 0);
+}
+
+#[test]
+fn a_failure_alongside_an_empty_pass_is_unproductive_rather_than_blocked() {
+    // "Only outcome" is literal. One specialist that could not start and one
+    // that ran and found nothing is a pass that tried, and the two rungs sit at
+    // different distances from the exit.
+    let attempt = attempt_over(
+        vec![
+            (
+                "prover".to_owned(),
+                vec![Scripted::Fails {
+                    reason: "the sandbox would not start".to_owned(),
+                }],
+            ),
+            (
+                "refuter".to_owned(),
+                vec![Scripted::NeverCompletes {
+                    artifacts: Vec::new(),
+                }],
+            ),
+        ],
+        &["prover", "refuter"],
+    );
+    let thresholds = Thresholds::default();
+
+    let state = attempt
+        .run(
+            planned("goal", &[("one", "first"), ("two", "second")]),
+            context(0, &thresholds),
+        )
+        .expect("the attempt runs")
+        .into_state();
+
+    let report: AttemptReport = serde_json::from_str(&state.last_attempt).expect("a report");
+    assert_eq!(report.blocked(), 1);
+    assert!(!report.is_blocked());
+    assert_eq!(state.unproductive, 1);
+    assert_eq!(state.blocked, 0);
+}
+
+#[test]
+fn a_failure_that_left_an_artifact_still_counts_as_work() {
+    let attempt = attempt_over(
+        vec![(
+            "prover".to_owned(),
+            vec![Scripted::Capped {
+                artifacts: vec![Artifact::new("half.md", "as far as it got")],
+            }],
+        )],
+        &["prover"],
+    );
+    let thresholds = Thresholds::default();
+
+    let state = attempt
+        .run(planned("goal", &[("one", "first")]), context(0, &thresholds))
+        .expect("the attempt runs")
+        .into_state();
+
+    assert_eq!(state.unproductive, 0);
+    assert_eq!(state.established, 1);
 }
 
 #[test]
