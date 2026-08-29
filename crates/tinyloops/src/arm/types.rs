@@ -81,7 +81,8 @@ impl ArmOutcome {
 ///         _ctx: StepContext<'_, NoWrite>,
 ///     ) -> Result<ArmOutcome> {
 ///         let mut outcome = ArmOutcome::unchanged(self.name(), base);
-///         outcome.contribution.score = report.get("score").and_then(Value::as_u64).map(|s| s as u8);
+///         let score = report.get("score").and_then(Value::as_u64);
+///         outcome.contribution.score = score.and_then(|score| u8::try_from(score).ok());
 ///         Ok(outcome)
 ///     }
 /// }
@@ -166,9 +167,33 @@ impl ArmSet {
     ///
     /// ```
     /// # use std::sync::Arc;
-    /// # use tinyloops::{ArmSet, Error};
-    /// # use tinyloops::doc::{concluding_arm, plain_arm};
-    /// let set = ArmSet::new(vec![concluding_arm("reflect"), plain_arm("judge")])?;
+    /// # use serde_json::Value;
+    /// # use tinyloops::{Arm, ArmOutcome, ArmSet, Error, LoopState, NoWrite, Result, StepContext};
+    /// struct Named(&'static str, bool);
+    ///
+    /// impl Arm for Named {
+    ///     fn name(&self) -> &'static str {
+    ///         self.0
+    ///     }
+    ///
+    ///     fn may_conclude(&self) -> bool {
+    ///         self.1
+    ///     }
+    ///
+    ///     fn evaluate(
+    ///         &self,
+    ///         base: &LoopState,
+    ///         _report: &Value,
+    ///         _ctx: StepContext<'_, NoWrite>,
+    ///     ) -> Result<ArmOutcome> {
+    ///         Ok(ArmOutcome::unchanged(self.name(), base))
+    ///     }
+    /// }
+    ///
+    /// let set = ArmSet::new(vec![
+    ///     Arc::new(Named("reflect", true)) as Arc<dyn Arm>,
+    ///     Arc::new(Named("judge", false)),
+    /// ])?;
     /// assert_eq!(set.names(), ["reflect", "judge"]);
     /// assert_eq!(set.concluding(), Some("reflect"));
     ///
