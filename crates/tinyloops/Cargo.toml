@@ -36,6 +36,9 @@ serde = { workspace = true }
 # The expression scope a ladder is evaluated against is a `serde_json::Value`,
 # and the accumulator is serialized into it.
 serde_json = { workspace = true }
+# The graph signature of `src/loops/`: a SHA-256 over the emitted graph's node
+# ids, kinds, ports, edges, and every rendered threshold.
+sha2 = { workspace = true }
 tinybus-module = { workspace = true }
 thiserror = { workspace = true }
 # Optional, and only ever reached from an example. The `tinyagents` feature
@@ -49,7 +52,7 @@ tokio = { workspace = true }
 # in-memory capability implementations the loop examples run on, which is what
 # keeps them offline and deterministic. A shipped module brings its own
 # capabilities rather than the mocks, so the feature stays out of `[dependencies]`.
-tinyflows = { workspace = true, features = ["mock"] }
+tinyflows = { workspace = true, features = ["mock", "testkit"] }
 
 [features]
 default = []

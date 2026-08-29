@@ -62,6 +62,14 @@ tinyflows-adaptive = { path = "vendor/tinyflows/crates/adaptive", version = "0.1
 # features off keeps the bundled SQLite checkpointer and the builtin tool family
 # out of the graph until an example asks for them.
 tinyagents = { path = "vendor/tinyagents", version = "2.1.1", default-features = false }
+# Hashes the emitted loop graph into the signature a checkpoint records, so a
+# resume against a graph whose topology has since changed is refused rather than
+# restored into slots that no longer mean what they meant. Not
+# `std::hash::DefaultHasher`: its output is documented as unstable across
+# releases, so a signature built on it would refuse resumes after a toolchain
+# bump rather than after a topology change. Only the SHA-256 digest is used, so
+# no default feature is needed beyond the crate's own.
+sha2 = "0.10"
 # Derive macros for the crate-wide error type in `crates/tinyloops/src/error/`.
 # Every dependency entry should carry a comment like this one saying why it is
 # here.
