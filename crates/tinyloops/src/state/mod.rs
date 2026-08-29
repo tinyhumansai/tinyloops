@@ -68,10 +68,10 @@ fn shift(base: u32, movement: i64) -> u32 {
 ///
 /// A `Some(true)` anywhere wins, then a `Some(false)` anywhere, then the base.
 /// Order-independent by construction, which is the whole requirement.
-fn latch(base: bool, votes: impl Iterator<Item = Option<bool>> + Clone) -> bool {
-    if votes.clone().any(|vote| vote == Some(true)) {
+fn latch(base: bool, deltas: &[Delta], pick: impl Fn(&Delta) -> Option<bool>) -> bool {
+    if deltas.iter().any(|delta| pick(delta) == Some(true)) {
         true
-    } else if votes.clone().any(|vote| vote == Some(false)) {
+    } else if deltas.iter().any(|delta| pick(delta) == Some(false)) {
         false
     } else {
         base
@@ -177,8 +177,8 @@ impl LoopState {
             restarts: shift(self.restarts, total(deltas, |d| d.restarts)),
             established: shift(self.established, total(deltas, |d| d.established)),
             banked: shift(self.banked, total(deltas, |d| d.banked)),
-            solved: latch(self.solved, deltas.iter().map(|d| d.solved)),
-            expired: latch(self.expired, deltas.iter().map(|d| d.expired)),
+            solved: latch(self.solved, deltas, |d| d.solved),
+            expired: latch(self.expired, deltas, |d| d.expired),
             goal: self.goal.clone(),
             last_attempt: self.last_attempt.clone(),
             lessons: self.lessons.clone(),

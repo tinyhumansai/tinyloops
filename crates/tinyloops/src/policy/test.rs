@@ -134,12 +134,12 @@ fn the_ladder_agrees_with_route_on_every_combination() {
                         for unproductive in upto(thresholds.stuck) {
                             for computational in upto(thresholds.computational) {
                                 let state = LoopState {
-                                    blocked,
-                                    solved,
                                     attempts,
-                                    unverified,
                                     unproductive,
+                                    blocked,
                                     computational,
+                                    unverified,
+                                    solved,
                                     ..LoopState::new("sweep")
                                 };
                                 assert_ladder_parity(&state, &thresholds);
@@ -170,12 +170,12 @@ fn the_terminal_condition_agrees_with_is_terminal_on_every_combination() {
                         for attempts in upto(thresholds.max_attempts) {
                             for unverified in upto(thresholds.unverified) {
                                 let state = LoopState {
-                                    blocked,
-                                    expired,
-                                    solved,
-                                    restarts,
                                     attempts,
+                                    blocked,
                                     unverified,
+                                    restarts,
+                                    solved,
+                                    expired,
                                     ..LoopState::new("sweep")
                                 };
                                 assert_terminal_parity(&state, &thresholds);

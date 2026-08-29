@@ -105,7 +105,7 @@ impl Thresholds {
     /// ```
     #[must_use]
     pub fn plans_on(&self, passes: u32) -> bool {
-        self.plan_interval != 0 && passes != 0 && passes % self.plan_interval == 0
+        self.plan_interval != 0 && passes != 0 && passes.is_multiple_of(self.plan_interval)
     }
 }
 
