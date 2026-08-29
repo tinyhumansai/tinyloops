@@ -12,7 +12,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::budget::Bound;
-use crate::policy::{Judgement, Outcome, Route};
+use crate::policy::{Change, Judgement, Outcome, Route};
 use crate::state::Delta;
 
 /// What a run captures of the text flowing through it.
@@ -360,6 +360,35 @@ pub enum Event {
         /// The capacity it did not fit in.
         capacity: usize,
     },
+    /// The run revised its own configuration.
+    ///
+    /// A run that quietly retuned itself and then succeeded is
+    /// indistinguishable in its report from a run that succeeded as
+    /// configured. This is what separates them.
+    Amended {
+        /// The pass whose `pass` step folded it. It was proposed on that pass
+        /// and takes effect on the next.
+        pass: u32,
+        /// The profile revision this fold produced.
+        revision: u32,
+        /// What moved.
+        change: Change,
+        /// The evidence the proposer gave.
+        because: String,
+    },
+    /// The run proposed a revision its bounds refused.
+    ///
+    /// Recorded as loudly as an acceptance. A tuner proposing forty refused
+    /// amendments is a broken tuner, and without this it reports nothing at
+    /// all.
+    AmendmentRefused {
+        /// The pass that proposed it.
+        pass: u32,
+        /// What it wanted to move.
+        change: Change,
+        /// Why it was refused.
+        reason: String,
+    },
     /// A budget bound tripped.
     BoundTripped {
         /// The pass it belongs to.
@@ -439,6 +468,8 @@ impl Event {
             | Self::ArmFinished { pass, .. }
             | Self::Merged { pass, .. }
             | Self::NoteDropped { pass, .. }
+            | Self::Amended { pass, .. }
+            | Self::AmendmentRefused { pass, .. }
             | Self::Judged { pass, .. }
             | Self::Routed { pass, .. }
             | Self::Delegated { pass, .. }
@@ -472,6 +503,8 @@ impl Event {
             Self::ArmFinished { .. } => "arm_finished",
             Self::Merged { .. } => "merged",
             Self::NoteDropped { .. } => "note_dropped",
+            Self::Amended { .. } => "amended",
+            Self::AmendmentRefused { .. } => "amendment_refused",
             Self::Judged { .. } => "judged",
             Self::Routed { .. } => "routed",
             Self::Delegated { .. } => "delegated",
