@@ -183,7 +183,13 @@ fn a_role_declared_with_an_illegal_budget_is_refused() {
     };
     assert!(matches!(
         roles
-            .declare("broken", "prompt", RoleGrant::none(), Some(caps), Tier::Small)
+            .declare(
+                "broken",
+                "prompt",
+                RoleGrant::none(),
+                Some(caps),
+                Tier::Small
+            )
             .unwrap_err(),
         Error::UnboundedCap { .. }
     ));
@@ -276,7 +282,9 @@ fn steering_past_the_mailbox_capacity_reports_the_drop() {
             .unwrap()
             .is_accepted()
     );
-    let second = delegate.steer(&ticket, Note::new("loop", "second")).unwrap();
+    let second = delegate
+        .steer(&ticket, Note::new("loop", "second"))
+        .unwrap();
     assert_eq!(second, Posted::Dropped(Note::new("loop", "second")));
     assert_eq!(delegate.dropped_notes(&ticket).unwrap(), 1);
 }
@@ -413,7 +421,10 @@ async fn a_failed_delegation_is_not_an_error_return() {
     );
     let ticket = delegate.spawn("judge", Brief::new("read it")).unwrap();
 
-    let outcome = delegate.settle(&ticket).await.expect("a failure is a result");
+    let outcome = delegate
+        .settle(&ticket)
+        .await
+        .expect("a failure is a result");
     assert_eq!(outcome.ending, Ending::Failed);
     assert_eq!(outcome.reply.as_deref(), Some("the sandbox died"));
 }
@@ -578,11 +589,9 @@ fn the_harness_reports_the_budget_a_role_runs_under() {
 
 #[test]
 fn a_brief_and_its_outcome_round_trip_as_json() {
-    let outcome = DelegationOutcome::answered(
-        Brief::new("read it").with_context("attached"),
-        "it holds",
-    )
-    .with_artifacts(vec![Artifact::new("v.md", "verdict")]);
+    let outcome =
+        DelegationOutcome::answered(Brief::new("read it").with_context("attached"), "it holds")
+            .with_artifacts(vec![Artifact::new("v.md", "verdict")]);
 
     let json = serde_json::to_string(&outcome).unwrap();
     assert!(json.contains(r#""ending":"answered""#), "{json}");
@@ -596,8 +605,5 @@ fn a_brief_and_its_outcome_round_trip_as_json() {
         r#"["read"]"#,
     );
     assert_eq!(serde_json::to_string(&Tier::Deep).unwrap(), r#""deep""#);
-    assert_eq!(
-        serde_json::to_string(&Status::Ready).unwrap(),
-        r#""ready""#,
-    );
+    assert_eq!(serde_json::to_string(&Status::Ready).unwrap(), r#""ready""#,);
 }

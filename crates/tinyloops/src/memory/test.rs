@@ -230,7 +230,12 @@ fn clearing_the_cache_makes_the_next_write_probe_again() {
         .unwrap();
     assert_eq!(memory.fetches().len(), 2);
     assert_eq!(ProbeCache::default().ttl(), Duration::from_secs(60));
-    assert_eq!(memory.probes().verdict(&Scope::new("nothing"), Duration::ZERO), None);
+    assert_eq!(
+        memory
+            .probes()
+            .verdict(&Scope::new("nothing"), Duration::ZERO),
+        None
+    );
 }
 
 #[test]

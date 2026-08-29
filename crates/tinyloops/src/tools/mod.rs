@@ -118,7 +118,10 @@ impl Resilient {
 
 impl std::fmt::Debug for dyn Tool {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.debug_struct("Tool").field("name", &self.name()).finish()
+        formatter
+            .debug_struct("Tool")
+            .field("name", &self.name())
+            .finish()
     }
 }
 
@@ -310,12 +313,7 @@ impl ToolSet {
         match tool.invoke(call) {
             Ok(report) => match report.recovery {
                 Some(recovery) => self.recovered(call, report.content, recovery),
-                None => Ok(ToolOutcome::new(
-                    &call.id,
-                    &call.name,
-                    report.content,
-                    None,
-                )),
+                None => Ok(ToolOutcome::new(&call.id, &call.name, report.content, None)),
             },
             // `Resilient` lets only a fatal error past, and every instance in
             // this set was wrapped at construction.
@@ -348,12 +346,7 @@ impl ToolSet {
                 });
             }
         }
-        Ok(ToolOutcome::new(
-            &call.id,
-            &call.name,
-            text,
-            Some(recovery),
-        ))
+        Ok(ToolOutcome::new(&call.id, &call.name, text, Some(recovery)))
     }
 
     /// Appends one failure to the history.
@@ -395,7 +388,10 @@ impl PureTools {
 const CORPUS: [(&str, &str); 3] = [
     ("notes.md", "the loop stops when the judge says so"),
     ("plan.md", "attempt, evaluate, route, budget"),
-    ("readme.md", "a loop is a harness, a memory, tools, a workspace"),
+    (
+        "readme.md",
+        "a loop is a harness, a memory, tools, a workspace",
+    ),
 ];
 
 /// Reads one document out of the reference corpus.

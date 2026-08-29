@@ -76,11 +76,11 @@ use tinyflows::caps::Capabilities;
 
 mod types;
 
+use types::refuse;
 pub use types::{
     Artifact, Brief, DelegationOutcome, DropObserver, Ending, Mailbox, Note, Posted, Role,
     RoleGrant, Status, Ticket, Tier, salvage,
 };
-use types::refuse;
 
 use crate::{Caps, Error, Result, RunBudget};
 

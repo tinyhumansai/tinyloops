@@ -204,7 +204,11 @@ impl MemoryWorkspace {
     /// A workspace over `layout`, recording into a fresh side repository.
     #[must_use]
     pub fn new(layout: Layout) -> Self {
-        Self::with_backends(layout, Arc::new(SideRepository::new()), Arc::new(PlainParents))
+        Self::with_backends(
+            layout,
+            Arc::new(SideRepository::new()),
+            Arc::new(PlainParents),
+        )
     }
 
     /// A workspace over supplied backends.

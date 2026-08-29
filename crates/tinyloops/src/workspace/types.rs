@@ -231,10 +231,7 @@ impl BoundedCapture {
         if self.dropped == 0 {
             format!("{head}{tail}")
         } else {
-            format!(
-                "{head}\n... {} bytes dropped ...\n{tail}",
-                self.dropped
-            )
+            format!("{head}\n... {} bytes dropped ...\n{tail}", self.dropped)
         }
     }
 }

@@ -198,7 +198,12 @@ pub fn render(ledger: &Ledger) -> String {
     let mut out = String::from("# Run ledger\n");
     let open = ledger.with_status(EntryStatus::Open);
     let closed = ledger.with_status(EntryStatus::Closed);
-    table(&mut out, "Open", &open, "fetch the rest with `ledger.entries()`");
+    table(
+        &mut out,
+        "Open",
+        &open,
+        "fetch the rest with `ledger.entries()`",
+    );
     table(
         &mut out,
         "Closed",

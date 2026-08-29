@@ -394,7 +394,12 @@ pub struct ToolOutcome {
 
 impl ToolOutcome {
     /// Builds an outcome around the receipt for the tool that ran.
-    pub(crate) fn new(call_id: &str, name: &str, content: String, recovery: Option<Recovery>) -> Self {
+    pub(crate) fn new(
+        call_id: &str,
+        name: &str,
+        content: String,
+        recovery: Option<Recovery>,
+    ) -> Self {
         Self {
             call_id: call_id.to_owned(),
             name: name.to_owned(),
