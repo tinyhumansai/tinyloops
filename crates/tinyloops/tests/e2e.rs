@@ -138,15 +138,13 @@ fn solving_script() -> Vec<(&'static str, Vec<Scripted>)> {
 /// proves the node computes the right thing from what the graph handed it.
 struct Steps {
     registry: StepRegistry,
-    thresholds: Thresholds,
     calls: Mutex<Vec<(String, Value, Value)>>,
 }
 
 impl Steps {
-    fn new(registry: StepRegistry, thresholds: Thresholds) -> Self {
+    fn new(registry: StepRegistry) -> Self {
         Self {
             registry,
-            thresholds,
             calls: Mutex::new(Vec::new()),
         }
     }
@@ -223,7 +221,7 @@ async fn run(graph: &WorkflowGraph, steps: &Arc<Steps>) -> RunTrace {
 #[tokio::test]
 async fn the_merge_node_is_handed_every_arm_and_folds_them() {
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let merges = steps.calls_for("merge");
@@ -254,7 +252,7 @@ async fn the_merge_carries_the_judges_verdict_into_the_accumulator() {
     // out as that arm's claim. If the round trip broke, this is the number that
     // would silently stay at its default.
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let merged = steps.state_after("merge", 0);
@@ -269,7 +267,7 @@ async fn the_merge_carries_the_judges_verdict_into_the_accumulator() {
 #[tokio::test]
 async fn the_merge_folds_the_reflections_verdict_rather_than_dropping_it() {
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     // The second pass is the one whose specialist claims the goal with an
@@ -294,7 +292,7 @@ async fn a_merge_output_is_never_the_state_it_was_handed() {
     // through untouched, which produced a green run, a bound expression, and a
     // routing decision made on counters no arm had moved.
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let (args, answer) = steps
@@ -315,7 +313,7 @@ async fn every_node_runs_and_no_expression_resolves_to_null() {
     // reading a key nothing writes resolves to `null`, the node runs, the field
     // is empty, and the run reports success.
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     let trace = run(&graph, &steps).await;
 
     assert!(
@@ -337,7 +335,7 @@ async fn every_node_runs_and_no_expression_resolves_to_null() {
 #[tokio::test]
 async fn research_runs_once_and_the_arms_run_once_per_pass() {
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let passes = steps.calls_for("pass").len();
@@ -361,7 +359,7 @@ async fn every_arm_reads_the_attempt_and_never_the_accumulator() {
     // answer. Asserted against the emitted arguments, because that is where the
     // wiring actually lives.
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     // The attempt's second call reports differently from its first, so an arm
@@ -385,7 +383,7 @@ async fn every_arm_reads_the_attempt_and_never_the_accumulator() {
 #[tokio::test]
 async fn the_run_ends_solved_with_the_report_composed_last() {
     let (graph, registry) = assembled(Preset::Balanced, solving_script());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let final_state = steps.state_after("report", 0);
@@ -414,7 +412,7 @@ async fn a_run_whose_specialists_never_answer_stops_without_claiming_success() {
             ),
         ],
     );
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let final_state = steps.state_after("report", 0);
@@ -448,7 +446,7 @@ async fn a_run_whose_machinery_never_starts_is_blocked_rather_than_stalled() {
             ),
         ],
     );
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let final_state = steps.state_after("report", 0);
@@ -473,7 +471,7 @@ async fn a_claim_with_no_artifact_behind_it_does_not_end_the_run() {
             ("refuter", vec![answers("nothing to add", Vec::new())]),
         ],
     );
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let final_state = steps.state_after("report", 0);
@@ -506,7 +504,7 @@ async fn a_salvaged_specialist_still_counts_as_work() {
             ),
         ],
     );
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
 
     let final_state = steps.state_after("report", 0);
@@ -528,7 +526,7 @@ async fn driving_the_loop_reaches_the_same_verdict_as_running_the_graph() {
     // different answer.
     let script = solving_script();
     let (graph, registry) = assembled(Preset::Balanced, script.clone());
-    let steps = Arc::new(Steps::new(registry, thresholds));
+    let steps = Arc::new(Steps::new(registry));
     run(&graph, &steps).await;
     let through_engine = steps.state_after("report", 0);
 
@@ -563,7 +561,7 @@ async fn driving_the_loop_reaches_the_same_verdict_as_running_the_graph() {
 async fn every_preset_runs_the_same_graph_to_a_terminal_state() {
     for preset in Preset::ALL {
         let (graph, registry) = assembled(preset, solving_script());
-        let steps = Arc::new(Steps::new(registry, thresholds));
+        let steps = Arc::new(Steps::new(registry));
         let trace = run(&graph, &steps).await;
 
         assert!(
