@@ -192,7 +192,6 @@ ends with `cargo test -p tinyloops <module>` and a clippy run over
        /// (`vendor/tinyflows/src/graph/reducer/mod.rs`) — reproducible, not
        /// order-independent. A reducer that reads arrival order returns a
        /// different answer after an unrelated arm rename, and nothing reports it.
-       /// Delegates to `LoopState::merge`: a `Delta` per arm, plus its `Contribution`.
        fn fold(&self, base: &LoopState, arms: &[ArmOutcome]) -> Result<LoopState>;
    }
    pub struct DeltaFold;
