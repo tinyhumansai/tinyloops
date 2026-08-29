@@ -12,19 +12,18 @@ Build, in order, the four modules that turn `state` and `policy` into a running
 loop: `step/`, `arm/`, `loops/`, `orchestrate/`. The end state is a builder that
 emits one `tinyflows::model::WorkflowGraph` holding the whole goal run, and a
 closed set of Rust steps that the graph's nodes invoke through a single tool.
-Not here: the seams the steps call into ([`seams.md`](seams.md)); `budget/`,
-`observe/`, `presets/`, and the worked example
+Not here: the seams ([`seams.md`](seams.md)); `budget/`, `observe/`, `presets/`,
+and the worked example
 ([`observability-and-budget.md`](observability-and-budget.md)); and anything
-spanning runs, which is `vendor/tinyflows/crates/adaptive`.
+spanning runs (`vendor/tinyflows/crates/adaptive`).
 
 ## Assumptions
 
 `crates/tinyloops/src/state/` and `crates/tinyloops/src/policy/` are landed by
-the concurrent module work; this plan consumes them and does not modify them.
-The names below are the ones
-[`../specs/routing-and-policy.md`](../specs/routing-and-policy.md) fixes. If the
-landed modules spell them differently, adopt their spelling and update this
-block in the same commit rather than adding an alias layer.
+the concurrent module work; this plan consumes them unmodified. The names below
+are the ones [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md)
+fixes; if the landed modules spell them differently, adopt their spelling and
+update this block in the same commit rather than adding an alias layer.
 
 ```rust
 // LoopState carries attempts, blocked, unverified, unproductive, computational,
@@ -56,16 +55,16 @@ are named below.
 **Files:** `Cargo.toml`, `crates/tinyloops/Cargo.toml`
 
 1. Add `sha2` to the root `[workspace.dependencies]`, commented: it hashes the
-   emitted graph for invariant 9, and `std::hash::DefaultHasher` is documented
-   as unstable across releases, so a signature built on it would refuse resumes
+   emitted graph for invariant 9, and `std::hash::DefaultHasher` is documented as
+   unstable across releases, so a signature built on it would refuse resumes
    after a toolchain bump rather than after a topology change.
 2. In `crates/tinyloops/Cargo.toml` take `sha2`, promote `serde` and
    `serde_json` to dependencies, and extend the dev-dependency `tinyflows` entry
-   to `features = ["mock", "testkit"]`. `testkit` supplies `TestHarness`,
+   to `features = ["mock", "testkit"]` — `testkit` supplies `TestHarness`,
    `TestRun`, and `TestRun::assert_no_null_bindings`
-   (`vendor/tinyflows/src/testkit/harness.rs:279`); the interception seam is
-   always compiled, so `StepInterceptor` needs no feature.
-3. `cargo build --all-targets --all-features` and `cargo deny check all`.
+   (`vendor/tinyflows/src/testkit/harness.rs:279`), while the interception seam
+   is always compiled, so `StepInterceptor` needs no feature. Then
+   `cargo build --all-targets --all-features` and `cargo deny check all`.
 
 ## Task A1: the capability-typed step context
 
