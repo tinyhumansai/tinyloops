@@ -15,8 +15,8 @@ closed set of Rust steps that the graph's nodes invoke through a single tool.
 
 ## Non-goals
 
-- The seams the steps call into — [`seams.md`](seams.md).
-- `budget/`, `observe/`, `presets/`, and the worked example —
+- The seams the steps call into — [`seams.md`](seams.md) — and `budget/`,
+  `observe/`, `presets/`, and the worked example, which are
   [`observability-and-budget.md`](observability-and-budget.md).
 - Anything spanning runs. That is `vendor/tinyflows/crates/adaptive`.
 
@@ -30,15 +30,10 @@ landed modules spell them differently, adopt their spelling and update this
 block in the same commit rather than adding an alias layer.
 
 ```rust
-pub struct LoopState;      // serde round-trips to the accumulator JSON; carries
-                           // attempts, blocked, unverified, unproductive,
-                           // computational, restarts (u32) and solved (bool)
-impl LoopState {
-    pub fn from_value(v: &serde_json::Value) -> Result<Self>;
-    pub fn to_value(&self) -> serde_json::Value;
-}
-pub struct Thresholds;     // max_attempts, blocked, unverified, stuck,
-                           // computational, max_restarts
+// LoopState carries attempts, blocked, unverified, unproductive, computational,
+// restarts (u32) and solved (bool), and serde round-trips to the accumulator.
+impl LoopState { fn from_value(&Value) -> Result<Self>; fn to_value(&self) -> Value; }
+// Thresholds: max_attempts, blocked, unverified, stuck, computational, max_restarts.
 pub enum Route { Solved, Reported, Retry, Diversify, Blocked }
 pub enum Judgement { Proceed, Steer(String), Restart(String) }
 pub enum Autonomy { Report, Assisted, Unattended }
@@ -65,19 +60,17 @@ are named below.
 
 **Files:** `Cargo.toml`, `crates/tinyloops/Cargo.toml`
 
-1. Add `sha2` to the root `[workspace.dependencies]` with the comment this
-   workspace expects: it hashes the emitted graph for invariant 9, and
-   `std::hash::DefaultHasher` is documented as unstable across releases, so a
-   signature built on it would refuse resumes after a toolchain bump rather than
-   after a topology change.
-2. In `crates/tinyloops/Cargo.toml` take `sha2`, and promote `serde` and
-   `serde_json` from dev-dependencies to dependencies.
-3. Extend the dev-dependency `tinyflows` entry to
-   `features = ["mock", "testkit"]`. `testkit` supplies `TestHarness`,
+1. Add `sha2` to the root `[workspace.dependencies]`, commented: it hashes the
+   emitted graph for invariant 9, and `std::hash::DefaultHasher` is documented
+   as unstable across releases, so a signature built on it would refuse resumes
+   after a toolchain bump rather than after a topology change.
+2. In `crates/tinyloops/Cargo.toml` take `sha2`, promote `serde` and
+   `serde_json` to dependencies, and extend the dev-dependency `tinyflows` entry
+   to `features = ["mock", "testkit"]`. `testkit` supplies `TestHarness`,
    `TestRun`, and `TestRun::assert_no_null_bindings`
    (`vendor/tinyflows/src/testkit/harness.rs:279`); the interception seam is
    always compiled, so `StepInterceptor` needs no feature.
-4. `cargo build --all-targets --all-features` and `cargo deny check all`.
+3. `cargo build --all-targets --all-features` and `cargo deny check all`.
 
 ## Task A1: the capability-typed step context
 
@@ -110,10 +103,9 @@ are named below.
 `src/step/test.rs`
 
 1. Failing tests: `resolves_a_registered_step_by_name`;
-   `rejects_an_unregistered_step_by_name`, asserting
-   `Error::UnknownStep { name: "nope" }` rather than `Ok`; and
-   `rejects_a_second_registration_of_the_same_name`, so a name in the closed set
-   has one meaning.
+   `rejects_an_unregistered_step_by_name`, asserting `Error::UnknownStep` rather
+   than `Ok`; and `rejects_a_second_registration_of_the_same_name`, so a name in
+   the closed set has one meaning.
 2. Implement:
 
    ```rust
@@ -172,7 +164,7 @@ Depends only on A1, so it may run alongside group B.
 `src/arm/test.rs`
 
 1. Failing tests: `an_arm_reads_the_report_it_was_handed` and
-   `an_arm_returns_a_whole_state_not_a_patch` — a full `LoopState` is what makes
+   `an_arm_returns_a_whole_state_not_a_patch` — a whole `LoopState` is what makes
    B2's fold a delta of two whole values.
 2. Implement:
 
@@ -280,12 +272,11 @@ Depends only on A1, so it may run alongside group B.
    Kinds, all from `vendor/tinyflows/src/model/node_kind.rs`: `Trigger` for
    `trigger`; `ToolCall` for `plan`, `research`, `attempt`, every arm, `pass`,
    and `report`; `Loop` for the head; `Merge` for the barrier; `Switch` for
-   `route`; `Spawn` for `side_arms`; `Gate` for `stand_down`.
-3. Every `ToolCall` node names `run_loop_step` with a `step` argument. No node
-   carries a bare `agent_ref`: `NodeKind::Agent` would lose the
-   operator-directive drain, the salvage of a timed-out attempt, and the arms
-   opened beside the loop.
-4. `side_arms` (`Spawn`) and `stand_down` (`Gate`) are this plan's reading of
+   `route`; `Spawn` for `side_arms`; `Gate` for `stand_down`. Every `ToolCall`
+   node names `run_loop_step` with a `step` argument, and no node carries a bare
+   `agent_ref`: `NodeKind::Agent` would lose the operator-directive drain, the
+   salvage of a timed-out attempt, and the arms opened beside the loop.
+3. `side_arms` (`Spawn`) and `stand_down` (`Gate`) are this plan's reading of
    "the arms opened beside the loop are started at a named node, at a place a
    checkpoint can land". `Spawn` needs no `TaskRunner` to be correct — with none
    injected the work runs inline and the ticket returns already settled
@@ -399,8 +390,7 @@ reviewer would.
    the sweep must fail closed on null.
 4. The sweep proves the *translation*, never the answer: both sides read the
    same number, so a wrong threshold is wrong in both and agrees with itself.
-   State that in the test module's `//!` docs so a green sweep is not read as
-   validation of the constants.
+   Say that in the test module's `//!` docs.
 
 ## Task C7: a run under the test harness
 
@@ -425,8 +415,7 @@ All through `tinyflows::testkit::TestHarness`.
    the merge node's own previous items the second time it sees that node, and
    assert the counters match a single application. An interceptor rather than a
    mock capability because what an interceptor returns is *obeyed*, before and
-   after every non-trigger activation, while a `RunObserver` callback returns
-   `()` and cannot inject a replay.
+   after every non-trigger activation, while a `RunObserver` callback returns `()`.
 5. `a_failed_step_routes_rather_than_aborting` — `StepAction::Fail` on the
    attempt node, asserting the run reaches `report` with `Blocked`.
 
@@ -436,9 +425,8 @@ All through `tinyflows::testkit::TestHarness`.
 
 1. Failing tests `assisted_emits_approval_gated_nodes`,
    `unattended_emits_the_same_graph_without_them`, and
-   `report_autonomy_emits_no_node_that_acts` — all asserted on the emitted
-   nodes and edges, never on a prompt string. A prompt instruction is not a
-   control.
+   `report_autonomy_emits_no_node_that_acts` — asserted on the emitted nodes and
+   edges, never on a prompt string. A prompt instruction is not a control.
 2. Implement the `Autonomy` branch in `build`, emitting `NodeKind::Approval`
    nodes. With no `ApprovalProvider` injected an approval falls back to pausing
    the run for `tinyflows::engine::resume`
@@ -477,8 +465,8 @@ All through `tinyflows::testkit::TestHarness`.
 2. Implement `Orchestrator::new(tools: ToolGrant, delegates: DelegateSet)
    -> Result<Self>`, rejecting execution capabilities at construction. Both sets
    are fixed there and have no extend method: a driver that *can* run the
-   experiment runs it, and removing the capability removes the option.
-3. Add `Error::ExecutionToolInOrchestrator { tool }` and
+   experiment runs it, and removing the capability removes the option. Add
+   `Error::ExecutionToolInOrchestrator { tool }` and
    `Error::UndeclaredDelegate { name }`.
 
 ## Task D3: `plan` on a cadence, `attempt` per pass, `report` last
