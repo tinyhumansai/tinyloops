@@ -1020,7 +1020,9 @@ fn a_cap_amendment_that_would_contend_the_budget_is_refused_rather_than_applied(
     // `RunBudget::new` refuses — the tool cap can no longer be reached before
     // the model-call cap. A per-field range check alone would read this as
     // fine; folding must also ask whether the *combination* still budgets.
-    let bounds = Bounds::none().cap(CapField::MaxToolCalls, Range::new(1, 600));
+    let bounds = Bounds::none()
+        .cap(CapField::MaxToolCalls, Range::new(1, 600))
+        .amendments(1);
     let mut profile = LoopProfile::of(crate::presets::Preset::Balanced);
     let before = profile.clone();
 
