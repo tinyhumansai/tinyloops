@@ -66,9 +66,9 @@ while turns < MAX_TURNS {
 ```
 
 Swap `refine_step()` for a graph that calls a model and `score` for a real
-judge, and nothing around them changes. A hard turn budget is part of the
-template rather than something a caller remembers to add — a loop without one is
-a way to spend an afternoon discovering that a judge never says yes.
+judge, and nothing around them changes. A hard turn budget belongs to the
+loop rather than to a caller who remembers to add one — a loop without a budget
+is a way to spend an afternoon discovering that a judge never says yes.
 
 When the loop needs durability, the same two decisions become harness nodes and
 the `while` statement disappears:
@@ -111,39 +111,54 @@ default build skips it rather than failing to compile.
 
 | Area | What is configured |
 | --- | --- |
-| Layout | A cargo workspace under `crates/`, split into a dependency-light wire contract and the module that implements it; directory modules with `mod.rs` / `types.rs` / `test.rs`, a crate-wide error type, integration tests, and a runnable example |
+| Layout | A cargo workspace under `crates/`, split into a dependency-light wire contract and the framework that implements it; one directory module per concern, a crate-wide error type, integration tests, and runnable examples |
 | Lints | `unsafe_code` forbidden, `missing_docs`, clippy `all` + `pedantic`, no `unwrap`/`expect`/`panic`/`todo` in library code — all declared once in `[workspace.lints]` so every crate, local run, and CI run agree |
 | CI | Format, clippy, build, test (default and all features), a run of the bundled example, an assertion that the contract crate stays transport-free, at least 90% line coverage in every source file, rustdoc with `-D warnings`, an MSRV build, and a `cargo-deny` supply-chain check |
 | Release | Manual `workflow_dispatch` bump that validates, versions, tags, and creates installable native module packages for every supported platform |
 | Community | Issue and pull request templates, Dependabot, contributing, security, support, and code of conduct docs |
 | Agents | [`AGENTS.md`](AGENTS.md) as the single source of truth, symlinked as `CLAUDE.md`, plus a `.claude/settings.json` allowlist for the standard commands |
-| Vendor | TinyBus host types and module SDK, the TinyFlows workflow engine, and the TinyAgents harness, each pinned as a `vendor/` build-time submodule |
+| Loop | The engine seam: a workflow compiled once and run per turn, a judge that decides whether to go again, and a budget the loop enforces rather than the caller |
+| Seams | Harness, memory, tools, and workspace are traits the embedder implements, so nothing here picks a model vendor, a store, or a runtime for you |
+| Vendor | TinyBus host types and module SDK, the TinyFlows workflow engine and its adaptive loop, and the TinyAgents harness, each pinned as a `vendor/` build-time submodule |
 
 ## Layout
 
 ```text
 Cargo.toml              # virtual workspace: members, shared metadata, lints
 crates/
-├── tinyloops-bus/       # the wire contract — what crosses the bus
+├── tinyloops-bus/      # the wire contract — what crosses the bus
 │   ├── README.md       # why the contract is its own crate
 │   └── src/
 │       ├── lib.rs      # crate docs + the entire public re-export surface
 │       ├── names/      # interface, object path, one constant per member
-│       ├── greeting/   # payload types, one directory per family
+│       ├── <family>/   # payload types, one directory per family
 │       │   ├── mod.rs
 │       │   ├── types.rs
 │       │   └── test.rs
 │       └── version/    # contract version and the host bind rule
-└── tinyloops/           # the module — behavior, adapter, and the cdylib
+└── tinyloops/          # the framework — behavior, adapter, and the cdylib
     ├── src/
     │   ├── lib.rs      # crate docs + public surface, re-exporting the contract
     │   ├── error/      # crate-wide `Error` and `Result<T>`
-    │   ├── greeting/   # one directory per feature area
+    │   ├── state/      # what one goal run carries from turn to turn
+    │   ├── policy/     # the decision a turn's outcome feeds: stop, retry, route
+    │   ├── step/       # one unit of work, compiled once and run per turn
+    │   ├── arm/        # the alternatives a route can choose between
+    │   ├── loops/      # the graph that wires state, steps, arms, and policy
+    │   ├── budget/     # turn, token, wall-clock, and cost limits
+    │   ├── observe/    # the events a run emits, and who receives them
+    │   ├── orchestrate/# what drives a goal run end to end
+    │   ├── harness/    # the seam a durable driver plugs into
+    │   ├── memory/     # the seam recall plugs into
+    │   ├── tools/      # the seam a tool provider plugs into
+    │   ├── workspace/  # the seam run artifacts are written through
+    │   ├── ledger/     # the rows a run leaves behind for the next one
+    │   ├── presets/    # assembled loops, ready to run
     │   └── tinybus_module/   # bus interface, setup, and ABI v1 exports
     ├── tests/
     │   └── public_api.rs     # integration tests against the public API only
     └── examples/
-        ├── simple_loop.rs            # the loop template, in plain Rust
+        ├── simple_loop.rs            # the loop, in plain Rust
         ├── tinyagents_harness.rs     # the same loop under a durable harness
         ├── basic.rs                  # ordinary library API usage
         ├── verify_module.rs          # local dynamic-module verification
@@ -159,12 +174,15 @@ docs/
 └── adr/                # immutable architecture decision records
 ```
 
+Directories under `crates/tinyloops/src/` that do not exist yet are where that
+work lands; see [`ROADMAP.md`](ROADMAP.md) for what is built and what is not.
+
 The split is the point. A payload type describes what a frame carries; the
 behavior that answers it is a different obligation. `tinyloops` depends on
-`tinyloops-bus` and re-exports all of it, so `tinyloops::GreetRequest` and
-`tinyloops_bus::GreetRequest` are the *same* type rather than structural twins,
-and a host is never forced to choose between linking the whole module and
-redefining the vocabulary. See
+`tinyloops-bus` and re-exports all of it, so a payload type named through the
+framework and the same type named through the contract are the *same* type
+rather than structural twins, and a host is never forced to choose between
+linking the whole framework and redefining the vocabulary. See
 [`crates/tinyloops-bus/README.md`](crates/tinyloops-bus/README.md).
 
 Within each crate, feature areas use directory modules: implementation and
