@@ -43,6 +43,7 @@ fn populated() -> LoopState {
         judged: Judgement::Steer,
         board: board(),
         profile: crate::policy::LoopProfile::of(crate::presets::Preset::Cautious),
+        proposed: None,
         answer: "the bound holds".to_string(),
     }
 }

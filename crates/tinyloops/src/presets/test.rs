@@ -1011,6 +1011,15 @@ fn applying_a_contribution_and_reading_it_back_is_the_identity() {
         score: Some(6),
         judged: Some(Judgement::Restart),
         last_attempt: Some("the report".to_owned()),
+        amendment: Some(crate::policy::Amendment::new(
+            "reflect",
+            0,
+            crate::policy::Change::Threshold {
+                field: crate::policy::ThresholdField::Stuck,
+                to: 3,
+            },
+            "the round trip has to carry it too",
+        )),
     };
 
     let mut candidate = base.clone();
