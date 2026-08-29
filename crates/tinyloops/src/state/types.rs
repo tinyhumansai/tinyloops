@@ -118,6 +118,18 @@ pub struct LoopState {
     /// [`Delta`] nor [`Contribution`] has a slot that reaches it, so no arm can
     /// move it however it is wired.
     pub profile: LoopProfile,
+    /// The amendment this pass proposed, if one did.
+    ///
+    /// `pub(crate)` on purpose, and it is the whole of the "one proposer" rule.
+    /// An arm outside this crate is handed a [`LoopState`] it may edit freely
+    /// and cannot reach this field, so `impl Arm` + "propose an amendment" does
+    /// not compile. The only writer is
+    /// [`TunerArm`](crate::TunerArm), the adapter over the
+    /// [`Tuner`](crate::Tuner) trait. Read it with [`Self::proposed`].
+    ///
+    /// Cleared by the `pass` step once the head has folded it, so a proposal
+    /// lands exactly once.
+    pub(crate) proposed: Option<crate::policy::Amendment>,
     /// The run's final answer, written by the `report` step alone.
     ///
     /// Sole authorship is structural rather than conventional: [`Self::apply`]

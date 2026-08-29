@@ -121,6 +121,19 @@ impl LoopState {
         }
     }
 
+    /// The amendment this pass proposed, if one did.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::LoopState;
+    /// assert!(LoopState::new("goal").proposed().is_none());
+    /// ```
+    #[must_use]
+    pub fn proposed(&self) -> Option<&crate::policy::Amendment> {
+        self.proposed.as_ref()
+    }
+
     /// Returns the movement from `base` to `self`.
     ///
     /// Only the counters and the two latching flags move; see [`Delta`] for why
@@ -211,6 +224,7 @@ impl LoopState {
             judged: self.judged,
             board: self.board.clone(),
             profile: self.profile.clone(),
+            proposed: self.proposed.clone(),
             answer: self.answer.clone(),
         }
     }
