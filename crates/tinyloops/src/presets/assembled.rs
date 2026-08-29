@@ -430,7 +430,8 @@ impl AssembledLoop {
 ///
 /// // It emits a graph an engine can run, and drives itself without one.
 /// assert!(assembled.graph().is_ok());
-/// let driven = assembled.drive(&Recorder::new("run", Arc::new(tinyloops::LineSink::default())))?;
+/// let sink = Arc::new(tinyloops::LineSink::new(std::io::sink()));
+/// let driven = assembled.drive(&Recorder::new("run", sink))?;
 /// assert!(!driven.answer().is_empty());
 /// # Ok::<(), tinyloops::Error>(())
 /// ```
