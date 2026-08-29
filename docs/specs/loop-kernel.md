@@ -4,7 +4,9 @@
 - **Owner:** Maintainers
 - **Related:** [`routing-and-policy.md`](routing-and-policy.md),
   [`orchestrator.md`](orchestrator.md),
-  [`adaptation.md`](adaptation.md) — which proposes amending invariant 7,
+  [`adaptation.md`](adaptation.md),
+  [ADR 0006](../adr/0006-thresholds-addressed-from-run-state.md) — which amends
+  invariant 7,
   [ADR 0002](../adr/0002-loop-on-the-tinyflows-graph.md),
   [ADR 0004](../adr/0004-routing-in-the-graph-steps-in-rust.md)
 
@@ -224,13 +226,22 @@ merge folds exactly the arms that list names.
 two facts they can drift, and the drift is silent: an arm added to the fan-out
 but not to the fold runs, costs its budget, and changes nothing.
 
-### 7. Thresholds are generated, and parity is proved
+### 7. Thresholds are addressed, not written twice, and parity is proved
 
-Every number in the graph's routing ladder is rendered from the Rust `Thresholds`
-constant. No threshold is typed into graph JSON. A parity harness replays the
-generated jq and the Rust routing function over **every** combination of the
-counters across a range that reaches past every threshold, and asserts they
-agree on all of them.
+No threshold is typed into graph JSON, and none is rendered into it either. The
+graph's routing ladder and the Rust routing function read every threshold from
+the same address in the run's accumulator, `.profile.thresholds.<field>`. A
+parity harness replays the emitted jq and the Rust routing function over **every**
+combination of the counters across a range that reaches past every threshold,
+and asserts they agree on all of them.
+
+*Amended by [ADR 0006](../adr/0006-thresholds-addressed-from-run-state.md).* As
+originally written, this invariant required every number to be *rendered* from
+the Rust `Thresholds` constant. That made the emitted graph a function of the
+thresholds, so a threshold change was a topology change and invariant 9 refused
+to resume across one — which is fatal to a run that revises its own thresholds
+(see [`adaptation.md`](adaptation.md)). Reading them from state keeps the half
+that was load-bearing, the single source, and drops the half that was not.
 
 *Why.* Two engines deciding the same run differently is invisible in a live run
 and obvious only in a diff. A ladder reading `>` where the Rust reads `>=`
