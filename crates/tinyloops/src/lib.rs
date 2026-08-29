@@ -65,7 +65,7 @@ pub use policy::{
     Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder, evaluate_terminal_condition,
     expr_scope, is_terminal, ladder, route, terminal_condition,
 };
-pub use state::{Delta, LoopState};
+pub use state::{Contribution, Delta, LoopState};
 
 // The wire contract, re-exported by module rather than by item so every path
 // through this crate resolves to the same definitions the contract crate
