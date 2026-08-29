@@ -129,7 +129,7 @@ template-specific value.
 | Release | Manual `workflow_dispatch` bump that validates, versions, tags, and creates installable native module packages for every supported platform |
 | Community | Issue and pull request templates, Dependabot, contributing, security, support, and code of conduct docs |
 | Agents | [`AGENTS.md`](AGENTS.md) as the single source of truth, symlinked as `CLAUDE.md`, plus a `.claude/settings.json` allowlist for the standard commands |
-| Vendor | TinyBus host types and module SDK pinned as the `vendor/tinybus` build-time submodule |
+| Vendor | TinyBus host types and module SDK, the TinyFlows workflow engine, and the TinyAgents harness, each pinned as a `vendor/` build-time submodule |
 
 ## Layout
 
@@ -155,11 +155,15 @@ crates/
     ├── tests/
     │   └── public_api.rs     # integration tests against the public API only
     └── examples/
+        ├── simple_loop.rs            # the loop template, in plain Rust
+        ├── tinyagents_harness.rs     # the same loop under a durable harness
         ├── basic.rs                  # ordinary library API usage
         ├── verify_module.rs          # local dynamic-module verification
         └── verify_github_release.rs  # tagged-release download and bus call
 vendor/
-└── tinybus/            # pinned TinyBus git submodule
+├── tinybus/            # pinned TinyBus git submodule — host types, module SDK
+├── tinyflows/          # pinned workflow engine and its adaptive loop
+└── tinyagents/         # pinned durable agent + graph harness
 docs/
 ├── README.md           # documentation index and conventions
 ├── specs/              # behavior and architecture specifications
@@ -194,7 +198,8 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo build --all-targets --all-features
 cargo test --all-features
-cargo run -p template --example basic
+cargo run -p template --example simple_loop
+cargo run -p template --features tinyagents --example tinyagents_harness
 cargo build -p template --release --lib   # produces the installable cdylib
 ```
 
