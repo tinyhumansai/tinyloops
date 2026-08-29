@@ -93,6 +93,7 @@ const NO_THRESHOLD: u32 = u32::MAX;
 /// ```
 #[must_use]
 pub fn ladder() -> String {
+    let none = NO_THRESHOLD;
     format!(
         "=(.state // .item) as $s | (($s | .profile.thresholds) // {{}}) as $t \
 | if ((($s | .blocked) // 0) >= (($t | .blocked) // {none})) then \"{route_blocked}\" \
@@ -101,7 +102,6 @@ elif ((($s | .unverified) // 0) >= (($t | .unverified) // {none})) then \"{route
 elif (((($s | .unproductive) // 0) >= (($t | .stuck) // {none})) or ((($s | .computational) // 0) >= (($t | .computational) // {none}))) then \"{route_diversify}\" \
 else \"{route_retry}\" \
 end",
-        none = NO_THRESHOLD,
         route_blocked = Route::Blocked.as_str(),
         route_solved = Route::Solved.as_str(),
         route_reported = Route::Reported.as_str(),
@@ -131,6 +131,7 @@ end",
 /// ```
 #[must_use]
 pub fn terminal_condition() -> String {
+    let none = NO_THRESHOLD;
     format!(
         "=(.state // .item) as $s | (($s | .profile.thresholds) // {{}}) as $t \
 | ((($s | .expired) // false) \
@@ -138,8 +139,7 @@ or ((($s | .restarts) // 0) >= (($t | .max_restarts) // {none})) \
 or (($s | .solved) // false) \
 or ((($s | .attempts) // 0) >= (($t | .max_attempts) // {none})) \
 or ((($s | .blocked) // 0) >= (($t | .blocked) // {none})) \
-or ((($s | .unverified) // 0) >= (($t | .unverified) // {none})))",
-        none = NO_THRESHOLD,
+or ((($s | .unverified) // 0) >= (($t | .unverified) // {none})))"
     )
 }
 
