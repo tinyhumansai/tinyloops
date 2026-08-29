@@ -1099,3 +1099,21 @@ fn every_preset_can_reach_its_attempt_ceiling() {
         );
     }
 }
+
+#[test]
+fn a_presets_wire_name_is_the_name_it_renders() {
+    // A preset travels inside the accumulator as part of the profile, so its
+    // serde names are a wire format. Two spellings of one variant would decode
+    // as an error somewhere nobody is looking.
+    for preset in Preset::ALL {
+        assert_eq!(
+            serde_json::to_value(preset).unwrap(),
+            serde_json::Value::String(preset.as_str().to_owned()),
+        );
+        assert_eq!(
+            serde_json::from_value::<Preset>(serde_json::json!(preset.as_str())).unwrap(),
+            preset,
+        );
+    }
+    assert_eq!(Preset::default(), Preset::Balanced);
+}

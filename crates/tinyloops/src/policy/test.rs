@@ -739,3 +739,58 @@ fn outcomes_have_a_snake_case_wire_form() {
         Outcome::Exhausted
     );
 }
+
+#[test]
+fn a_default_profile_carries_the_balanced_thresholds() {
+    let profile = LoopProfile::default();
+    assert_eq!(profile.revision, 0);
+    assert_eq!(profile.thresholds, Thresholds::default());
+    assert_eq!(profile.origin, crate::presets::Preset::Balanced);
+    assert_eq!(LoopProfile::of(crate::presets::Preset::Balanced), profile);
+}
+
+#[test]
+fn a_profile_takes_the_thresholds_of_the_preset_it_names() {
+    for preset in crate::presets::Preset::ALL {
+        let profile = LoopProfile::of(preset);
+        assert_eq!(profile.thresholds, preset.thresholds());
+        assert_eq!(profile.origin, preset);
+        assert_eq!(profile.revision, 0);
+    }
+}
+
+#[test]
+fn the_profile_wire_form_is_pinned() {
+    // The graph's jq addresses these names. A rename is a decode error at run
+    // time rather than a compile error, which is what this pins.
+    assert_eq!(
+        serde_json::to_value(LoopProfile::of(crate::presets::Preset::Persistent)).unwrap(),
+        serde_json::json!({
+            "revision": 0,
+            "thresholds": {
+                "max_attempts": 12,
+                "stuck": 4,
+                "blocked": 2,
+                "computational": 2,
+                "unverified": 2,
+                "max_restarts": 2,
+                "plan_interval": 3,
+            },
+            "origin": "persistent",
+        })
+    );
+}
+
+#[test]
+fn a_profile_written_without_a_revision_deserializes() {
+    // `serde(default)` at the container level: an accumulator written by a
+    // revision that lacked a field still decodes, taking that field's default.
+    let decoded: LoopProfile =
+        serde_json::from_value(serde_json::json!({ "origin": "cautious" })).unwrap();
+    assert_eq!(decoded.revision, 0);
+    assert_eq!(decoded.thresholds, Thresholds::default());
+    assert_eq!(decoded.origin, crate::presets::Preset::Cautious);
+
+    let empty: LoopProfile = serde_json::from_value(serde_json::json!({})).unwrap();
+    assert_eq!(empty, LoopProfile::default());
+}
