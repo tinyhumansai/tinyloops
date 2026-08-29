@@ -42,6 +42,7 @@ use crate::step::{
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
+use super::tuner::Rules;
 use super::steps::{Advance, ArmStep, Converge, Gather};
 use super::types::Preset;
 
@@ -499,6 +500,80 @@ pub fn research_loop(
     decompose: Arc<dyn Decompose>,
     specialists: Arc<dyn Specialists>,
 ) -> Result<AssembledLoop> {
+    assemble(goal, preset, delegates, decompose, specialists, None)
+}
+
+/// The same loop, with the shipped rule tuner wired in as a third arm.
+///
+/// A separate function rather than a flag on [`research_loop`], because it is a
+/// different loop: it emits a third arm's node, a third pair of edges, and a
+/// different graph signature. A run that can revise itself and a run that
+/// cannot should not be told apart by an argument nobody reads in a diff.
+///
+/// What it may revise is [`Preset::bounds`], which the preset owns. The tuner
+/// itself is [`Rules`], a pure function of the counters.
+///
+/// # Errors
+///
+/// Whatever [`research_loop`] raises.
+///
+/// # Examples
+///
+/// ```
+/// # use std::sync::Arc;
+/// # use tinyloops::{
+/// #     DelegateSet, FixedPlan, Inline, Preset, Recorder, Scripted, tuned_research_loop,
+/// # };
+/// let delegates = DelegateSet::of(["prover"]);
+/// let assembled = tuned_research_loop(
+///     "bound the error term",
+///     Preset::Balanced,
+///     delegates.clone(),
+///     Arc::new(FixedPlan::of([("bound", "bound the error term", "a proved bound")])),
+///     Arc::new(Inline::of(
+///         delegates,
+///         [("prover".to_owned(), vec![Scripted::Answers {
+///             reply: "no luck".to_owned(),
+///             artifacts: Vec::new(),
+///         }])],
+///     )),
+/// )?;
+///
+/// let sink = Arc::new(tinyloops::LineSink::new(std::io::sink()));
+/// let driven = assembled.drive(&Recorder::new("run", sink))?;
+///
+/// // Every revision it made to itself, and every one its bounds refused.
+/// for recorded in &driven.profile.history {
+///     println!("{recorded}");
+/// }
+/// # Ok::<(), tinyloops::Error>(())
+/// ```
+pub fn tuned_research_loop(
+    goal: impl Into<String>,
+    preset: Preset,
+    delegates: DelegateSet,
+    decompose: Arc<dyn Decompose>,
+    specialists: Arc<dyn Specialists>,
+) -> Result<AssembledLoop> {
+    assemble(
+        goal,
+        preset,
+        delegates,
+        decompose,
+        specialists,
+        Some(Arc::new(Rules)),
+    )
+}
+
+/// The assembly both shipped loops share.
+fn assemble(
+    goal: impl Into<String>,
+    preset: Preset,
+    delegates: DelegateSet,
+    decompose: Arc<dyn Decompose>,
+    specialists: Arc<dyn Specialists>,
+    tuner: Option<Arc<dyn crate::arm::Tuner>>,
+) -> Result<AssembledLoop> {
     let delegates_for_research = delegates.clone();
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), delegates)?;
     let mailbox = Arc::new(crate::harness::Mailbox::new(
@@ -521,7 +596,14 @@ pub fn research_loop(
     registry.register(Arc::new(Attempt::new(orchestrator, specialists, mailbox)))?;
     registry.register(Arc::new(ArmStep::new(Arc::clone(&reflect))))?;
     registry.register(Arc::new(ArmStep::new(Arc::clone(&judge))))?;
-    let arms = ArmSet::new(vec![reflect, judge])?;
+
+    let mut declared: Vec<Arc<dyn crate::arm::Arm>> = vec![reflect, judge];
+    if let Some(tuner) = tuner {
+        let tuning: Arc<dyn crate::arm::Arm> = Arc::new(crate::arm::TunerArm::new(tuner));
+        registry.register(Arc::new(ArmStep::new(Arc::clone(&tuning))))?;
+        declared.push(tuning);
+    }
+    let arms = ArmSet::new(declared)?;
     registry.register(Arc::new(Converge::new(arms.clone())))?;
     registry.register(Arc::new(Advance::new(preset.bounds())))?;
     registry.register(Arc::new(ReportStep::new(Arc::new(Summarize))))?;

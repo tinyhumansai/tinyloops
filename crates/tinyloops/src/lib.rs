@@ -130,8 +130,8 @@ pub use loops::{
 // down, the two evaluation arms that keep a verdict mechanical, and a loop with
 // every seam already filled in.
 pub use presets::{
-    Advance, ArmStep, AssembledLoop, Converge, Driven, Gather, Judge, Preset, Reflect,
-    SOLVED_MARKER, research_loop,
+    Advance, ArmStep, AssembledLoop, Converge, Driven, Gather, Judge, Preset, Reflect, Rules,
+    SILENT_SCORES, SOLVED_MARKER, research_loop, tuned_research_loop,
 };
 pub use step::{
     AccumulatorAccess, Advanced, CanWrite, NoWrite, Observer, RUN_LOOP_STEP, RegisteredStep,
