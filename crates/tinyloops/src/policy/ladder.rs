@@ -61,7 +61,7 @@
 use serde_json::{Value, json};
 use tinyflows::expr;
 
-use super::{Route, Thresholds};
+use super::Route;
 use crate::state::LoopState;
 use crate::{Error, Result};
 
@@ -203,15 +203,15 @@ pub fn expr_scope(state: &LoopState, loop_id: &str) -> Value {
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Route, Thresholds, evaluate_ladder};
+/// # use tinyloops::{LoopState, Route, evaluate_ladder};
 /// let mut state = LoopState::new("goal");
 /// state.blocked = 2;
-/// assert_eq!(evaluate_ladder(&state, "loop", &Thresholds::default())?, Route::Blocked);
+/// assert_eq!(evaluate_ladder(&state, "loop")?, Route::Blocked);
 /// # Ok::<(), tinyloops::Error>(())
 /// ```
-pub fn evaluate_ladder(state: &LoopState, loop_id: &str, thresholds: &Thresholds) -> Result<Route> {
+pub fn evaluate_ladder(state: &LoopState, loop_id: &str) -> Result<Route> {
     let scope = expr_scope(state, loop_id);
-    let evaluated = expr::evaluate(&Value::String(ladder(thresholds)), &scope);
+    let evaluated = expr::evaluate(&Value::String(ladder()), &scope);
     evaluated
         .as_str()
         .map(Route::parse)
@@ -228,19 +228,15 @@ pub fn evaluate_ladder(state: &LoopState, loop_id: &str, thresholds: &Thresholds
 /// # Examples
 ///
 /// ```
-/// # use tinyloops::{LoopState, Thresholds, evaluate_terminal_condition};
+/// # use tinyloops::{LoopState, evaluate_terminal_condition};
 /// let mut state = LoopState::new("goal");
 /// state.expired = true;
-/// assert!(evaluate_terminal_condition(&state, "loop", &Thresholds::default())?);
+/// assert!(evaluate_terminal_condition(&state, "loop")?);
 /// # Ok::<(), tinyloops::Error>(())
 /// ```
-pub fn evaluate_terminal_condition(
-    state: &LoopState,
-    loop_id: &str,
-    thresholds: &Thresholds,
-) -> Result<bool> {
+pub fn evaluate_terminal_condition(state: &LoopState, loop_id: &str) -> Result<bool> {
     let scope = expr_scope(state, loop_id);
-    let evaluated = expr::evaluate(&Value::String(terminal_condition(thresholds)), &scope);
+    let evaluated = expr::evaluate(&Value::String(terminal_condition()), &scope);
     evaluated
         .as_bool()
         .ok_or(Error::TerminalConditionNotBoolean)
