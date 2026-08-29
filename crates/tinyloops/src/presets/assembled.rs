@@ -36,7 +36,9 @@ use crate::orchestrate::{
 };
 use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
 use crate::state::LoopState;
-use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, StepContext, StepRegistry};
+use crate::step::{
+    STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepContext, StepRegistry,
+};
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
@@ -187,8 +189,9 @@ impl AssembledLoop {
 
     /// Runs the loop to a terminal state, in this process.
     ///
-    /// One pass is: `plan` on its cadence, `attempt`, then every arm over the
-    /// one attempt report, then the merge, then the route. The loop stops when
+    /// `plan` and `research` run once before the loop. One pass is then: `plan`
+    /// on its cadence, `attempt`, every arm over the one attempt report, the
+    /// merge, and the route. The loop stops when
     /// the route is terminal, the thresholds say the state is, or a bound
     /// trips — and a bound is never reported as success.
     ///
@@ -208,6 +211,14 @@ impl AssembledLoop {
         let mut routes = Vec::new();
         let mut bound = None;
         let caps = self.budget.caps();
+
+        // `plan` and `research` run before the loop, in that order, so the
+        // first attempt already has a decomposition and a context to work from
+        // rather than spending itself acquiring them. `research` runs once and
+        // only once: it is not an attempt at the goal, and repeating it every
+        // pass would spend a specialist re-reading what the run already knows.
+        state = self.run_step(STEP_PLAN, state, 0, recorder)?;
+        state = self.run_step(STEP_RESEARCH, state, 0, recorder)?;
 
         for pass in 0..caps.max_iterations {
             recorder.record(Event::PassStarted { pass });
