@@ -713,6 +713,32 @@ fn every_event() -> Vec<Event> {
             pass: 1,
             directive: "stop after this pass".to_string(),
         },
+        // Missing from this list until the amendment events were added, even
+        // though the variant has existed, been rendered, and been emitted from
+        // the mailbox the whole time — so nothing pinned its wire form. The
+        // count assertion below is what stops the next omission being as quiet.
+        Event::NoteDropped {
+            pass: 1,
+            from: "watcher".to_string(),
+            capacity: 8,
+        },
+        Event::Amended {
+            pass: 1,
+            revision: 1,
+            change: crate::Change::Threshold {
+                field: crate::ThresholdField::Stuck,
+                to: 3,
+            },
+            because: "diversifying did not pay".to_string(),
+        },
+        Event::AmendmentRefused {
+            pass: 1,
+            change: crate::Change::Threshold {
+                field: crate::ThresholdField::MaxAttempts,
+                to: 99,
+            },
+            reason: "max_attempts may be 4..=12, not 99".to_string(),
+        },
         Event::BoundTripped {
             pass: 1,
             bound: crate::Bound::RunClock,
@@ -750,6 +776,20 @@ fn every_event() -> Vec<Event> {
             failed: vec![],
         },
     ]
+}
+
+#[test]
+fn the_fixture_holds_one_of_every_event() {
+    // The three tests below only prove what the fixture contains. A variant
+    // missing from it escapes all of them silently, which is exactly what
+    // happened to `NoteDropped`. Counting is the cheap guard: the number has to
+    // be edited in the same change that adds a variant, and the edit is where
+    // somebody notices the fixture entry is missing.
+    assert_eq!(every_event().len(), 23);
+
+    let kinds: std::collections::BTreeSet<&str> =
+        every_event().iter().map(Event::kind).collect();
+    assert_eq!(kinds.len(), every_event().len(), "a kind appears twice");
 }
 
 #[test]
