@@ -822,7 +822,7 @@ fn the_pass_step_counts_the_pass_by_assignment_and_consumes_the_steer() {
     assert_eq!(once.passes, 5);
     assert_eq!(twice, once);
     assert!(once.steer.is_empty());
-    assert_eq!(Advance.name(), crate::step::STEP_PASS);
+    assert_eq!(Advance::default().name(), crate::step::STEP_PASS);
 }
 
 #[test]
