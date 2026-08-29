@@ -353,15 +353,46 @@ fn debug_rendering_names_the_registered_steps() {
     assert!(format!("{:?}", registry.get(STEP_ATTEMPT).unwrap()).contains("advances: true"));
 }
 
+/// A step that records the thresholds its `StepContext` was actually handed,
+/// rather than anything it could read back off the returned state.
+struct Watching {
+    seen: std::sync::Mutex<Vec<Thresholds>>,
+}
+
+impl Step for Watching {
+    fn name(&self) -> &'static str {
+        "watching"
+    }
+
+    fn run(&self, state: LoopState, ctx: StepContext<'_, CanWrite>) -> Result<Advanced> {
+        self.seen.lock().unwrap().push(*ctx.thresholds());
+        Ok(ctx.advance(state))
+    }
+}
+
 #[test]
 fn a_step_is_handed_the_thresholds_its_state_carries() {
     // The seam reads the thresholds off the state rather than from a caller:
     // a body handed a threshold set the run is not using would route on
-    // numbers nobody configured, and nothing would report it.
-    let registry = registry();
-    let state = LoopState::with_profile("goal", crate::LoopProfile::of(crate::Preset::Persistent));
+    // numbers nobody configured, and nothing would report it. Asserted on
+    // what the context handed the step, not on the state the step returned —
+    // a body that never reads `ctx.thresholds()` at all would still pass an
+    // assertion against the returned profile, since `Attempt` here (and the
+    // registry's other bodies) carry the profile through untouched.
+    let watching = Arc::new(Watching {
+        seen: std::sync::Mutex::new(Vec::new()),
+    });
+    let mut registry = StepRegistry::new();
+    registry.register(watching.clone()).unwrap();
+    let profile = crate::LoopProfile::of(crate::Preset::Persistent);
+    let state = LoopState::with_profile("goal", profile.clone());
 
-    let returned = registry.run(STEP_ATTEMPT, state).unwrap();
+    let returned = registry.run("watching", state).unwrap();
 
+    assert_eq!(
+        watching.seen.lock().unwrap().as_slice(),
+        [profile.thresholds],
+        "the step was not handed the thresholds its state carries",
+    );
     assert_eq!(returned.profile.thresholds.stuck, 4);
 }
