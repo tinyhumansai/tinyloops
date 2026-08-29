@@ -21,15 +21,17 @@
 //! revision of every preset. See
 //! `docs/adr/0006-thresholds-addressed-from-run-state.md`.
 //!
-//! # Why it is `Copy`
+//! # What a run may change about it
 //!
-//! Everything here is a handful of `u32`s and a unit enum, and the accumulator
-//! is cloned on every fold. A profile that allocated would allocate once per
-//! pass per arm for no gain.
+//! Nothing, until a [`Tuner`](crate::Tuner) is wired in. When one is, it
+//! proposes an [`Amendment`], the head folds it at the start of the next pass,
+//! and [`LoopProfile::revision`] and [`LoopProfile::history`] record that it
+//! did. What it may propose is [`Bounds`], which the preset owns.
 
 use serde::{Deserialize, Serialize};
 
-use super::Thresholds;
+use super::{Amendment, Muted, Thresholds};
+use crate::budget::Caps;
 use crate::presets::Preset;
 
 /// The configuration a run is operating under.
@@ -56,15 +58,13 @@ use crate::presets::Preset;
 /// assert_eq!(profile.thresholds.stuck, 4);
 /// assert_eq!(profile.origin, Preset::Persistent);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LoopProfile {
     /// How many times this profile has been revised.
     ///
-    /// Zero for a profile as constructed. Nothing in this crate moves it yet;
-    /// it is here so a checkpoint written today deserializes unchanged once
-    /// amendments land, rather than gaining a field and a new wire form at the
-    /// same time.
+    /// Zero for a profile as constructed, and bumped by exactly one every time
+    /// an amendment is folded.
     pub revision: u32,
     /// The counter bounds the routing ladder reads.
     pub thresholds: Thresholds,
@@ -74,6 +74,27 @@ pub struct LoopProfile {
     /// naming "the persistent preset" is reading a value rather than repeating
     /// what a caller told it.
     pub origin: Preset,
+    /// The counted limits an amendment may lower.
+    ///
+    /// A copy of the run's caps, carried here so a `Cap` amendment has
+    /// somewhere to land that survives a checkpoint. The [`RunBudget`] the
+    /// driver meters against is built from it, so lowering one here lowers what
+    /// the run may spend.
+    ///
+    /// [`RunBudget`]: crate::RunBudget
+    pub caps: Caps,
+    /// The declared arms this run has stopped paying for.
+    ///
+    /// A muted arm's node still runs and still converges — it returns
+    /// unchanged. Removing its edge would leave the merge barrier waiting on an
+    /// arm nothing will activate, which is a hung pass rather than a saved one.
+    pub muted: Muted,
+    /// Every amendment folded into this profile, oldest first.
+    ///
+    /// The run's own account of what it changed about itself and why. Rendered
+    /// into the report, and the data a cross-run layer would score — this crate
+    /// scores nothing.
+    pub history: Vec<Amendment>,
 }
 
 impl LoopProfile {
@@ -91,6 +112,46 @@ impl LoopProfile {
             revision: 0,
             thresholds: preset.thresholds(),
             origin: preset,
+            caps: Caps::default(),
+            muted: Muted::new(),
+            history: Vec::new(),
         }
+    }
+
+    /// Whether `arm` is one this run has stopped paying for.
+    #[must_use]
+    pub fn is_muted(&self, arm: &str) -> bool {
+        self.muted.contains(arm)
+    }
+
+    /// Folds `amendment` in, bumping the revision and recording it.
+    ///
+    /// Assumed checked: [`Bounds::check`](super::Bounds::check) and the run's
+    /// amendment budget are the caller's to consult, and the caller is the
+    /// `pass` step, which is the loop's single exit. Applying here rather than
+    /// where the amendment was proposed is what makes "it takes effect on the
+    /// *next* pass" a property of the code's position rather than a rule
+    /// someone remembers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tinyloops::{Amendment, Change, LoopProfile, Preset, ThresholdField};
+    /// let mut profile = LoopProfile::of(Preset::Balanced);
+    /// profile.fold(Amendment::new(
+    ///     "tune",
+    ///     2,
+    ///     Change::Threshold { field: ThresholdField::Stuck, to: 3 },
+    ///     "diversifying made the run worse",
+    /// ));
+    ///
+    /// assert_eq!(profile.thresholds.stuck, 3);
+    /// assert_eq!(profile.revision, 1);
+    /// assert_eq!(profile.history.len(), 1);
+    /// ```
+    pub fn fold(&mut self, amendment: Amendment) {
+        amendment.change.clone().apply_to(self);
+        self.revision = self.revision.saturating_add(1);
+        self.history.push(amendment);
     }
 }
