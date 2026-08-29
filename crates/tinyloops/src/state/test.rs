@@ -17,6 +17,7 @@
 use serde_json::json;
 
 use super::*;
+use crate::Error;
 use crate::policy::Judgement;
 
 /// A fully populated accumulator, so the wire form pins every field rather than

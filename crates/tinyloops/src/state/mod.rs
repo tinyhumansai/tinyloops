@@ -234,8 +234,18 @@ impl LoopState {
         let mut last_attempt: Option<(&'static str, String)> = None;
 
         for contribution in contributions {
-            claim(&mut lesson, contribution.arm, contribution.lesson.clone(), "lesson")?;
-            claim(&mut steer, contribution.arm, contribution.steer.clone(), "steer")?;
+            claim(
+                &mut lesson,
+                contribution.arm,
+                contribution.lesson.clone(),
+                "lesson",
+            )?;
+            claim(
+                &mut steer,
+                contribution.arm,
+                contribution.steer.clone(),
+                "steer",
+            )?;
             claim(&mut score, contribution.arm, contribution.score, "score")?;
             claim(&mut judged, contribution.arm, contribution.judged, "judged")?;
             claim(
