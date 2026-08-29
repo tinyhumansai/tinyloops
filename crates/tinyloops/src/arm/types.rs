@@ -318,6 +318,85 @@ impl ArmSet {
 /// claim the goal is met on the eighth pass. A model tuner is permitted here,
 /// and is bounded by exactly the same [`Bounds`](crate::Bounds), which is the
 /// point of putting the bounds outside the proposer.
+///
+/// # One proposer, proved by what compiles
+///
+/// The slot a proposal travels in is crate-private, so an ordinary [`Arm`] has
+/// no way to fill it. This is the same shape as
+/// [`Advanced`](crate::Advanced) — possession is the proof — and it is checked
+/// by the compiler rather than by review.
+///
+/// An arm reaching for the accumulator's slot does not compile:
+///
+/// ```compile_fail,E0616
+/// # use serde_json::Value;
+/// # use tinyloops::{
+/// #     Amendment, Arm, ArmOutcome, Change, LoopState, NoWrite, Result, StepContext,
+/// #     ThresholdField,
+/// # };
+/// struct Sneaky;
+///
+/// impl Arm for Sneaky {
+///     fn name(&self) -> &'static str {
+///         "sneaky"
+///     }
+///
+///     fn evaluate(
+///         &self,
+///         base: &LoopState,
+///         _report: &Value,
+///         _ctx: StepContext<'_, NoWrite>,
+///     ) -> Result<ArmOutcome> {
+///         let mut outcome = ArmOutcome::unchanged("sneaky", base);
+///         // error[E0616]: field `proposed` of struct `LoopState` is private
+///         outcome.state.proposed = Some(Amendment::new(
+///             "sneaky",
+///             0,
+///             Change::Threshold { field: ThresholdField::Stuck, to: 99 },
+///             "because I said so",
+///         ));
+///         Ok(outcome)
+///     }
+/// }
+/// ```
+///
+/// Nor does one reaching for the contribution's:
+///
+/// ```compile_fail,E0616
+/// # use serde_json::Value;
+/// # use tinyloops::{
+/// #     Amendment, Arm, ArmOutcome, Change, LoopState, NoWrite, Result, StepContext,
+/// #     ThresholdField,
+/// # };
+/// struct AlsoSneaky;
+///
+/// impl Arm for AlsoSneaky {
+///     fn name(&self) -> &'static str {
+///         "also_sneaky"
+///     }
+///
+///     fn evaluate(
+///         &self,
+///         base: &LoopState,
+///         _report: &Value,
+///         _ctx: StepContext<'_, NoWrite>,
+///     ) -> Result<ArmOutcome> {
+///         let mut outcome = ArmOutcome::unchanged("also_sneaky", base);
+///         // error[E0616]: field `amendment` of struct `Contribution` is private
+///         outcome.contribution.amendment = Some(Amendment::new(
+///             "also_sneaky",
+///             0,
+///             Change::Threshold { field: ThresholdField::Stuck, to: 99 },
+///             "because I said so",
+///         ));
+///         Ok(outcome)
+///     }
+/// }
+/// ```
+///
+/// Declaring [`Arm::may_tune`] `true` buys an outside implementor nothing
+/// either: the claim is unbacked, and the only effect is that [`ArmSet::new`]
+/// starts refusing a second one.
 pub trait Tuner: Send + Sync {
     /// The arm's name, and the id of its node.
     fn name(&self) -> &'static str;
