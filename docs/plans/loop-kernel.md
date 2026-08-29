@@ -2,9 +2,8 @@
 
 - **Status:** Not started
 - **Specification:** [`../specs/loop-kernel.md`](../specs/loop-kernel.md), with
-  the ladder's constants from
-  [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md) and the
-  role bindings from [`../specs/orchestrator.md`](../specs/orchestrator.md).
+  the ladder's constants from [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md)
+  and the role bindings from [`../specs/orchestrator.md`](../specs/orchestrator.md).
 
 ## Goal
 
@@ -17,13 +16,13 @@ and the worked example
 ([`observability-and-budget.md`](observability-and-budget.md)); and anything
 spanning runs (`vendor/tinyflows/crates/adaptive`).
 
-## Assumptions
+## Assumed, already landed
 
-`crates/tinyloops/src/state/` and `crates/tinyloops/src/policy/` are landed by
-the concurrent module work; this plan consumes them unmodified. The names below
-are the ones [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md)
-fixes; if the landed modules spell them differently, adopt their spelling and
-update this block in the same commit rather than adding an alias layer.
+`crates/tinyloops/src/state/` and `crates/tinyloops/src/policy/`, from the
+concurrent module work; this plan consumes them unmodified. The names below are
+the ones [`../specs/routing-and-policy.md`](../specs/routing-and-policy.md)
+fixes; if those modules spell them differently, adopt their spelling and update
+this block in the same commit rather than adding an alias layer.
 
 ```rust
 // LoopState carries attempts, blocked, unverified, unproductive, computational,
@@ -44,9 +43,8 @@ Groups are **strictly ordered**: A (`step/`) → B (`arm/`) → C (`loops/`) →
 derivation, D binds a role to the three nodes C emits. **Parallel within a
 group:** A1 and A2 are one file each and A3 joins them, while A4 needs only A1
 so it can run alongside all of B; B1 and B2 are independent and merge at B3; C1
-and C2 are independent and C3 joins them; D1 and D2 are independent.
-
-Every task ends with `cargo test -p tinyloops <module>` and
+and C2 are independent and C3 joins them; D1 and D2 are independent. Every task
+ends with `cargo test -p tinyloops <module>` and
 `cargo clippy --all-targets --all-features -- -D warnings`; only the exceptions
 are named below.
 
@@ -153,8 +151,7 @@ are named below.
 
 1. Failing tests: `an_arm_reads_the_report_it_was_handed` and
    `an_arm_returns_a_whole_state_not_a_patch` — a whole `LoopState` is what makes
-   B2's fold a delta of two whole values.
-2. Implement:
+   B2's fold a delta of two whole values. Implement:
 
    ```rust
    pub trait Arm: Send + Sync {
@@ -320,9 +317,9 @@ are named below.
    `resetting_a_fired_condition_clears_it`.
 2. Implement `TerminalState { Success, CleanNoOp, Blocked, Stalled, Exhausted }`
    and `TerminationCondition` with `evaluate`, `reset`, serde, and `BitAnd` /
-   `BitOr` over boxed conditions.
-3. Render the composed condition into the head's `config.until` from C3, so the
-   stop test the Rust holds is the one the engine runs.
+   `BitOr` over boxed conditions. Render the composed condition into the head's
+   `config.until` from C3, so the stop test the Rust holds is the one the engine
+   runs.
 
 ## Task C5: the graph signature and the refused resume
 
