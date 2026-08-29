@@ -371,9 +371,7 @@ impl AssembledLoop {
                 pass,
                 arm: arm.name().to_owned(),
             });
-            let candidate = self
-                .registry
-                .run(arm.name(), state.clone())?;
+            let candidate = self.registry.run(arm.name(), state.clone())?;
             deltas.push(candidate.delta_from(state));
             returned.insert(
                 arm.name().to_owned(),

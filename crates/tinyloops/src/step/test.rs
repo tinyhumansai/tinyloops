@@ -168,9 +168,7 @@ fn runs_the_named_step_and_returns_the_whole_state() {
     state.passes = 2;
     state.lessons.push("something learned".to_string());
 
-    let returned = registry
-        .run(STEP_ATTEMPT, state)
-        .unwrap();
+    let returned = registry.run(STEP_ATTEMPT, state).unwrap();
 
     assert_eq!(returned.attempts, 3);
     assert_eq!(returned.last_attempt, "pass 2");
@@ -192,9 +190,7 @@ fn an_observing_step_returns_the_state_it_was_handed() {
     state.passes = 4;
     state.judged = Judgement::Steer;
 
-    let returned = registry
-        .run("counting", state.clone())
-        .unwrap();
+    let returned = registry.run("counting", state.clone()).unwrap();
 
     assert_eq!(returned, state);
     assert_eq!(*observer.seen.lock().unwrap(), [4]);
@@ -206,9 +202,7 @@ fn a_failing_step_reports_rather_than_returning_the_state_unchanged() {
     registry.register(Arc::new(Broken)).unwrap();
 
     assert_eq!(
-        registry
-            .run("broken", LoopState::new("goal"))
-            .unwrap_err(),
+        registry.run("broken", LoopState::new("goal")).unwrap_err(),
         Error::EmptyName,
     );
 }
@@ -247,11 +241,8 @@ fn the_tool_runs_the_named_step_and_returns_the_state_as_json() {
     let mut state = LoopState::new("goal");
     state.passes = 1;
 
-    let returned = run_loop_step(
-        &registry,
-        &json!({ "step": STEP_ATTEMPT, "state": state }),
-    )
-    .unwrap();
+    let returned =
+        run_loop_step(&registry, &json!({ "step": STEP_ATTEMPT, "state": state })).unwrap();
 
     assert_eq!(returned["attempts"], json!(2));
     assert_eq!(returned["goal"], json!("goal"));
@@ -268,8 +259,8 @@ fn the_tool_rejects_an_unknown_step_name() {
 
     assert_eq!(
         run_loop_step(
-        &registry,
-        &json!({ "step": "nope", "state": LoopState::new("goal") }),
+            &registry,
+            &json!({ "step": "nope", "state": LoopState::new("goal") }),
         )
         .unwrap_err(),
         Error::UnknownStep {
@@ -283,11 +274,7 @@ fn the_tool_rejects_a_payload_with_no_step_name() {
     let registry = registry();
 
     assert_eq!(
-        run_loop_step(
-        &registry,
-        &json!({ "state": LoopState::new("goal") }),
-        )
-        .unwrap_err(),
+        run_loop_step(&registry, &json!({ "state": LoopState::new("goal") }),).unwrap_err(),
         Error::MalformedStepPayload { field: "step" },
     );
 }
@@ -298,8 +285,8 @@ fn the_tool_rejects_a_step_name_that_is_not_a_string() {
 
     assert_eq!(
         run_loop_step(
-        &registry,
-        &json!({ "step": 7, "state": LoopState::new("goal") }),
+            &registry,
+            &json!({ "step": 7, "state": LoopState::new("goal") }),
         )
         .unwrap_err(),
         Error::MalformedStepPayload { field: "step" },
@@ -311,11 +298,7 @@ fn the_tool_rejects_a_payload_with_no_state() {
     let registry = registry();
 
     assert_eq!(
-        run_loop_step(
-        &registry,
-        &json!({ "step": "attempt" })
-        )
-        .unwrap_err(),
+        run_loop_step(&registry, &json!({ "step": "attempt" })).unwrap_err(),
         Error::MalformedStepPayload { field: "state" },
     );
 }
@@ -326,8 +309,8 @@ fn the_tool_rejects_a_state_that_is_not_an_accumulator() {
 
     assert_eq!(
         run_loop_step(
-        &registry,
-        &json!({ "step": "attempt", "state": { "passes": "many" } }),
+            &registry,
+            &json!({ "step": "attempt", "state": { "passes": "many" } }),
         )
         .unwrap_err(),
         Error::MalformedStepPayload { field: "state" },

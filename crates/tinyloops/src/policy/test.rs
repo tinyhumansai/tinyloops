@@ -123,11 +123,7 @@ fn under(state: LoopState, thresholds: Thresholds) -> LoopState {
 fn assert_ladder_parity(state: &LoopState) {
     let scope = expr_scope(state, LOOP_ID);
     let evaluated = expr::evaluate(&Value::String(ladder()), &scope);
-    assert_ne!(
-        evaluated,
-        Value::Null,
-        "ladder produced null for {state:?}"
-    );
+    assert_ne!(evaluated, Value::Null, "ladder produced null for {state:?}");
     assert_eq!(
         evaluated.as_str(),
         Some(route(state).as_str()),
@@ -280,7 +276,10 @@ fn the_ladder_addresses_thresholds_rather_than_rendering_them() {
     }
     assert!(program.contains(".profile.thresholds"), "{program}");
     for rendered in [">= 8", ">= 2", ">= 1", ">= 4", ">= 12"] {
-        assert!(!program.contains(rendered), "{rendered} rendered: {program}");
+        assert!(
+            !program.contains(rendered),
+            "{rendered} rendered: {program}"
+        );
     }
 }
 
@@ -295,7 +294,10 @@ fn the_terminal_condition_addresses_thresholds_rather_than_rendering_them() {
         );
     }
     for rendered in [">= 8", ">= 2", ">= 1", ">= 4", ">= 12"] {
-        assert!(!program.contains(rendered), "{rendered} rendered: {program}");
+        assert!(
+            !program.contains(rendered),
+            "{rendered} rendered: {program}"
+        );
     }
 }
 
@@ -306,14 +308,20 @@ fn a_ladder_reads_the_thresholds_out_of_the_accumulator() {
     let mut state = LoopState::new("goal");
     state.unproductive = 2;
 
-    let patient = under(state.clone(), Thresholds {
-        stuck: 4,
-        ..Thresholds::default()
-    });
-    let impatient = under(state, Thresholds {
-        stuck: 1,
-        ..Thresholds::default()
-    });
+    let patient = under(
+        state.clone(),
+        Thresholds {
+            stuck: 4,
+            ..Thresholds::default()
+        },
+    );
+    let impatient = under(
+        state,
+        Thresholds {
+            stuck: 1,
+            ..Thresholds::default()
+        },
+    );
 
     let program = Value::String(ladder());
     assert_eq!(
@@ -376,10 +384,7 @@ fn a_ladder_reads_the_accumulator_from_the_previous_step() {
 fn an_empty_accumulator_still_routes() {
     // A loop whose accumulator has not been seeded yet must produce the cheap
     // route rather than null.
-    let evaluated = expr::evaluate(
-        &Value::String(ladder()),
-        &serde_json::json!({ "item": {} }),
-    );
+    let evaluated = expr::evaluate(&Value::String(ladder()), &serde_json::json!({ "item": {} }));
     assert_eq!(evaluated.as_str(), Some("retry"));
 }
 
@@ -661,10 +666,7 @@ fn a_solved_run_that_banked_something_is_a_success() {
         ..LoopState::new("goal")
     };
     assert_eq!(Outcome::classify(&state), Outcome::Success);
-    assert_eq!(
-        Outcome::success(&state).unwrap(),
-        Outcome::Success
-    );
+    assert_eq!(Outcome::success(&state).unwrap(), Outcome::Success);
 }
 
 #[test]
@@ -673,10 +675,7 @@ fn a_solved_run_that_banked_nothing_is_a_clean_no_op() {
         solved: true,
         ..LoopState::new("goal")
     };
-    assert_eq!(
-        Outcome::classify(&state),
-        Outcome::CleanNoOp
-    );
+    assert_eq!(Outcome::classify(&state), Outcome::CleanNoOp);
 }
 
 #[test]
@@ -726,10 +725,7 @@ fn a_blocked_run_is_never_a_success() {
 
 #[test]
 fn an_unsolved_run_with_budget_left_is_stalled() {
-    assert_eq!(
-        Outcome::classify(&LoopState::new("goal")),
-        Outcome::Stalled
-    );
+    assert_eq!(Outcome::classify(&LoopState::new("goal")), Outcome::Stalled);
 }
 
 #[test]

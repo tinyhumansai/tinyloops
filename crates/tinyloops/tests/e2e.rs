@@ -65,10 +65,7 @@ fn plan() -> Arc<FixedPlan> {
 
 /// A preset assembled over a script, returning both the graph and the registry
 /// the engine will reach through the tool.
-fn assembled(
-    preset: Preset,
-    script: Vec<(&str, Vec<Scripted>)>,
-) -> (WorkflowGraph, StepRegistry) {
+fn assembled(preset: Preset, script: Vec<(&str, Vec<Scripted>)>) -> (WorkflowGraph, StepRegistry) {
     let loop_ = research_loop(
         "bound the error term in the partial sum",
         preset,

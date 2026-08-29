@@ -219,10 +219,7 @@ impl TerminationCondition {
         if inner.is_empty() {
             return format!("({empty})");
         }
-        let parts: Vec<String> = inner
-            .iter()
-            .map(|condition| condition.program())
-            .collect();
+        let parts: Vec<String> = inner.iter().map(|condition| condition.program()).collect();
         format!("({})", parts.join(&format!(" {operator} ")))
     }
 }

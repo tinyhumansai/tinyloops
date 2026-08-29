@@ -605,9 +605,14 @@ fn a_different_preset_is_a_different_run_but_not_a_different_ladder() {
     // node is handed, exactly as the goal is, so two presets do emit different
     // graphs — they are different runs. What they no longer differ in is the
     // routing, which is what a resume across a *revision* depends on.
-    let balanced = graph_at(Autonomy::Unattended, LoopProfile::of(crate::presets::Preset::Balanced));
-    let persistent =
-        graph_at(Autonomy::Unattended, LoopProfile::of(crate::presets::Preset::Persistent));
+    let balanced = graph_at(
+        Autonomy::Unattended,
+        LoopProfile::of(crate::presets::Preset::Balanced),
+    );
+    let persistent = graph_at(
+        Autonomy::Unattended,
+        LoopProfile::of(crate::presets::Preset::Persistent),
+    );
 
     assert_ne!(
         GraphSignature::of(&balanced),
@@ -698,10 +703,7 @@ fn a_provider_failure_reports_blocked() {
     let mut condition = TerminationCondition::terminal();
     let mut state = LoopState::new("goal");
     state.blocked = thresholds.blocked;
-    assert_eq!(
-        condition.evaluate(&state),
-        Some(crate::Outcome::Blocked),
-    );
+    assert_eq!(condition.evaluate(&state), Some(crate::Outcome::Blocked),);
 }
 
 #[test]
@@ -772,10 +774,7 @@ fn a_composed_termination_is_what_the_head_runs() {
         .build()
         .expect("a composed condition still builds");
     let head = graph.node(NodeIds::default().loop_head).expect("the head");
-    assert_eq!(
-        head.config["until"],
-        json!(condition.expression())
-    );
+    assert_eq!(head.config["until"], json!(condition.expression()));
 }
 
 #[test]

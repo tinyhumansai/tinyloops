@@ -81,7 +81,7 @@ use crate::state::LoopState;
 ///
 /// // Blocked outranks everything below it.
 /// state.blocked = 2;
-/// assert_eq!(route(&state, &thresholds), Route::Blocked);
+/// assert_eq!(route(&state), Route::Blocked);
 /// ```
 #[must_use]
 pub fn route(state: &LoopState) -> Route {
