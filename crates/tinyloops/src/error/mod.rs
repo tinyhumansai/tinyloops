@@ -201,6 +201,22 @@ pub enum Error {
         field: String,
     },
 
+    /// A `Bounds` names an arm mutable that the run's declared `ArmSet`
+    /// cannot give that room to.
+    ///
+    /// Caught at assembly, before a tuner ever proposes: an arm not in the
+    /// set has no room to mute at all, so the amendment would be a recorded
+    /// no-op that spends the run's amendment budget on nothing, and the
+    /// concluding arm is refused unconditionally, because a run that mutes
+    /// the one arm able to end it cannot succeed.
+    #[error("{arm} cannot be named mutable: {reason}")]
+    IneligibleMutableArm {
+        /// The arm the bounds tried to make mutable.
+        arm: String,
+        /// Why it is not eligible.
+        reason: &'static str,
+    },
+
     /// An amendment proposed a value outside the range its bounds allow.
     ///
     /// Refused rather than clamped. A clamped proposal reads as accepted at the
