@@ -487,6 +487,48 @@ pub trait DropObserver: std::fmt::Debug + Send + Sync {
     fn dropped(&self, note: &Note, capacity: usize);
 }
 
+/// Reports a dropped note onto the run's own event stream.
+///
+/// The mailbox reports drops through [`DropObserver`] rather than through a
+/// sink directly, so `harness` does not have to know what a run is being
+/// observed with. This is the adapter for the case where it is being observed
+/// with [`crate::observe`], and it exists because a drop that reaches only a
+/// counter is a designed loss nobody reading the log can see.
+///
+/// The pass is supplied rather than read, because a mailbox outlives any one
+/// pass and the loop is what knows which pass is current.
+#[derive(Debug)]
+pub struct SinkDrops {
+    sink: std::sync::Arc<dyn crate::observe::Sink>,
+    pass: std::sync::atomic::AtomicU32,
+}
+
+impl SinkDrops {
+    /// Reports drops to `sink`, starting at pass zero.
+    #[must_use]
+    pub fn new(sink: std::sync::Arc<dyn crate::observe::Sink>) -> Self {
+        Self {
+            sink,
+            pass: std::sync::atomic::AtomicU32::new(0),
+        }
+    }
+
+    /// Tells the observer which pass the run has reached.
+    pub fn at_pass(&self, pass: u32) {
+        self.pass.store(pass, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+impl DropObserver for SinkDrops {
+    fn dropped(&self, note: &Note, capacity: usize) {
+        self.sink.emit(&crate::observe::Event::NoteDropped {
+            pass: self.pass.load(std::sync::atomic::Ordering::Relaxed),
+            from: note.from.clone(),
+            capacity,
+        });
+    }
+}
+
 /// A bounded post/collect queue that drops rather than blocks.
 ///
 /// Three behaviors are possible when a note arrives at a full queue, and only
