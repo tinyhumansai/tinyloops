@@ -40,6 +40,7 @@ use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, StepContext, StepRegistr
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
+use super::steps::{Advance, ArmStep, Converge, Gather};
 use super::types::Preset;
 
 /// How a driven run came out.
@@ -431,16 +432,32 @@ pub fn research_loop(
     decompose: Arc<dyn Decompose>,
     specialists: Arc<dyn Specialists>,
 ) -> Result<AssembledLoop> {
+    let delegates_for_research = delegates.clone();
     let orchestrator = Orchestrator::new(ToolGrant::read_only(), delegates)?;
     let mailbox = Arc::new(crate::harness::Mailbox::new(
         crate::harness::DEFAULT_MAILBOX_CAPACITY,
     ));
 
+    let reflect: Arc<dyn crate::arm::Arm> = Arc::new(Reflect);
+    let judge: Arc<dyn crate::arm::Arm> = Arc::new(Judge);
+
+    // Every name the emitted graph reaches, registered here rather than left to
+    // a caller. The step set is closed and checked at build time, so a missing
+    // one is a build error; supplying them is what makes this function a preset
+    // rather than a constructor with homework attached.
     let mut registry = StepRegistry::new();
     registry.register(Arc::new(Plan::new(decompose)))?;
+    registry.register(Arc::new(Gather::new(
+        delegates_for_research,
+        Arc::clone(&specialists),
+    )))?;
     registry.register(Arc::new(Attempt::new(orchestrator, specialists, mailbox)))?;
+    registry.register(Arc::new(ArmStep::new(Arc::clone(&reflect))))?;
+    registry.register(Arc::new(ArmStep::new(Arc::clone(&judge))))?;
+    registry.register(Arc::new(Converge))?;
+    registry.register(Arc::new(Advance))?;
     registry.register(Arc::new(ReportStep::new(Arc::new(Summarize))))?;
 
-    let arms = ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)])?;
+    let arms = ArmSet::new(vec![reflect, judge])?;
     AssembledLoop::new(goal, preset, arms, registry, RunBudget::default())
 }
