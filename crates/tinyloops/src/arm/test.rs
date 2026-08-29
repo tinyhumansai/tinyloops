@@ -231,7 +231,10 @@ fn an_arms_input_resolves_against_a_completed_node() {
         &scope,
     );
 
-    assert_eq!(resolved, serde_json::json!({ "report": "two routes agreed" }));
+    assert_eq!(
+        resolved,
+        serde_json::json!({ "report": "two routes agreed" })
+    );
     assert!(!resolved.is_null(), "a null here is the silent failure");
 }
 
