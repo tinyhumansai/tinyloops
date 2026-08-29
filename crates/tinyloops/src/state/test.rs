@@ -320,8 +320,8 @@ fn the_narrative_fields_are_carried_from_the_base() {
 
     let merged = base.apply(&[arm.delta_from(&base)]);
 
-    // The counter moved; the text did not, because there is no
-    // order-independent merge for it and the loop head is its sole writer.
+    // The counter moved; the text did not. `apply` folds counters only —
+    // narrative travels as a `Contribution`, arbitrated by `merge`.
     assert_eq!(merged.passes, base.passes + 1);
     assert_eq!(merged.goal, base.goal);
     assert_eq!(merged.last_attempt, base.last_attempt);
@@ -329,4 +329,98 @@ fn the_narrative_fields_are_carried_from_the_base() {
     assert_eq!(merged.steer, base.steer);
     assert_eq!(merged.scores, base.scores);
     assert_eq!(merged.judged, base.judged);
+}
+
+#[test]
+fn merge_carries_each_arms_narrative_into_the_next_pass() {
+    let base = LoopState::new("goal");
+
+    let mut reflection = Contribution::new("reflect");
+    reflection.lesson = Some("the oracle disagreed".to_owned());
+    let mut judge = Contribution::new("judge");
+    judge.score = Some(4);
+    judge.steer = Some("check the bound first".to_owned());
+    judge.judged = Some(Judgement::Steer);
+
+    let merged = base
+        .merge(&[], &[reflection, judge])
+        .expect("distinct fields do not contest");
+
+    assert_eq!(merged.lessons, ["the oracle disagreed"]);
+    assert_eq!(merged.scores, [4]);
+    assert_eq!(merged.steer, "check the bound first");
+    assert_eq!(merged.judged, Judgement::Steer);
+}
+
+#[test]
+fn merge_is_order_independent_over_contributions() {
+    let base = LoopState::new("goal");
+
+    let mut reflection = Contribution::new("reflect");
+    reflection.lesson = Some("a lesson".to_owned());
+    let mut judge = Contribution::new("judge");
+    judge.score = Some(3);
+
+    let forwards = base
+        .merge(&[], &[reflection.clone(), judge.clone()])
+        .expect("distinct fields do not contest");
+    let backwards = base
+        .merge(&[], &[judge, reflection])
+        .expect("distinct fields do not contest");
+
+    assert_eq!(forwards, backwards);
+}
+
+#[test]
+fn merge_refuses_two_arms_writing_the_same_field() {
+    let base = LoopState::new("goal");
+
+    let mut first = Contribution::new("reflect");
+    first.steer = Some("one way".to_owned());
+    let mut second = Contribution::new("judge");
+    second.steer = Some("the other way".to_owned());
+
+    // Picking a winner here would be arrival-order dependence wearing a
+    // merge's clothes, so the wiring mistake is reported instead.
+    let error = base
+        .merge(&[], &[first, second])
+        .expect_err("two arms wrote steer");
+
+    assert_eq!(
+        error,
+        Error::ContestedField {
+            field: "steer",
+            held_by: "reflect",
+            also: "judge",
+        }
+    );
+}
+
+#[test]
+fn merge_folds_counters_and_narrative_in_one_pass() {
+    let mut base = LoopState::new("goal");
+    base.unproductive = 1;
+
+    let mut productive = base.clone();
+    productive.unproductive = 0;
+
+    let mut reflection = Contribution::new("reflect");
+    reflection.lesson = Some("it worked".to_owned());
+
+    let merged = base
+        .merge(&[productive.delta_from(&base)], &[reflection])
+        .expect("one writer per field");
+
+    assert_eq!(merged.unproductive, 0);
+    assert_eq!(merged.lessons, ["it worked"]);
+}
+
+#[test]
+fn an_arm_that_contributes_nothing_is_ordinary() {
+    let quiet = Contribution::new("patterns");
+    assert!(quiet.is_empty());
+
+    let base = LoopState::new("goal");
+    let merged = base.merge(&[], &[quiet]).expect("silence contests nothing");
+    assert_eq!(merged, base);
 }
