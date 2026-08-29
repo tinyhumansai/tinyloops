@@ -36,7 +36,7 @@ use crate::orchestrate::{
 };
 use crate::policy::{Autonomy, Outcome, Route, Thresholds, route};
 use crate::state::LoopState;
-use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepContext, StepRegistry};
+use crate::step::{STEP_ATTEMPT, STEP_PLAN, STEP_REPORT, STEP_RESEARCH, StepRegistry};
 use crate::tools::ToolGrant;
 
 use super::arms::{Judge, Reflect};
