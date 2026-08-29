@@ -21,11 +21,14 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::sync::Arc;
+
 use serde_json::{Value, json};
 
 use super::*;
 use crate::policy::{Judgement, Thresholds};
 use crate::state::Contribution;
+use crate::step::{NoWrite, StepContext};
 
 /// An arm that moves one counter and files one narrative field.
 ///
@@ -87,8 +90,6 @@ impl Arm for Fake {
         Ok(outcome)
     }
 }
-
-use std::sync::Arc;
 
 fn set() -> ArmSet {
     ArmSet::new(vec![Fake::concluding("reflect"), Fake::plain("judge")]).unwrap()
