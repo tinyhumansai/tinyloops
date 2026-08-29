@@ -670,3 +670,40 @@ fn the_harness_failures_render_readably() {
         "spawn of judge refused: at capacity",
     );
 }
+
+#[test]
+fn a_dropped_note_reaches_the_runs_own_event_stream() {
+    // A drop that reaches only a counter is a designed loss nobody reading the
+    // log can see, which is indistinguishable from a bug.
+    #[derive(Debug, Default)]
+    struct Collector(Mutex<Vec<crate::Event>>);
+
+    impl crate::Sink for Collector {
+        fn emit(&self, event: &crate::Event) {
+            if let Ok(mut seen) = self.0.lock() {
+                seen.push(event.clone());
+            }
+        }
+    }
+
+    let collector = Arc::new(Collector::default());
+    let drops = Arc::new(SinkDrops::new(Arc::clone(&collector) as Arc<dyn crate::Sink>));
+    drops.at_pass(4);
+
+    let mailbox = Mailbox::new(1).observed_by(Arc::clone(&drops) as Arc<dyn DropObserver>);
+    assert!(mailbox.post(Note::new("librarian", "kept")).is_accepted());
+    assert!(!mailbox.post(Note::new("librarian", "lost")).is_accepted());
+
+    let seen = collector.0.lock().expect("no test thread panicked");
+    assert_eq!(seen.len(), 1, "only the dropped note is an event");
+    assert_eq!(
+        seen[0],
+        crate::Event::NoteDropped {
+            pass: 4,
+            from: "librarian".to_owned(),
+            capacity: 1,
+        }
+    );
+    assert_eq!(crate::render(&seen[0]),
+        "pass 4 note from librarian dropped, mailbox full at 1");
+}
