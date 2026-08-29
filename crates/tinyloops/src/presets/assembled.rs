@@ -119,6 +119,18 @@ impl AssembledLoop {
         self
     }
 
+    /// Runs the loop under different limits.
+    ///
+    /// Separate from the preset because a threshold and a bound answer
+    /// different questions: a threshold decides where a pass routes, and a
+    /// bound decides whether there is another pass at all. Tightening one
+    /// should never silently move the other.
+    #[must_use]
+    pub fn with_budget(mut self, budget: RunBudget) -> Self {
+        self.budget = budget;
+        self
+    }
+
     /// Renames the loop's nodes, for a host running two loops in one workflow.
     #[must_use]
     pub fn ids(mut self, ids: NodeIds) -> Self {

@@ -17,7 +17,7 @@ use crate::error::Error;
 use crate::harness::{Artifact, Scripted};
 use crate::observe::{Event, LineSink, Recorder, Sink};
 use crate::orchestrate::{AttemptReport, DelegateSet, FixedPlan, Inline};
-use crate::policy::{Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder, ladder};
+use crate::policy::{Autonomy, Judgement, Outcome, Route, Thresholds, evaluate_ladder};
 use crate::state::LoopState;
 use crate::step::{NoWrite, StepContext};
 
@@ -97,8 +97,8 @@ fn the_presets_are_the_set_the_parity_sweep_reads() {
         let mut state = LoopState::new("goal");
         state.blocked = thresholds.blocked;
 
-        let rendered = evaluate_ladder(&ladder(&thresholds), "loop", &state)
-            .expect("the generated ladder evaluates");
+        let rendered =
+            evaluate_ladder(&state, "loop", &thresholds).expect("the generated ladder evaluates");
         assert_eq!(rendered, Route::Blocked, "{preset} disagreed at the top rung");
     }
 }
@@ -544,16 +544,13 @@ fn the_route_a_pass_took_carries_the_counters_it_was_taken_on() {
 
 #[test]
 fn an_iteration_cap_of_one_stops_after_one_pass() {
-    let mut caps = Caps::default();
-    caps.max_iterations = 1;
-    let assembled = AssembledLoop::new(
-        "bound the error term",
-        Preset::Balanced,
-        ArmSet::new(vec![Arc::new(Reflect), Arc::new(Judge)]).expect("a legal set"),
-        stalling_registry(),
-        RunBudget::new(caps).expect("legal caps"),
-    )
-    .expect("assembles");
+    let caps = Caps {
+        max_iterations: 1,
+        ..Caps::default()
+    };
+    let assembled = stalling()
+        .expect("assembles")
+        .with_budget(RunBudget::new(caps).expect("legal caps"));
 
     let driven = assembled.drive(&quiet()).expect("the loop drives");
 
@@ -671,8 +668,4 @@ fn stalling() -> crate::error::Result<AssembledLoop> {
             )],
         )),
     )
-}
-
-fn stalling_registry() -> crate::step::StepRegistry {
-    stalling().expect("assembles").registry_for_test()
 }
