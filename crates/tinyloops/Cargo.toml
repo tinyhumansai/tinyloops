@@ -44,7 +44,7 @@ thiserror = { workspace = true }
 # Optional, and only ever reached from an example. The `tinyagents` feature
 # below turns it on; the module library itself never calls into it, so a host
 # that loads the `cdylib` resolves neither the harness nor its HTTP client.
-tinyagents = { workspace = true, optional = true }
+tinyagents-graph = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
@@ -65,7 +65,7 @@ default = []
 # Pulls in the TinyAgents durable agent + graph harness so the examples that
 # drive a loop from a harness can compile. Nothing in `src/` is gated on it —
 # it exists to give an example a real harness instead of a hand-rolled stand-in.
-tinyagents = ["dep:tinyagents"]
+tinyagents = ["dep:tinyagents-graph"]
 
 # Every other example is discovered from `examples/` and builds on a bare
 # `cargo test`. This one additionally needs the optional crate above, and

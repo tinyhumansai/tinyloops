@@ -23,7 +23,7 @@ use std::error::Error;
 use std::sync::Arc;
 
 use serde_json::{Value, json};
-use tinyagents::{END, GraphBuilder, NodeContext, NodeResult, TinyAgentsError};
+use tinyagents_graph::{END, GraphBuilder, NodeContext, NodeResult, TinyAgentsError};
 use tinyflows::caps::Capabilities;
 use tinyflows::caps::mock::mock_capabilities;
 use tinyflows::compiler::CompiledWorkflow;
@@ -84,7 +84,7 @@ async fn refine(
     mut state: LoopState,
     workflow: Arc<CompiledWorkflow>,
     capabilities: Arc<Capabilities>,
-) -> tinyagents::Result<NodeResult<LoopState>> {
+) -> tinyagents_graph::Result<NodeResult<LoopState>> {
     let outcome = run(&workflow, state.payload.clone(), &capabilities)
         .await
         .map_err(|error| TinyAgentsError::Tool(format!("workflow run failed: {error}")))?;
