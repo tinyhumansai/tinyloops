@@ -52,7 +52,7 @@ tinybus-module = { path = "vendor/tinybus/crates/tinybus-module", version = "0.1
 # HTTP client, a browser protocol, or a process spawner. `store` is on because
 # the loop needs the durable model around a graph (versioned documents, run
 # records, proposals) to have anything to iterate over.
-tinyflows = { path = "vendor/tinyflows", version = "0.8.0", default-features = false, features = [
+tinyflows = { path = "vendor/tinyflows/crates/tinyflows", version = "0.8.0", default-features = false, features = [
     "store",
 ] }
 # The adaptive loop that lives beside the engine: select or author a graph, run
